@@ -9,11 +9,16 @@ use std::path::Path;
 // The A register is the primary 8-bit accumulator.
 // The other 6 registers can be used as individual registers, or as 3 16-bit register pairs
 // (BC, DE and HL).
-//
+
 // Some instructions enable the HL register pair as a 16-bit accumulator & a psuedo reg, M.
 // The M register can be used almost anywhere that any other registers can use,
 // referring to the memory address pointed to by the HL pair.
-//
+
+// BC, DE, or HL, (referred to as B, D, H in Intel documents)
+// or SP can be loaded with an immediate 16-bit value (using LXI).
+// Incremented or decremented (using INX and DCX)
+// or added to HL (using DAD).
+
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 pub struct Cpu {
@@ -45,7 +50,7 @@ pub struct Cpu {
     interrupt_addr: u16,
 
     opcode: u16,
-    memory: Box<[u8; 65536]>,
+    pub memory: Box<[u8; 65536]>,
 
     pc: u16,
     sp: u16,
@@ -87,14 +92,46 @@ impl Cpu {
         }
     }
 
+
+    // TODO: Implement separate functions to fetch, read & write 16 bit (word) & 8 bit integers
+    //  fn read_word(addr + 1) << 8) |
+    // Read low byte (word): fn read_byte[addr & 0xffff];
+    // This will make the whole match tree smaller & easier to read.
+
+
+    // Set stack pointer value
+    pub fn set_sp(&mut self, byte: u16) {
+        self.sp = byte & 0xFFFF;
+    }
+
+    pub fn read_byte(&mut self) -> u8 {
+        self.memory[self.pc as usize + 1] << 8 | self.memory[self.pc as usize]
+    }
+    pub fn read_word(&mut self) -> u16 {
+        (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
+
+    }
+
+
+    pub fn fetch_high_bytes(&mut self) -> u8 {
+        let high = self.memory[self.pc as usize + 1] << 8 | self.memory[self.pc as usize];
+        //let high = self.memory[self.pc as usize & 0xFFFF] as u16;
+        high
+    }
+
     pub fn execute_instruction(&mut self) {
         let opcode = self.memory[self.pc as usize];
-
+        // (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
         match opcode {
             0x00 => {
                 // NOP
                 self.pc += 1;
             },
+            0x01 => {
+                // LXI (Load SP with immediate 16-bit value)
+                self.sp;
+
+            }
             0x3E => {
                 self.memory[self.pc as usize + 1] as u16;
             },
@@ -103,7 +140,6 @@ impl Cpu {
             },
             _ => return
         }
-
     }
 
     pub fn reset(&mut self) {
