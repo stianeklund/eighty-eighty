@@ -160,6 +160,10 @@ impl Cpu {
             0x06 => {
                 // TODO
             },
+            0xC3 => {
+                // TODO JMP?
+                self.pc = self.opcode & 0x0FFF;
+            }
             _ => return
         }
     }
