@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-
 // Intel 8080 Notes:
 //
 // The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
@@ -104,33 +103,56 @@ impl Cpu {
         self.sp = byte & 0xFFFF;
     }
 
-    pub fn read_byte(&mut self) -> u8 {
-        self.memory[self.pc as usize + 1] << 8 | self.memory[self.pc as usize]
+    pub fn read_byte(&mut self, addr: u8) -> u8 {
+        self.memory[addr as usize & 0xFFFF]
     }
-    pub fn read_word(&mut self) -> u16 {
+
+
+    pub fn read_word(&mut self, addr: u8) -> u16 {
         (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
-
-    }
-
-
-    pub fn fetch_high_bytes(&mut self) -> u8 {
-        let high = self.memory[self.pc as usize + 1] << 8 | self.memory[self.pc as usize];
-        //let high = self.memory[self.pc as usize & 0xFFFF] as u16;
-        high
     }
 
     pub fn execute_instruction(&mut self) {
         let opcode = self.memory[self.pc as usize];
         // (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
+
+        println!("Opcode: {:X}, PC: {}, SP: {}", opcode, self.pc, self.sp);
         match opcode {
             0x00 => {
                 // NOP
                 self.pc += 1;
             },
+            0x08 => {
+                // NOP
+                self.pc += 1;
+            },
+            0x10 => {
+                self.pc += 1;
+            },
+            0x18 => {
+                self.pc += 1
+            },
+            0x20 => {
+                self.pc += 1;
+            },
+            0x28 => {
+                self.pc += 1;
+            }
+            0x30 => {
+                self.pc += 1;
+            },
+
+            0x38 => {
+                self.pc += 1;
+            },
             0x01 => {
                 // LXI (Load SP with immediate 16-bit value)
-                self.sp;
-
+                self.sp = (self.memory[self.pc as usize] as u16) << 8 |
+                (self.memory[self.pc as usize + 1] as u16);
+                self.pc += 2;
+            },
+            0x02 => {
+                // TODO: Write byte
             }
             0x3E => {
                 self.memory[self.pc as usize + 1] as u16;
@@ -177,6 +199,7 @@ impl Cpu {
 
         let buf_len = buf.len();
         for i in 0..buf_len { self.memory[i] = buf[i]; }
+        println!("Loaded binary");
     }
 }
 
