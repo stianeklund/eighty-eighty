@@ -21,19 +21,28 @@ use std::path::Path;
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 pub struct Cpu {
+
+    memory: Box<[u8; 65536]>,
+    opcode: u8,
+
+    pc: u16,
+    sp: u16,
+
     // 8-bit Registers
-    a_reg: u8,
-    b_reg: u8,
-    c_reg: u8,
-    d_reg: u8,
-    e_reg: u8,
-    h_reg: u8,
-    l_reg: u8,
+    reg_a: u8,
+    reg_b: u8,
+    reg_c: u8,
+    reg_d: u8,
+    reg_e: u8,
+    reg_h: u8,
+    reg_l: u8,
 
     // 16-bit Register pairs
-    bc_reg: u16,
-    de_reg: u16,
-    hl_reg: u16,
+    reg_bc: u16,
+    reg_de: u16,
+    reg_hl: u16,
+
+    reg_psw: u16,
 
     // Status Register (Flags)
     sign: u8,
@@ -43,33 +52,33 @@ pub struct Cpu {
     carry: u8,
     half_carry: u8,
 
-    psw_reg: u16,
-
     interrupt: u8,
     interrupt_addr: u16,
-
-    opcode: u16,
-    pub memory: Box<[u8; 65536]>,
-
-    pc: u16,
-    sp: u16,
 
 }
 
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu {
-            a_reg: 0,
-            b_reg: 0,
-            c_reg: 0,
-            d_reg: 0,
-            e_reg: 0,
-            h_reg: 0,
-            l_reg: 0,
+            memory: Box::new([0; 65536]),
+            opcode: 0,
 
-            bc_reg: 0,
-            de_reg: 0,
-            hl_reg: 0,
+            pc: 0,
+            sp: 0,
+
+            reg_a: 0,
+            reg_b: 0,
+            reg_c: 0,
+            reg_d: 0,
+            reg_e: 0,
+            reg_h: 0,
+            reg_l: 0,
+
+            reg_bc: 0,
+            reg_de: 0,
+            reg_hl: 0,
+
+            reg_psw: 0,
 
             sign: 0,
             zero: 0,
@@ -78,92 +87,94 @@ impl Cpu {
             carry: 0,
             half_carry: 0,
 
-            psw_reg: 0,
-
             interrupt: 0,
             interrupt_addr: 0,
 
-            opcode: 0,
-            memory: Box::new([0; 65536]),
-
-            pc: 0,
-            sp: 0,
         }
     }
-
-
-    // TODO: Implement separate functions to fetch, read & write 16 bit (word) & 8 bit integers
-    //  fn read_word(addr + 1) << 8) |
-    // Read low byte (word): fn read_byte[addr & 0xffff];
-    // This will make the whole match tree smaller & easier to read.
-
 
     // Set stack pointer value
     pub fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }
 
-    pub fn read_byte(&mut self, addr: u8) -> u8 {
-        self.memory[addr as usize & 0xFFFF]
+    pub fn byte_to_u16(byte: u8, word: u8) -> u16 {
+        (((word as u8) as u16) << 8) | ((byte as u8) as u16)
+    }
+
+      pub fn read_byte(&mut self) -> u8 {
+          // self.memory[addr as usize & 0xFFFF];
+          let byte = self.memory[self.pc as usize];
+          byte
+    }
+
+    pub fn write_byte(&mut self, addr: u8, byte: u8) {
+        self.memory[addr as usize] = byte;
+    }
+
+    pub fn read_word(&mut self) -> u16 {
+        // high byte
+        (self.memory[self.pc as usize] as u16) << 8 |
+        (self.memory[self.pc as usize + 1] as u16)
     }
 
 
-    pub fn read_word(&mut self, addr: u8) -> u16 {
-        (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
+    pub fn write_word(&mut self, addr: u8, word: u16) {
+        self.memory[addr as usize + 1 as usize] = (word >> 8) as u8;
+        self.memory[addr as usize] = word as u8;
     }
+
+    pub fn instruction_nop(&mut self) {
+        self.pc += 1;
+    }
+
+    pub fn instruction_jmp(&mut self) {
+        self.pc = (self.opcode & 0x0FFF) as u16;
+    }
+
+    pub fn instruction_lxi_sp(&mut self) {
+        // TODO use write fn
+        self.sp = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+        self.pc += 2;
+    }
+    pub fn instruction_mvi_a(&mut self) {
+        let byte = self.read_byte();
+        self.reg_a = byte;
+    }
+
+    pub fn instruction_sta(&mut self) {
+        // TODO Rewrite this.. mutable borrow occurs here.
+        match self.opcode {
+            0x02 => {
+                self.write_word(self.reg_a, self.reg_bc);
+            },
+            0x12 => {
+                self.write_word(self.reg_a, self.reg_de);
+            },
+            0x32 => {
+                let byte = self.read_word() as u8;
+                self.write_byte(byte, self.reg_a);
+            },
+            _ => panic!("Unhanled instruction"),
+        }
+    }
+
 
     pub fn execute_instruction(&mut self) {
-        let opcode = self.memory[self.pc as usize];
+        self.opcode = self.memory[self.pc as usize];
         // (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
 
-        println!("Opcode: {:X}, PC: {}, SP: {}", opcode, self.pc, self.sp);
-        match opcode {
-            0x00 => {
-                // NOP
-                self.pc += 1;
-            },
-            0x08 => {
-                // NOP
-                self.pc += 1;
-            },
-            0x10 => {
-                self.pc += 1;
-            },
-            0x18 => {
-                self.pc += 1
-            },
-            0x20 => {
-                self.pc += 1;
-            },
-            0x28 => {
-                self.pc += 1;
-            }
-            0x30 => {
-                self.pc += 1;
-            },
+        println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp);
 
-            0x38 => {
-                self.pc += 1;
-            },
-            0x01 => {
-                // LXI (Load SP with immediate 16-bit value)
-                self.sp = (self.memory[self.pc as usize] as u16) << 8 |
-                (self.memory[self.pc as usize + 1] as u16);
-                self.pc += 2;
-            },
-            0x02 => {
-                // TODO: Write byte
-            }
-            0x3E => {
-                self.memory[self.pc as usize + 1] as u16;
-            },
-            0x06 => {
-                // TODO
-            },
-            0xC3 => {
-                // TODO JMP?
-                self.pc = self.opcode & 0x0FFF;
-            }
+        match self.opcode {
+            0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 =>  self.instruction_nop(),
+
+            0x01 => self.instruction_lxi_sp(),
+
+            0x02 => self.instruction_sta(),
+            0x3E => self.instruction_mvi_a(),
+            0x06 =>  {}, // TODO
+            0xC3 =>  self.instruction_jmp(),
             _ => return
         }
     }
@@ -171,17 +182,17 @@ impl Cpu {
     pub fn reset(&mut self) {
         println!("Resetting emulator");
 
-        self.a_reg = 0;
-        self.b_reg = 0;
-        self.c_reg = 0;
-        self.d_reg = 0;
-        self.e_reg = 0;
-        self.h_reg = 0;
-        self.l_reg = 0;
+        self.reg_a = 0;
+        self.reg_b = 0;
+        self.reg_c = 0;
+        self.reg_d = 0;
+        self.reg_e = 0;
+        self.reg_h = 0;
+        self.reg_l = 0;
 
-        self.bc_reg = 0;
-        self.de_reg = 0;
-        self.hl_reg = 0;
+        self.reg_bc = 0;
+        self.reg_de = 0;
+        self.reg_hl = 0;
 
         self.sign = 0;
         self.zero = 0;
@@ -189,10 +200,11 @@ impl Cpu {
 
         self.carry = 0;
         self.half_carry = 0;
-        self.psw_reg = 0;
+        self.reg_psw = 0;
 
         self.interrupt = 0;
     }
+
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);
         let mut file = File::open(&path).expect("File open failed");
@@ -205,5 +217,6 @@ impl Cpu {
         for i in 0..buf_len { self.memory[i] = buf[i]; }
         println!("Loaded binary");
     }
+
 }
 
