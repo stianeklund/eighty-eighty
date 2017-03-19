@@ -95,7 +95,6 @@ impl Cpu {
         }
     }
 
-    // Set stack pointer value
     pub fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }
@@ -106,7 +105,6 @@ impl Cpu {
 
     // TODO Move this out of cpu.rs & into separate file for cleaner memory management.
     // Make interconnect for memory management?
-
     pub fn read_byte(&mut self, addr: u8) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
@@ -118,7 +116,6 @@ impl Cpu {
     pub fn read_word(&mut self, addr: u8) -> u16 {
         (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }
-
 
     pub fn write_word(&mut self, addr: u8, word: u16) {
         self.write_byte(addr, word & 0xFF);
@@ -139,6 +136,7 @@ impl Cpu {
 
         self.pc += 2;
     }
+
     pub fn instruction_mvi_a(&mut self) {
         let byte = self.reg_a;
         self.read_byte(byte);
@@ -151,14 +149,18 @@ impl Cpu {
         self.write_word(reg_a, reg_bc);
     }
 
+    // Increment BC
     pub fn inc_bc(&mut self) {
         self.reg_bc += self.reg_bc;
         self.pc += 1;
     }
+
+    // Increment PC
     pub fn inc_pc(&mut self, amount: u16) {
         self.pc += amount;
     }
 
+    // PUSH B register
     pub fn push_b(&mut self) {
         self.sp.wrapping_sub(2);
         let sp = self.sp;
@@ -245,5 +247,4 @@ impl Cpu {
         for i in 0..buf_len { self.memory[i] = buf[i]; }
         println!("Loaded binary");
     }
-
 }
