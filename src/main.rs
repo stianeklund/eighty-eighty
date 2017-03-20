@@ -1,6 +1,7 @@
 use std::env;
 
 mod cpu;
+mod opcode;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
