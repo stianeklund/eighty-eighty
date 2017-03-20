@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
+use opcode::Instruction;
+
 const DEBUG: bool = true;
 
 // Intel 8080 Notes:
@@ -122,31 +124,64 @@ impl Cpu {
         self.write_byte(addr + 1, (word >> 8) & 0xFF);
     }
 
-    pub fn instruction_nop(&mut self) {
+    // Instruction functions
+
+    pub fn nop(&mut self) {
         self.pc += 1;
     }
 
-    pub fn instruction_jmp(&mut self) {
+    pub fn aci(&mut self) {
+        self.pc += 1;
+    }
+
+    pub fn jmp(&mut self) {
         self.pc = (self.opcode & 0x0FFF) as u16;
     }
 
-    pub fn instruction_lxi_sp(&mut self) {
+    pub fn lxi_sp(&mut self) {
         self.sp = (self.memory[self.pc as usize] as u16) << 8 |
         (self.memory[self.pc as usize + 1] as u16);
 
         self.pc += 2;
     }
 
-    pub fn instruction_mvi_a(&mut self) {
+    pub fn mvi_a(&mut self) {
         let byte = self.reg_a;
         self.read_byte(byte);
         self.pc += 1;
     }
 
-    pub fn instruction_sta(&mut self) {
+    pub fn sta(&mut self) {
         let reg_a = self.reg_a;
         let reg_bc = self.reg_bc;
         self.write_word(reg_a, reg_bc);
+    }
+
+    pub fn dcr_b(&mut self) {
+        // TODO
+        self.reg_b -= self.reg_b;
+        self.pc += 1;
+    }
+
+    pub fn dcr_c(&mut self) {
+        // TODO
+        self.reg_c -= self.reg_c;
+        self.pc += 1;
+    }
+
+    pub fn rnz(&mut self) {
+        // TODO
+        self.pc += 1;
+    }
+
+    pub fn rz(&mut self) {
+        // TODO
+        self.pc += 1;
+    }
+
+    pub fn move_mh(&mut self) {
+        // TODO
+        self.pc += 1;
     }
 
     // Increment BC
@@ -170,40 +205,61 @@ impl Cpu {
     }
 
 
+    pub fn decode(&mut self, instr: Instruction) {
+
+        match instr {
+            Instruction::NOP => self.nop(),
+            Instruction::ACI => self.aci(),
+            Instruction::INC_B => self.inc_bc(),
+            Instruction::DCR_B => self.dcr_b(),
+            Instruction::JMP =>  self.jmp(),
+            Instruction::RNZ => self.rnz(),
+            Instruction::RZ => self.rz(),
+            Instruction::MOV_M_H => self.move_mh(),
+
+
+
+            _ => println!("Unknown instruction {:X}", self.opcode),
+        }
+
+    }
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
-        // (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16)
 
         if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
 
         match self.opcode {
-            0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 =>  self.instruction_nop(),
+            // NOP Instructions: Do nothing
+            0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 => {
+                self.decode(Instruction::NOP);
+            },
 
-            0x01 => self.instruction_lxi_sp(),
-            0x02 => self.instruction_sta(),
-            0x03 => self.inc_bc(),
+            0x01 => self.decode(Instruction::NOP),
+            0x02 => self.decode(Instruction::STA),
+            0x03 => self.decode(Instruction::INC_B),
 
-            // All of these are not supposed to be NOP's.
-            0x05 => self.instruction_nop(),
-            0x06 => self.instruction_nop(),
-            0x14 => self.instruction_nop(),
+            0x05 => self.decode(Instruction::DCR_B),
+            0x06 => self.decode(Instruction::MVI_B),
+            0x14 => self.decode(Instruction::INC_D),
 
-            0xC2 => self.instruction_nop(),
+            0xC2 => self.decode(Instruction::RNZ),
 
-            0xC3 =>  self.instruction_jmp(),
-            0xC5 =>  self.push_b(),
+            0xC3 => self.decode(Instruction::JMP),
+            0xC5 => self.decode(Instruction::PUSH_B),
 
-            0xC8 => self.instruction_nop(),
-            0xCD => self.instruction_nop(),
-            0x3C => self.instruction_nop(),
-            0x3D => self.instruction_nop(),
+            0xC8 => self.decode(Instruction::RZ),
+            0xCD => self.decode(Instruction::CALL),
+            0xD => self.decode(Instruction::DCR_C),
+            0x3C => self.decode(Instruction::JMP),
+            0x3D => self.nop(),
 
-            0x3E => self.instruction_mvi_a(),
+            0x3E => self.mvi_a(),
 
-            0x32 => self.instruction_nop(),
-            0xD3 => self.instruction_nop(),
-            0xFE => self.instruction_nop(),
-            0x74 => self.instruction_nop(),
+            0x32 => self.nop(),
+            0xD3 => self.nop(),
+            0xFE => self.nop(),
+            0x47 => self.decode(Instruction::MOV_M_H),
+            0x74 => self.nop(),
 
             _ => println!("Unknown opcode: {:X}", self.opcode),
         }
