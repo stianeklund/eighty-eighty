@@ -142,6 +142,12 @@ impl Cpu {
     pub fn ana_b(&mut self) {
         self.pc += 1;
     }
+
+    // TODO
+    pub fn ani(&mut self) {
+        self.pc+=1;
+    }
+
     // TODO
     pub fn aci(&mut self) {
         self.pc += 1;
@@ -155,9 +161,15 @@ impl Cpu {
         self.sp = (self.memory[self.pc as usize] as u16) << 8 |
         (self.memory[self.pc as usize + 1] as u16);
 
-        self.pc += 2;
+        self.pc += 1;
     }
 
+    // TODO
+    pub fn lxi_d(&mut self) {
+        self.reg_d = self.memory[self.pc as usize + 1];
+
+        self.pc += 1;
+    }
     pub fn mvi_a(&mut self) {
         let byte = self.reg_a;
         self.read_byte(byte);
@@ -201,14 +213,48 @@ impl Cpu {
     }
 
     // TODO
+    pub fn daa(&mut self) {
+    self.pc += 1;}
+
+    // TODO
     pub fn ei(&mut self) {
         self.pc += 1;
     }
 
     // TODO I believe zero & sign flags need to be set for SUB instructions.
+    pub fn sub_b(&mut self) {
+        self.pc+=1;
+    }
     pub fn sub_c(&mut self) {
         self.pc+=1;
     }
+
+    pub fn sub_d(&mut self) {
+        self.pc+=1;
+    }
+    pub fn sub_e(&mut self) {
+        self.pc+=1;
+    }
+    pub fn sub_h(&mut self) {
+        self.pc+=1;
+    }
+    pub fn sub_l(&mut self) {
+        self.pc+=1;
+    }
+    pub fn sub_m(&mut self) {
+        self.pc+=1;
+    }
+    pub fn sub_a(&mut self) {
+        self.pc+=1;
+    }
+
+
+
+
+
+ 
+
+
 
     // TODO
     pub fn rnz(&mut self) {
@@ -231,23 +277,61 @@ impl Cpu {
     }
 
     // TODO
+    pub fn move_dc(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
     pub fn move_la(&mut self) {
         self.pc += 1;
     }
 
+    // TODO
+    pub fn move_hd(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn move_hb(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn move_hc(&mut self) {
+        self.pc += 1;
+    }
+
     // Increment BC
-    pub fn inc_bc(&mut self) {
+    pub fn inr_b(&mut self) {
+        self.reg_bc += self.reg_bc;
+        self.pc += 1;
+    }
+    // Increment BC
+    pub fn inr_bc(&mut self) {
         self.reg_bc += self.reg_bc;
         self.pc += 1;
     }
 
     // Increment PC
-    pub fn inc_pc(&mut self, amount: u16) {
+    pub fn inr_pc(&mut self, amount: u16) {
         self.pc += amount;
+    }
+
+    // Increment E register
+    pub fn inr_e(&mut self) {
+        self.reg_e += self.reg_e;
+        self.pc += 1;
     }
 
     // TODO
     pub fn inx_h(&mut self) {
+        self.reg_h < self.reg_h + 1;
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn inx_sp(&mut self) {
+        self.sp < self.sp + 1;
         self.pc += 1;
     }
 
@@ -266,6 +350,11 @@ impl Cpu {
         let sp = self.sp;
         let d = self.reg_d;
         self.write_word(d, sp);
+        self.pc += 1;
+    }
+
+    // TODO STAX_D
+    pub fn stax_d(&mut self) {
         self.pc += 1;
     }
 
@@ -295,36 +384,138 @@ impl Cpu {
         self.pc += 1;
     }
 
+
+    // I think it might be a good idea to segment instructions based on functionality.
+    // Move logical operations to a separate file, jump & call to one etc?
     pub fn decode(&mut self, instr: Instruction) {
 
         match instr {
             Instruction::NOP => self.nop(),
             Instruction::ACI => self.aci(),
+            Instruction::ADD_B => self.nop(),
+            Instruction::ADD_C => self.nop(),
+            Instruction::ADD_D => self.nop(),
+            Instruction::ADD_E => self.nop(),
+            Instruction::ADD_H => self.nop(),
+            Instruction::ADD_L => self.nop(),
+            Instruction::ADD_M => self.nop(),
+            Instruction::ADD_A => self.nop(),
+
+            Instruction::ADC_A => self.nop(),
+            Instruction::ADC_B => self.nop(),
+            Instruction::ADC_C => self.nop(),
+            Instruction::ADC_D => self.nop(),
+            Instruction::ADC_E => self.nop(),
+            Instruction::ADC_H => self.nop(),
+            Instruction::ADC_L => self.nop(),
+            Instruction::ADC_M => self.nop(),
+            Instruction::ADC_A => self.nop(),
+
+
+
+
             Instruction::ANA_E => self.ana_e(),
             Instruction::ANA_B => self.ana_b(),
-            Instruction::INC_B => self.inc_bc(),
+            Instruction::INR_B => self.inr_bc(),
             Instruction::CALL => self.call(),
             Instruction::CPI => self.cpi(),
             Instruction::CMP_M => self.cmp_m(),
             Instruction::DCR_A => self.dcr_a(),
             Instruction::DCR_B => self.dcr_b(),
+            Instruction::DAA =>  self.daa(),
             Instruction::EI => self.ei(),
             Instruction::JMP =>  self.jmp(),
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
+
+            // TODO
             Instruction::MOV_M_H => self.move_mh(),
+            Instruction::MOV_M_C => self.move_mh(),
             Instruction::MOV_A_D => self.move_ad(),
+            Instruction::MOV_D_A => self.move_dc(),
+            Instruction::MOV_D_E => self.move_dc(),
+            Instruction::MOV_D_C => self.move_dc(),
             Instruction::MOV_L_A => self.move_la(),
+            Instruction::MOV_H_B => self.move_hb(),
+            Instruction::MOV_H_D => self.move_hd(),
+            Instruction::MOV_H_C => self.move_hc(),
+
+            Instruction::MVI_B => self.nop(),
+            Instruction::MVI_C => self.nop(),
+            Instruction::MVI_D => self.nop(),
+            Instruction::MVI_E => self.nop(),
+            Instruction::MVI_H => self.nop(),
+            Instruction::MVI_L => self.nop(),
+            Instruction::MVI_M => self.nop(),
             Instruction::MVI_A => self.mvi_a(),
+
+            Instruction::SUB_B => self.sub_b(),
             Instruction::SUB_C => self.sub_c(),
+            Instruction::SUB_D => self.sub_d(),
+            Instruction::SUB_E => self.sub_e(),
+            Instruction::SUB_H => self.sub_h(),
+            Instruction::SUB_L => self.sub_l(),
+            Instruction::SUB_M => self.sub_m(),
+            Instruction::SUB_A => self.sub_a(),
+
+            // TODO
+            Instruction::SBB_B => self.nop(),
+            Instruction::SBB_C => self.nop(),
+            Instruction::SBB_D => self.nop(),
+            Instruction::SBB_E => self.nop(),
+            Instruction::SBB_H => self.nop(),
+            Instruction::SBB_L => self.nop(),
+            Instruction::SBB_M => self.nop(),
+            Instruction::SBB_A => self.nop(),
+
             Instruction::XRA_A => self.xra_a(),
             Instruction::XRA_M => self.xra_m(),
             Instruction::XRA_H => self.xra_h(),
             Instruction::RPE => self.rpe(),
-            Instruction::PUSH_D => self.push_d(),
-            Instruction::INX_H => self.inx_h(),
-            Instruction::OUT => self.out(),
 
+            Instruction::PUSH_D => self.push_d(),
+
+            Instruction::INX_H => self.inx_h(),
+            Instruction::INX_SP => self.inx_sp(),
+            Instruction::INR_B => self.inr_b(),
+            Instruction::OUT => self.out(),
+            Instruction::ANI => self.ani(),
+            Instruction::STAX_D => self.stax_d(),
+            Instruction::LXI_D => self.lxi_d(),
+            Instruction::LXI_SP => self.lxi_sp(),
+            Instruction::RST_7 => self.nop(), // self.reset(),
+            Instruction::INR_E => self.inr_e(),
+            Instruction::CM => self.nop(), // TODO
+            Instruction::CMC => self.nop(), // TODO
+            Instruction::HLT => self.nop(), // self.reset(),
+            Instruction::RRC => self.nop(), // TODO
+            Instruction::XRA_L => self.nop(), // TODO
+
+            Instruction::ORA_B => self.nop(), // TODO
+            Instruction::ORA_C => self.nop(), // TODO
+            Instruction::ORA_D => self.nop(), // TODO
+            Instruction::ORA_E => self.nop(), // TODO
+            Instruction::ORA_H => self.nop(), // TODO
+            Instruction::ORA_L => self.nop(), // TODO
+            Instruction::ORA_M => self.nop(), // TODO
+            Instruction::ORA_A => self.nop(), // TODO
+
+            Instruction::CMP_B => self.nop(), // TODO
+            Instruction::CMP_C => self.nop(), // TODO
+            Instruction::CMP_D => self.nop(), // TODO
+            Instruction::CMP_E => self.nop(), // TODO
+            Instruction::CMP_H => self.nop(), // TODO
+            Instruction::CMP_L => self.nop(), // TODO
+            Instruction::CMP_M => self.nop(), // TODO
+            Instruction::CMP_A => self.nop(), // TODO
+
+            Instruction::POP_B => self.nop(), // TODO
+            Instruction::POP_D => self.nop(), // TODO
+            Instruction::POP_H => self.nop(), // TODO
+            Instruction::POP_PSW => self.nop(), // TODO
+
+            Instruction::JNZ => self.nop(), // TODO
+            Instruction::JM => self.nop(), // TODO
 
             _ => println!("Unknown instruction {:X}", self.opcode),
         }
@@ -341,20 +532,55 @@ impl Cpu {
                 self.decode(Instruction::NOP);
             },
 
+            0x2 => self.decode(Instruction::NOP),
+            0x2C => self.decode(Instruction::JNZ),
+            0x4 => self.decode(Instruction::INR_B),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STA),
-            0x03 => self.decode(Instruction::INC_B),
+            0x03 => self.decode(Instruction::INR_B),
 
             0x05 => self.decode(Instruction::DCR_B),
             0x06 => self.decode(Instruction::MVI_B),
-            0x14 => self.decode(Instruction::INC_D),
+            0x11 => self.decode(Instruction::LXI_D),
+            0x13 => self.decode(Instruction::LXI_SP),
+            0x14 => self.decode(Instruction::INR_D),
+            0x15 => self.decode(Instruction::MOV_D_C),
+            0x16 => self.decode(Instruction::MOV_H_C),
+            0x17 => self.decode(Instruction::MOV_M_C),
             0x19 => self.decode(Instruction::SUB_C),
+            0x1C => self.decode(Instruction::POP_B),
+            0x21 => self.decode(Instruction::STAX_D),
+            0x26 => self.decode(Instruction::MOV_H_D),
 
             0x5D => self.decode(Instruction::PUSH_D),
+            0x6 => self.decode(Instruction::MOV_H_B),
+            0x9 => self.decode(Instruction::SUB_B),
             0xA => self.decode(Instruction::ANA_B),
             0xAF => self.decode(Instruction::XRA_A),
             0xA7 => self.decode(Instruction::MOV_A_D),
-            0xEA => self.decode(Instruction::XRA_A),
+
+            // ORA Instructions  0xB(reg)
+            0xB0 => self.decode(Instruction::ORA_B),
+            0xB1 => self.decode(Instruction::ORA_C),
+            0xB2 => self.decode(Instruction::ORA_D),
+            0xB3 => self.decode(Instruction::ORA_E),
+            0xB4 => self.decode(Instruction::ORA_H),
+            0xB5 => self.decode(Instruction::ORA_L),
+            0xB6 => self.decode(Instruction::ORA_M),
+            0xB7 => self.decode(Instruction::ORA_A),
+
+            // CMP
+            0xB8 => self.decode(Instruction::CMP_B),
+            0xB9 => self.decode(Instruction::CMP_C),
+            0xBA => self.decode(Instruction::CMP_D),
+            0xBB => self.decode(Instruction::CMP_E),
+            0xBC => self.decode(Instruction::CMP_H),
+            0xBD => self.decode(Instruction::CMP_L),
+            0xBE => self.decode(Instruction::CMP_M),
+            0xBF => self.decode(Instruction::CMP_A),
+
+            0xC0 => self.decode(Instruction::RNZ),
+            0xC1 => self.decode(Instruction::INR_E),
             0xCA => self.decode(Instruction::XRA_H),
             0xC2 => self.decode(Instruction::RNZ),
 
@@ -362,8 +588,16 @@ impl Cpu {
             0xC5 => self.decode(Instruction::PUSH_B),
 
             0xC8 => self.decode(Instruction::RZ),
+            0xCB => self.decode(Instruction::JMP),
             0xCD => self.decode(Instruction::CALL),
+            0xCF => self.decode(Instruction::CM),
             0xD => self.decode(Instruction::DCR_C),
+            0xD1 => self.decode(Instruction::POP_D),
+
+            0xE => self.decode(Instruction::MVI_C),
+            0xEA => self.decode(Instruction::XRA_A),
+            0xE6 => self.decode(Instruction::ANI),
+
             0x3A => self.decode(Instruction::ANA_E),
             0x3C => self.decode(Instruction::JMP),
             0x3D => self.decode(Instruction::OUT),
@@ -371,8 +605,13 @@ impl Cpu {
             0x3E => self.decode(Instruction::MVI_A),
 
             0x32 => self.decode(Instruction::INX_H),
+            0x33 => self.decode(Instruction::INX_SP),
+            0x35 => self.decode(Instruction::MOV_D_E),
             0xBF => self.decode(Instruction::EI),
+            0xDA => self.decode(Instruction::XRA_L),
             0xD3 => self.decode(Instruction::DCR_A),
+            0xD8 => self.decode(Instruction::ADC_L),
+            0xFA => self.decode(Instruction::JM),
             0xFE => self.nop(),
             0xE9 => self.decode(Instruction::RPE),
             0xEB => self.decode(Instruction::CMP_M),
@@ -380,9 +619,29 @@ impl Cpu {
 
             // Instructions from 0x4A - 0x4F to 0x7A to 0x7F are MOV instructions
             0x47 => self.decode(Instruction::MOV_M_H),
+            0x49 => self.decode(Instruction::SUB_H),
+            0x59 => self.decode(Instruction::SUB_L),
             0x6F => self.decode(Instruction::MOV_L_A),
+            0x67 => self.decode(Instruction::HLT),
+            0x72 => self.decode(Instruction::DAA),
             0x74 => self.nop(),
-            0x82 => self.decode(Instruction::NOP),
+            0x75 => self.decode(Instruction::MOV_D_A),
+
+            // ADD instructions
+            0x80 => self.decode(Instruction::ADD_B),
+            0x81 => self.decode(Instruction::ADD_C),
+            0x82 => self.decode(Instruction::ADD_D),
+            0x83 => self.decode(Instruction::ADD_E),
+            0x84 => self.decode(Instruction::ADD_H),
+            0x85 => self.decode(Instruction::ADD_L),
+            0x86 => self.decode(Instruction::ADD_M),
+
+            0x87 => self.decode(Instruction::ADD_A),
+            0x88 => self.decode(Instruction::ADC_B),
+            0x89 => self.decode(Instruction::ADC_C),
+            0xF => self.decode(Instruction::RRC),
+            0xF3 => self.decode(Instruction::CMC),
+            0xFF => self.decode(Instruction::RST_7),
 
             _ => println!("Unknown opcode: {:X}", self.opcode),
         }
