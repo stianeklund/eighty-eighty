@@ -1,5 +1,21 @@
 pub struct Opcode;
 
+enum Reg8 {
+    A, B, C, D, E, H, L
+}
+
+pub enum Reg16 {
+    BC, DE, HL
+}
+
+// TODO
+
+// Example:
+
+// enum Instruction {
+    // MOV(Register, Register)
+// }
+
 pub enum Instruction {
     NOP,
     LXI_B,
