@@ -26,7 +26,7 @@ const DEBUG: bool = true;
 
 pub struct Cpu {
 
-    memory: Box<[u8; 65536]>,
+    pub memory: Box<[u8; 65536]>,
     opcode: u8,
 
     pc: u16,
@@ -124,12 +124,25 @@ impl Cpu {
         self.write_byte(addr + 1, (word >> 8) & 0xFF);
     }
 
-    // Instruction functions
+
+
+    // Instruction functions, possible improvement is to group functions
+    // by type or separate them by type, e.g mov goes together.
 
     pub fn nop(&mut self) {
         self.pc += 1;
     }
 
+    // TODO
+    pub fn ana_e(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn ana_b(&mut self) {
+        self.pc += 1;
+    }
+    // TODO
     pub fn aci(&mut self) {
         self.pc += 1;
     }
@@ -157,30 +170,68 @@ impl Cpu {
         self.write_word(reg_a, reg_bc);
     }
 
-    pub fn dcr_b(&mut self) {
-        // TODO
-        self.reg_b -= self.reg_b;
+    // TODO
+    pub fn call(&mut self) {
         self.pc += 1;
     }
 
+    // TODO Compare M reg
+    pub fn cmp_m(&mut self) {
+        self.pc += 1;
+    }
+    // TODO Compare Immidiate with Accumulator
+    pub fn cpi(&mut self) {
+        self.pc +=1;
+    }
+
+    // TODO
+    pub fn dcr_b(&mut self) {
+        self.reg_b -= self.reg_b;
+        self.pc += 1;
+    }
+    // TODO
+    pub fn dcr_a(&mut self) {
+        self.reg_d -= self.reg_d;
+        self.pc += 1;
+    }
+    // TODO
     pub fn dcr_c(&mut self) {
-        // TODO
         self.reg_c -= self.reg_c;
         self.pc += 1;
     }
 
+    // TODO
+    pub fn ei(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO I believe zero & sign flags need to be set for SUB instructions.
+    pub fn sub_c(&mut self) {
+        self.pc+=1;
+    }
+
+    // TODO
     pub fn rnz(&mut self) {
-        // TODO
         self.pc += 1;
     }
 
+    // TODO
     pub fn rz(&mut self) {
-        // TODO
         self.pc += 1;
     }
 
+    // TODO
     pub fn move_mh(&mut self) {
-        // TODO
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn move_ad(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn move_la(&mut self) {
         self.pc += 1;
     }
 
@@ -195,28 +246,84 @@ impl Cpu {
         self.pc += amount;
     }
 
+    // TODO
+    pub fn inx_h(&mut self) {
+        self.pc += 1;
+    }
+
     // PUSH B register
     pub fn push_b(&mut self) {
-        self.sp.wrapping_sub(2);
+        self.sp -= 2;
         let sp = self.sp;
         let b = self.reg_b;
         self.write_word(b, sp);
         self.pc += 1;
     }
+    // PUSH D register
+    pub fn push_d(&mut self) {
+        // self.sp -= 2;
+        self.sp.wrapping_sub(2);
+        let sp = self.sp;
+        let d = self.reg_d;
+        self.write_word(d, sp);
+        self.pc += 1;
+    }
 
+    // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
+    pub fn xra_a(&mut self) {
+        self.pc += 1;
+
+    }
+
+    pub fn xra_m(&mut self) {
+        self.pc += 1;
+
+    }
+
+    // TODO
+    pub fn xra_h(&mut self) {
+        self.pc += 1;
+
+    }
+    // TODO
+    pub fn rpe(&mut self) {
+        self.pc += 1;
+    }
+
+    // TODO
+    pub fn out(&mut self) {
+        self.pc += 1;
+    }
 
     pub fn decode(&mut self, instr: Instruction) {
 
         match instr {
             Instruction::NOP => self.nop(),
             Instruction::ACI => self.aci(),
+            Instruction::ANA_E => self.ana_e(),
+            Instruction::ANA_B => self.ana_b(),
             Instruction::INC_B => self.inc_bc(),
+            Instruction::CALL => self.call(),
+            Instruction::CPI => self.cpi(),
+            Instruction::CMP_M => self.cmp_m(),
+            Instruction::DCR_A => self.dcr_a(),
             Instruction::DCR_B => self.dcr_b(),
+            Instruction::EI => self.ei(),
             Instruction::JMP =>  self.jmp(),
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
             Instruction::MOV_M_H => self.move_mh(),
-
+            Instruction::MOV_A_D => self.move_ad(),
+            Instruction::MOV_L_A => self.move_la(),
+            Instruction::MVI_A => self.mvi_a(),
+            Instruction::SUB_C => self.sub_c(),
+            Instruction::XRA_A => self.xra_a(),
+            Instruction::XRA_M => self.xra_m(),
+            Instruction::XRA_H => self.xra_h(),
+            Instruction::RPE => self.rpe(),
+            Instruction::PUSH_D => self.push_d(),
+            Instruction::INX_H => self.inx_h(),
+            Instruction::OUT => self.out(),
 
 
             _ => println!("Unknown instruction {:X}", self.opcode),
@@ -241,7 +348,14 @@ impl Cpu {
             0x05 => self.decode(Instruction::DCR_B),
             0x06 => self.decode(Instruction::MVI_B),
             0x14 => self.decode(Instruction::INC_D),
+            0x19 => self.decode(Instruction::SUB_C),
 
+            0x5D => self.decode(Instruction::PUSH_D),
+            0xA => self.decode(Instruction::ANA_B),
+            0xAF => self.decode(Instruction::XRA_A),
+            0xA7 => self.decode(Instruction::MOV_A_D),
+            0xEA => self.decode(Instruction::XRA_A),
+            0xCA => self.decode(Instruction::XRA_H),
             0xC2 => self.decode(Instruction::RNZ),
 
             0xC3 => self.decode(Instruction::JMP),
@@ -250,16 +364,25 @@ impl Cpu {
             0xC8 => self.decode(Instruction::RZ),
             0xCD => self.decode(Instruction::CALL),
             0xD => self.decode(Instruction::DCR_C),
+            0x3A => self.decode(Instruction::ANA_E),
             0x3C => self.decode(Instruction::JMP),
-            0x3D => self.nop(),
+            0x3D => self.decode(Instruction::OUT),
 
-            0x3E => self.mvi_a(),
+            0x3E => self.decode(Instruction::MVI_A),
 
-            0x32 => self.nop(),
-            0xD3 => self.nop(),
+            0x32 => self.decode(Instruction::INX_H),
+            0xBF => self.decode(Instruction::EI),
+            0xD3 => self.decode(Instruction::DCR_A),
             0xFE => self.nop(),
+            0xE9 => self.decode(Instruction::RPE),
+            0xEB => self.decode(Instruction::CMP_M),
+            0xEF => self.decode(Instruction::CPI),
+
+            // Instructions from 0x4A - 0x4F to 0x7A to 0x7F are MOV instructions
             0x47 => self.decode(Instruction::MOV_M_H),
+            0x6F => self.decode(Instruction::MOV_L_A),
             0x74 => self.nop(),
+            0x82 => self.decode(Instruction::NOP),
 
             _ => println!("Unknown opcode: {:X}", self.opcode),
         }
