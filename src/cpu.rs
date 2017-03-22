@@ -172,13 +172,11 @@ impl Cpu {
 
     }
     pub fn add(&mut self, reg: Register) {
-        let reg_a = self.reg_a;
         let value = match self.opcode {
             Register => self.read_reg(reg),
         };
-        self.reg_a = reg_a.wrapping_add(value);
-        self.pc+= 1;
     }
+
     pub fn ana(&mut self, reg: Register) {
         self.pc += 1;
     }
@@ -204,11 +202,11 @@ impl Cpu {
         self.pc += 1;
     }
 
-    // TODO
-    pub fn lxi_d(&mut self) {
-        self.reg_d = self.memory[self.pc as usize + 1];
+    // LXI
+    pub fn lxi(&mut self, reg: Register) {
+        let reg = self.read_reg(reg);
+        reg = self.memory[self.pc as usize + 1];
 
-        self.pc += 1;
     }
     pub fn mvi_a(&mut self) {
         let byte = self.reg_a;
@@ -237,22 +235,8 @@ impl Cpu {
     }
 
     pub fn dcr(&mut self, register: Register) {
-        self.reg_b -= self.reg_b;
-        self.pc += 1;
-    }
-    // TODO
-    pub fn dcr_b(&mut self) {
-        self.reg_b -= self.reg_b;
-        self.pc += 1;
-    }
-    // TODO
-    pub fn dcr_a(&mut self) {
-        self.reg_d -= self.reg_d;
-        self.pc += 1;
-    }
-    // TODO
-    pub fn dcr_c(&mut self) {
-        self.reg_c -= self.reg_c;
+        // TODO See Add function
+        // self.reg_b -= self.reg_b;
         self.pc += 1;
     }
 
@@ -337,10 +321,10 @@ impl Cpu {
         self.pc += 1;
     }
 
-    // Increment BC
-    pub fn inr_b(&mut self) {
-        self.reg_bc += self.reg_bc;
-        self.pc += 1;
+    // TODO Increment Register
+    pub fn inr(&mut self, reg: Register) {
+        let value = reg;
+        self.write_reg(reg = reg + value);
     }
     // Increment BC
     pub fn inr_bc(&mut self) {
@@ -456,7 +440,7 @@ impl Cpu {
             Instruction::SUB(reg) => self.sub(reg),
             Instruction::SBB(reg) => self.sbb(reg),
 
-            Instruction::XRA(reg) => self s.xra(reg),
+            Instruction::XRA(reg) => self.xra(reg),
             Instruction::XRA_M => self.xra_m(),
             Instruction::XRA_H => self.xra_h(),
             Instruction::RPE => self.rpe(),

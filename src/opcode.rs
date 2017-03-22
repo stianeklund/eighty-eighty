@@ -1,14 +1,17 @@
 pub struct Opcode;
 
+#[derive(Debug, Copy, Clone)]
 pub enum Register {
     A, B, C, D, E, H, L,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum RegisterPair {
     BC, DE, HL
 }
 
 
+#[derive(Debug, Copy, Clone)]
 pub enum Instruction {
     NOP,
     ADC(Register),
