@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use opcode::Instruction;
+use opcode::{Instruction, Register, RegisterPair};
 
 const DEBUG: bool = true;
 
@@ -101,12 +101,6 @@ impl Cpu {
         self.sp = byte & 0xFFFF;
     }
 
-    pub fn byte_to_u16(byte: u8, word: u8) -> u16 {
-        (((word as u8) as u16) << 8) | ((byte as u8) as u16)
-    }
-
-    // TODO Move this out of cpu.rs & into separate file for cleaner memory management.
-    // Make interconnect for memory management?
     pub fn read_byte(&mut self, addr: u8) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
@@ -125,6 +119,46 @@ impl Cpu {
     }
 
 
+    pub fn read_reg(&self, reg: Register) -> u8 {
+        match reg {
+            Register::A => self.reg_a,
+            Register::B => self.reg_b,
+            Register::C => self.reg_c,
+            Register::D => self.reg_d,
+            Register::E => self.reg_e,
+            Register::H => self.reg_h,
+            Register::L => self.reg_l,
+        }
+    }
+
+    pub fn read_reg16(&self, reg: RegisterPair) -> u16 {
+        match reg {
+            RegisterPair::BC => self.reg_bc,
+            RegisterPair::DE => self.reg_de,
+            RegisterPair::HL => self.reg_hl,
+        }
+    }
+
+    pub fn write_reg(&mut self, reg: Register, value: u8) {
+        match reg {
+            Register::A => self.reg_a = value,
+            Register::B => self.reg_b = value,
+            Register::C => self.reg_c = value,
+            Register::D => self.reg_d = value,
+            Register::E => self.reg_e = value,
+            Register::H => self.reg_h = value,
+            Register::L => self.reg_l = value,
+        }
+    }
+
+    pub fn write_reg16(&mut self, reg: RegisterPair, value: u16) {
+        match reg {
+            RegisterPair::BC => self.reg_bc = value,
+            RegisterPair::DE => self.reg_de = value,
+            RegisterPair::HL => self.reg_hl = value,
+        }
+    }
+
 
     // Instruction functions, possible improvement is to group functions
     // by type or separate them by type, e.g mov goes together.
@@ -133,13 +167,19 @@ impl Cpu {
         self.pc += 1;
     }
 
-    // TODO
-    pub fn ana_e(&mut self) {
+    pub fn adc(&mut self, reg: Register) {
         self.pc += 1;
-    }
 
-    // TODO
-    pub fn ana_b(&mut self) {
+    }
+    pub fn add(&mut self, reg: Register) {
+        let reg_a = self.reg_a;
+        let value = match self.opcode {
+            Register => self.read_reg(reg),
+        };
+        self.reg_a = reg_a.wrapping_add(value);
+        self.pc+= 1;
+    }
+    pub fn ana(&mut self, reg: Register) {
         self.pc += 1;
     }
 
@@ -196,6 +236,10 @@ impl Cpu {
         self.pc +=1;
     }
 
+    pub fn dcr(&mut self, register: Register) {
+        self.reg_b -= self.reg_b;
+        self.pc += 1;
+    }
     // TODO
     pub fn dcr_b(&mut self) {
         self.reg_b -= self.reg_b;
@@ -247,14 +291,6 @@ impl Cpu {
     pub fn sub_a(&mut self) {
         self.pc+=1;
     }
-
-
-
-
-
- 
-
-
 
     // TODO
     pub fn rnz(&mut self) {
@@ -384,91 +420,43 @@ impl Cpu {
         self.pc += 1;
     }
 
+    pub fn mov(&mut self,src: Register, dst: Register) {
+        let value = self.read_reg(src);
+        self.write_reg(dst, value);
+    }
 
     // I think it might be a good idea to segment instructions based on functionality.
     // Move logical operations to a separate file, jump & call to one etc?
-    pub fn decode(&mut self, instr: Instruction) {
+    pub fn decode(&mut self, instruction: Instruction) {
+        use self::Register::*;
 
-        match instr {
+        match instruction {
             Instruction::NOP => self.nop(),
             Instruction::ACI => self.aci(),
-            Instruction::ADD_B => self.nop(),
-            Instruction::ADD_C => self.nop(),
-            Instruction::ADD_D => self.nop(),
-            Instruction::ADD_E => self.nop(),
-            Instruction::ADD_H => self.nop(),
-            Instruction::ADD_L => self.nop(),
-            Instruction::ADD_M => self.nop(),
-            Instruction::ADD_A => self.nop(),
 
-            Instruction::ADC_A => self.nop(),
-            Instruction::ADC_B => self.nop(),
-            Instruction::ADC_C => self.nop(),
-            Instruction::ADC_D => self.nop(),
-            Instruction::ADC_E => self.nop(),
-            Instruction::ADC_H => self.nop(),
-            Instruction::ADC_L => self.nop(),
-            Instruction::ADC_M => self.nop(),
-            Instruction::ADC_A => self.nop(),
+            Instruction::ADD(reg) => self.add(reg),
+            Instruction::ADC(reg) => self.adc(reg),
+            Instruction::ANA(reg) => self.ana(reg),
 
-
-
-
-            Instruction::ANA_E => self.ana_e(),
-            Instruction::ANA_B => self.ana_b(),
-            Instruction::INR_B => self.inr_bc(),
+            Instruction::INR(reg) => self.inr(reg),
             Instruction::CALL => self.call(),
             Instruction::CPI => self.cpi(),
-            Instruction::CMP_M => self.cmp_m(),
-            Instruction::DCR_A => self.dcr_a(),
-            Instruction::DCR_B => self.dcr_b(),
+            Instruction::CMP(reg) => self.cmp(reg),
+            Instruction::DCR(reg) => self.dcr(reg),
+
             Instruction::DAA =>  self.daa(),
             Instruction::EI => self.ei(),
-            Instruction::JMP =>  self.jmp(),
+            Instruction::JMP =>  { self.pc = (self.opcode & 0x0FFF) as u16; },
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
 
-            // TODO
-            Instruction::MOV_M_H => self.move_mh(),
-            Instruction::MOV_M_C => self.move_mh(),
-            Instruction::MOV_A_D => self.move_ad(),
-            Instruction::MOV_D_A => self.move_dc(),
-            Instruction::MOV_D_E => self.move_dc(),
-            Instruction::MOV_D_C => self.move_dc(),
-            Instruction::MOV_L_A => self.move_la(),
-            Instruction::MOV_H_B => self.move_hb(),
-            Instruction::MOV_H_D => self.move_hd(),
-            Instruction::MOV_H_C => self.move_hc(),
+            // MOV Instructions
+            Instruction::MOV(dst, src) => self.mov(dst, src),
+            Instruction::MVI(reg) => self.mvi(reg),
+            Instruction::SUB(reg) => self.sub(reg),
+            Instruction::SBB(reg) => self.sbb(reg),
 
-            Instruction::MVI_B => self.nop(),
-            Instruction::MVI_C => self.nop(),
-            Instruction::MVI_D => self.nop(),
-            Instruction::MVI_E => self.nop(),
-            Instruction::MVI_H => self.nop(),
-            Instruction::MVI_L => self.nop(),
-            Instruction::MVI_M => self.nop(),
-            Instruction::MVI_A => self.mvi_a(),
-
-            Instruction::SUB_B => self.sub_b(),
-            Instruction::SUB_C => self.sub_c(),
-            Instruction::SUB_D => self.sub_d(),
-            Instruction::SUB_E => self.sub_e(),
-            Instruction::SUB_H => self.sub_h(),
-            Instruction::SUB_L => self.sub_l(),
-            Instruction::SUB_M => self.sub_m(),
-            Instruction::SUB_A => self.sub_a(),
-
-            // TODO
-            Instruction::SBB_B => self.nop(),
-            Instruction::SBB_C => self.nop(),
-            Instruction::SBB_D => self.nop(),
-            Instruction::SBB_E => self.nop(),
-            Instruction::SBB_H => self.nop(),
-            Instruction::SBB_L => self.nop(),
-            Instruction::SBB_M => self.nop(),
-            Instruction::SBB_A => self.nop(),
-
-            Instruction::XRA_A => self.xra_a(),
+            Instruction::XRA(reg) => self s.xra(reg),
             Instruction::XRA_M => self.xra_m(),
             Instruction::XRA_H => self.xra_h(),
             Instruction::RPE => self.rpe(),
@@ -524,6 +512,9 @@ impl Cpu {
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
 
+        use self::Register::*;
+        use self::RegisterPair::*;
+
         if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
 
         match self.opcode {
@@ -544,9 +535,12 @@ impl Cpu {
             0x11 => self.decode(Instruction::LXI_D),
             0x13 => self.decode(Instruction::LXI_SP),
             0x14 => self.decode(Instruction::INR_D),
-            0x15 => self.decode(Instruction::MOV_D_C),
-            0x16 => self.decode(Instruction::MOV_H_C),
-            0x17 => self.decode(Instruction::MOV_M_C),
+
+            0x15 => self.decode(Instruction::MOV(D, C)),
+
+            0x16 => self.decode(Instruction::MOV(H, C)),
+            // 0x17 => self.decode(Instruction::MOV(HL, C)),
+            0x17 => self.decode(Instruction::MOV_R_PR(HL, C)),
             0x19 => self.decode(Instruction::SUB_C),
             0x1C => self.decode(Instruction::POP_B),
             0x21 => self.decode(Instruction::STAX_D),
