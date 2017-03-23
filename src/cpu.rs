@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-
 use opcode::{Instruction, Register, RegisterPair};
 
 const DEBUG: bool = true;
@@ -40,6 +39,7 @@ pub struct Cpu {
     reg_e: u8,
     reg_h: u8,
     reg_l: u8,
+    reg_m: u8, // psuedo register
 
     // 16-bit Register pairs
     reg_bc: u16,
@@ -77,6 +77,7 @@ impl Cpu {
             reg_e: 0,
             reg_h: 0,
             reg_l: 0,
+            reg_m: 0,
 
             reg_bc: 0,
             reg_de: 0,
@@ -128,6 +129,7 @@ impl Cpu {
             Register::E => self.reg_e,
             Register::H => self.reg_h,
             Register::L => self.reg_l,
+            Register::M => self.reg_m,
         }
     }
 
@@ -148,6 +150,7 @@ impl Cpu {
             Register::E => self.reg_e = value,
             Register::H => self.reg_h = value,
             Register::L => self.reg_l = value,
+            Register::M => self.reg_m = value,
         }
     }
 
@@ -163,7 +166,7 @@ impl Cpu {
     // Instruction functions, possible improvement is to group functions
     // by type or separate them by type, e.g mov goes together.
 
-    pub fn nop(&mut self) {
+    fn adv_pc(&mut self) {
         self.pc += 1;
     }
 
@@ -172,7 +175,7 @@ impl Cpu {
 
     }
     pub fn add(&mut self, reg: Register) {
-        let value = match self.opcode {
+        match reg {
             Register => self.read_reg(reg),
         };
     }
@@ -204,8 +207,11 @@ impl Cpu {
 
     // LXI
     pub fn lxi(&mut self, reg: Register) {
-        let reg = self.read_reg(reg);
+        if DEBUG { println!(" LXI on reg: {:?}", reg);}
+        let mut reg = self.read_reg(reg);
+        if DEBUG { println!(" read_reg: {:X}", reg);}
         reg = self.memory[self.pc as usize + 1];
+        if DEBUG { println!(" reg: {:X}", reg);}
 
     }
     pub fn mvi_a(&mut self) {
@@ -221,12 +227,12 @@ impl Cpu {
     }
 
     // TODO
-    pub fn call(&mut self) {
-        self.pc += 1;
+    pub fn call(&mut self, value: u16) {
+        self.pc = value;
     }
 
-    // TODO Compare M reg
-    pub fn cmp_m(&mut self) {
+    // TODO
+    pub fn cmp(&mut self, reg: Register) {
         self.pc += 1;
     }
     // TODO Compare Immidiate with Accumulator
@@ -321,10 +327,24 @@ impl Cpu {
         self.pc += 1;
     }
 
+    // TODO
+    pub fn mvi(&mut self, reg: Register) {
+        self.pc += 1;
+    }
+
+
     // TODO Increment Register
     pub fn inr(&mut self, reg: Register) {
-        let value = reg;
-        self.write_reg(reg = reg + value);
+        match reg {
+            Register::A => self.write_reg(Register::A, 1),
+            Register::B => self.write_reg(Register::B, 1),
+            Register::C => self.write_reg(Register::C, 1),
+            Register::D => self.write_reg(Register::D, 1),
+            Register::E => self.write_reg(Register::D, 1),
+            Register::H => self.write_reg(Register::D, 1),
+            Register::L => self.write_reg(Register::D, 1),
+            Register::M => self.write_reg(Register::M, 1),
+        }
     }
     // Increment BC
     pub fn inr_bc(&mut self) {
@@ -378,25 +398,26 @@ impl Cpu {
         self.pc += 1;
     }
 
+    // TODO SBB
+    pub fn sbb(&mut self, reg: Register) {
+        self.pc += 1;
+    }
+    // TODO SUB
+    pub fn sub(&mut self, reg: Register) {
+        self.pc += 1;
+    }
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
-    pub fn xra_a(&mut self) {
+    pub fn xra(&mut self, reg: Register) {
         self.pc += 1;
-
-    }
-
-    pub fn xra_m(&mut self) {
-        self.pc += 1;
-
     }
 
     // TODO
-    pub fn xra_h(&mut self) {
+    fn rpe(&mut self) {
         self.pc += 1;
-
     }
-    // TODO
-    pub fn rpe(&mut self) {
-        self.pc += 1;
+    fn rst(&mut self, addr: u8) {
+        self.pc = addr;
+        self.sp -= 1;
     }
 
     // TODO
@@ -407,6 +428,7 @@ impl Cpu {
     pub fn mov(&mut self,src: Register, dst: Register) {
         let value = self.read_reg(src);
         self.write_reg(dst, value);
+        if DEBUG { println!("Read reg value: {}, src: {:?}, dst:{:?}", value, src, dst)}
     }
 
     // I think it might be a good idea to segment instructions based on functionality.
@@ -415,7 +437,7 @@ impl Cpu {
         use self::Register::*;
 
         match instruction {
-            Instruction::NOP => self.nop(),
+            Instruction::NOP => self.adv_pc(),
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
@@ -441,56 +463,40 @@ impl Cpu {
             Instruction::SBB(reg) => self.sbb(reg),
 
             Instruction::XRA(reg) => self.xra(reg),
-            Instruction::XRA_M => self.xra_m(),
-            Instruction::XRA_H => self.xra_h(),
             Instruction::RPE => self.rpe(),
 
             Instruction::PUSH_D => self.push_d(),
 
             Instruction::INX_H => self.inx_h(),
             Instruction::INX_SP => self.inx_sp(),
-            Instruction::INR_B => self.inr_b(),
+            Instruction::INR_B => self.inr(B),
             Instruction::OUT => self.out(),
             Instruction::ANI => self.ani(),
             Instruction::STAX_D => self.stax_d(),
-            Instruction::LXI_D => self.lxi_d(),
+            Instruction::LXI(reg) => self.lxi(D),
             Instruction::LXI_SP => self.lxi_sp(),
-            Instruction::RST_7 => self.nop(), // self.reset(),
+            Instruction::RST(7) => self.adv_pc(), // self.reset(),
             Instruction::INR_E => self.inr_e(),
-            Instruction::CM => self.nop(), // TODO
-            Instruction::CMC => self.nop(), // TODO
-            Instruction::HLT => self.nop(), // self.reset(),
-            Instruction::RRC => self.nop(), // TODO
-            Instruction::XRA_L => self.nop(), // TODO
+            Instruction::CM => self.adv_pc(), // TODO
+            Instruction::CMC => self.adv_pc(), // TODO
+            Instruction::HLT => self.adv_pc(), // self.reset(),
+            Instruction::RRC => self.adv_pc(), // TODO
+            Instruction::XRA_L => self.adv_pc(), // TODO
 
-            Instruction::ORA_B => self.nop(), // TODO
-            Instruction::ORA_C => self.nop(), // TODO
-            Instruction::ORA_D => self.nop(), // TODO
-            Instruction::ORA_E => self.nop(), // TODO
-            Instruction::ORA_H => self.nop(), // TODO
-            Instruction::ORA_L => self.nop(), // TODO
-            Instruction::ORA_M => self.nop(), // TODO
-            Instruction::ORA_A => self.nop(), // TODO
+            Instruction::ORA(reg) => self.adv_pc(), // TODO
 
-            Instruction::CMP_B => self.nop(), // TODO
-            Instruction::CMP_C => self.nop(), // TODO
-            Instruction::CMP_D => self.nop(), // TODO
-            Instruction::CMP_E => self.nop(), // TODO
-            Instruction::CMP_H => self.nop(), // TODO
-            Instruction::CMP_L => self.nop(), // TODO
-            Instruction::CMP_M => self.nop(), // TODO
-            Instruction::CMP_A => self.nop(), // TODO
 
-            Instruction::POP_B => self.nop(), // TODO
-            Instruction::POP_D => self.nop(), // TODO
-            Instruction::POP_H => self.nop(), // TODO
-            Instruction::POP_PSW => self.nop(), // TODO
+            Instruction::POP_B => self.adv_pc(), // TODO
+            Instruction::POP_D => self.adv_pc(), // TODO
+            Instruction::POP_H => self.adv_pc(), // TODO
+            Instruction::POP_PSW => self.adv_pc(), // TODO
 
-            Instruction::JNZ => self.nop(), // TODO
-            Instruction::JM => self.nop(), // TODO
+            Instruction::JNZ => self.adv_pc(), // TODO
+            Instruction::JM => self.adv_pc(), // TODO
 
             _ => println!("Unknown instruction {:X}", self.opcode),
         }
+        self.pc += 1;
 
     }
     pub fn execute_instruction(&mut self) {
@@ -502,21 +508,19 @@ impl Cpu {
         if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
 
         match self.opcode {
-            // NOP Instructions: Do nothing
+            // NOP Instruction: Do nothing
             0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 => {
                 self.decode(Instruction::NOP);
             },
 
-            0x2 => self.decode(Instruction::NOP),
-            0x2C => self.decode(Instruction::JNZ),
-            0x4 => self.decode(Instruction::INR_B),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STA),
             0x03 => self.decode(Instruction::INR_B),
 
             0x05 => self.decode(Instruction::DCR_B),
             0x06 => self.decode(Instruction::MVI_B),
-            0x11 => self.decode(Instruction::LXI_D),
+            0x07 =>self.decode(Instruction::RLC),
+            0x11 => self.decode(Instruction::LXI(D)),
             0x13 => self.decode(Instruction::LXI_SP),
             0x14 => self.decode(Instruction::INR_D),
 
@@ -527,25 +531,28 @@ impl Cpu {
             0x17 => self.decode(Instruction::MOV_R_PR(HL, C)),
             0x19 => self.decode(Instruction::SUB_C),
             0x1C => self.decode(Instruction::POP_B),
+            0x2C => self.decode(Instruction::JNZ),
+
             0x21 => self.decode(Instruction::STAX_D),
+            0x23 => self.decode(Instruction::STA),
             0x26 => self.decode(Instruction::MOV_H_D),
 
+            0x4 => self.decode(Instruction::INR_B),
             0x5D => self.decode(Instruction::PUSH_D),
-            0x6 => self.decode(Instruction::MOV_H_B),
             0x9 => self.decode(Instruction::SUB_B),
             0xA => self.decode(Instruction::ANA_B),
             0xAF => self.decode(Instruction::XRA_A),
             0xA7 => self.decode(Instruction::MOV_A_D),
 
             // ORA Instructions  0xB(reg)
-            0xB0 => self.decode(Instruction::ORA_B),
-            0xB1 => self.decode(Instruction::ORA_C),
-            0xB2 => self.decode(Instruction::ORA_D),
-            0xB3 => self.decode(Instruction::ORA_E),
-            0xB4 => self.decode(Instruction::ORA_H),
-            0xB5 => self.decode(Instruction::ORA_L),
-            0xB6 => self.decode(Instruction::ORA_M),
-            0xB7 => self.decode(Instruction::ORA_A),
+            0xB0 => self.decode(Instruction::ORA(B)),
+            0xB1 => self.decode(Instruction::ORA(C)),
+            0xB2 => self.decode(Instruction::ORA(D)),
+            0xB3 => self.decode(Instruction::ORA(E)),
+            0xB4 => self.decode(Instruction::ORA(H)),
+            0xB5 => self.decode(Instruction::ORA(L)),
+            0xB6 => self.decode(Instruction::ORA(M)),
+            0xB7 => self.decode(Instruction::ORA(A)),
 
             // CMP
             0xB8 => self.decode(Instruction::CMP_B),
@@ -559,13 +566,12 @@ impl Cpu {
 
             0xC0 => self.decode(Instruction::RNZ),
             0xC1 => self.decode(Instruction::INR_E),
-            0xCA => self.decode(Instruction::XRA_H),
             0xC2 => self.decode(Instruction::RNZ),
-
             0xC3 => self.decode(Instruction::JMP),
             0xC5 => self.decode(Instruction::PUSH_B),
-
             0xC8 => self.decode(Instruction::RZ),
+            0xC9 => self.decode(Instruction::SBB(H)),
+            0xCA => self.decode(Instruction::XRA_H),
             0xCB => self.decode(Instruction::JMP),
             0xCD => self.decode(Instruction::CALL),
             0xCF => self.decode(Instruction::CM),
@@ -585,12 +591,11 @@ impl Cpu {
             0x32 => self.decode(Instruction::INX_H),
             0x33 => self.decode(Instruction::INX_SP),
             0x35 => self.decode(Instruction::MOV_D_E),
-            0xBF => self.decode(Instruction::EI),
             0xDA => self.decode(Instruction::XRA_L),
             0xD3 => self.decode(Instruction::DCR_A),
-            0xD8 => self.decode(Instruction::ADC_L),
+            0xD8 => self.decode(Instruction::ADC(L)),
             0xFA => self.decode(Instruction::JM),
-            0xFE => self.nop(),
+            0xFE => self.adv_pc(),
             0xE9 => self.decode(Instruction::RPE),
             0xEB => self.decode(Instruction::CMP_M),
             0xEF => self.decode(Instruction::CPI),
@@ -602,21 +607,21 @@ impl Cpu {
             0x6F => self.decode(Instruction::MOV_L_A),
             0x67 => self.decode(Instruction::HLT),
             0x72 => self.decode(Instruction::DAA),
-            0x74 => self.nop(),
+            0x74 => self.adv_pc(),
             0x75 => self.decode(Instruction::MOV_D_A),
 
             // ADD instructions
-            0x80 => self.decode(Instruction::ADD_B),
-            0x81 => self.decode(Instruction::ADD_C),
-            0x82 => self.decode(Instruction::ADD_D),
-            0x83 => self.decode(Instruction::ADD_E),
-            0x84 => self.decode(Instruction::ADD_H),
-            0x85 => self.decode(Instruction::ADD_L),
-            0x86 => self.decode(Instruction::ADD_M),
+            0x80 => self.decode(Instruction::ADD(B)),
+            0x81 => self.decode(Instruction::ADD(C)),
+            0x82 => self.decode(Instruction::ADD(D)),
+            0x83 => self.decode(Instruction::ADD(E)),
+            0x84 => self.decode(Instruction::ADD(H)),
+            0x85 => self.decode(Instruction::ADD(L)),
+            0x86 => self.decode(Instruction::ADD(M)),
 
-            0x87 => self.decode(Instruction::ADD_A),
-            0x88 => self.decode(Instruction::ADC_B),
-            0x89 => self.decode(Instruction::ADC_C),
+            0x87 => self.decode(Instruction::ADD(A)),
+            0x88 => self.decode(Instruction::ADC(B)),
+            0x89 => self.decode(Instruction::ADC(C)),
             0xF => self.decode(Instruction::RRC),
             0xF3 => self.decode(Instruction::CMC),
             0xFF => self.decode(Instruction::RST_7),
@@ -650,6 +655,7 @@ impl Cpu {
 
         self.interrupt = 0;
     }
+
 
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);
