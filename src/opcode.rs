@@ -1,7 +1,6 @@
 #[derive(Debug)]
 pub struct Opcode;
 
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum Register {
     A, B, C, D, E, H, L, M
@@ -23,8 +22,8 @@ pub enum Instruction {
     ADI,
     ANA(Register),
     ANI,
-    CALL,
-    CC,
+    CALL(u16),
+    CC(u16),
     CNZ,
     CMA,
     CNC,
