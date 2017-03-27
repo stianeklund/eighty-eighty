@@ -34,6 +34,7 @@ pub enum Instruction {
     DAA,
     DAD(Register),
     DCR(Register),
+    DCX(Register),
     HLT,
     INX(Register),
     INR(Register),
@@ -44,7 +45,7 @@ pub enum Instruction {
     JMP,
     JPO,
 
-    LDA(Register),
+    LDA,
     LDAX(Register),
     LXI(Register),
     MOV(Register, Register),
