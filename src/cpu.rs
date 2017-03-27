@@ -231,11 +231,12 @@ impl Cpu {
         match self.opcode {
             0xCD => {
                 let ret = self.pc + 2;
-                self.memory[self.sp as usize - 1] = (ret >> 8 & 0xFF) as u8;
+                self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
             },
             _ => println!("Unknown call address"),
         }
         self.pc = addr;
+        self.pc += 1;
     }
 
     // TODO
@@ -255,7 +256,7 @@ impl Cpu {
 
     // TODO
     pub fn daa(&mut self) {
-    self.pc += 1;}
+        self.pc += 1;}
 
     // TODO
     pub fn ei(&mut self) {
@@ -397,15 +398,15 @@ impl Cpu {
     }
     fn rst(&mut self, instruction: Instruction) {
 
-       match self.opcode  {
-           0xC7 | 0xE7 |  0xF7 | 0xCF | 0xDF | 0xEF | 0xFF  => {
-               self.memory[(self.sp as usize -1) & 0xFFFF] = (self.reg_h) & 0xFF;
-               self.memory[(self.sp as usize - 2) & 0xFFFF] = (self.reg_l) & 0xFF;
-               self.sp -= 2;
-               self.pc = (self.opcode & 0x38) as u16;
-           },
-           _ => println!("Unknown instruction: {:?}", instruction),
-       }
+        match self.opcode  {
+            0xC7 | 0xE7 |  0xF7 | 0xCF | 0xDF | 0xEF | 0xFF  => {
+                self.memory[(self.sp as usize -1) & 0xFFFF] = (self.reg_h) & 0xFF;
+                self.memory[(self.sp as usize - 2) & 0xFFFF] = (self.reg_l) & 0xFF;
+                self.sp -= 2;
+                self.pc = (self.opcode & 0x38) as u16;
+            },
+            _ => println!("Unknown instruction: {:?}", instruction),
+        }
     }
 
     // TODO
@@ -489,58 +490,220 @@ impl Cpu {
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
 
-       use self::Register::*;
+        use self::Register::*;
         use self::RegisterPair::*;
 
         if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
 
         match self.opcode {
-            // NOP Instruction: Do nothing
-            0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 => {
-                self.decode(Instruction::NOP);
-            },
 
             0x01 => self.decode(Instruction::NOP),
-            0x02 => self.decode(Instruction::STA),
-            0x03 => self.decode(Instruction::INR_B),
-
+            0x02 => self.decode(Instruction::STAX(B)),
+            0x03 => self.decode(Instruction::INX(B)),
+            0x04 => self.decode(Instruction::INR(B)),
             0x05 => self.decode(Instruction::DCR_B),
-            0x06 => self.decode(Instruction::MVI_B),
-            0x07 =>self.decode(Instruction::RLC),
-            0x7E => self.decode(Instruction::RST_4),
+            0x06 => self.decode(Instruction::MVI(B)),
+            0x07 => self.decode(Instruction::RLC),
+            0x08 => self.decode(Instruction::NOP),
+            0x09 => self.decode(Instruction::DAD(B)),
+
+            0x0A => self.decode(Instruction::LDAX(B)),
+            0x0B => self.decode(Instruction::DCX(B)),
+            0x0C => self.decode(Instruction::INR(C)),
+            0x0D => self.decode(Instruction::DCR(D)),
+            0x0E => self.decode(Instruction::MVI(C)),
+            0x0F => self.decode(Instruction::RRC),
+
+
+            0x10 => self.decode(Instruction::NOP),
             0x11 => self.decode(Instruction::LXI(D)),
-            0x13 => self.decode(Instruction::LXI_SP),
-            0x14 => self.decode(Instruction::INR_D),
+            0x12 => self.decode(Instruction::STAX(D)),
+            0x13 => self.decode(Instruction::INX(D)),
+            0x14 => self.decode(Instruction::INR(D)),
+            0x15 => self.decode(Instruction::DCR(D)),
+            0x16 => self.decode(Instruction::MVI(D)),
+            0x17 => self.decode(Instruction::RAL),
+            0x18 => self.decode(Instruction::NOP),
+            0x19 => self.decode(Instruction::DAD(D)),
 
-            0x15 => self.decode(Instruction::MOV(D, C)),
+            0x1A => self.decode(Instruction::LDAX(D)),
+            0x1B => self.decode(Instruction::DCX(D)),
+            0x1C => self.decode(Instruction::INR(E)),
+            0x1D => self.decode(Instruction::DCR(E)),
+            0x1E => self.decode(Instruction::MVI(E)),
+            0x1F => self.decode(Instruction::RAR),
 
-            0x16 => self.decode(Instruction::MOV(H, C)),
-            // 0x17 => self.decode(Instruction::MOV(HL, C)),
-            0x17 => self.decode(Instruction::MOV_R_PR(HL, C)),
-            0x19 => self.decode(Instruction::SUB(C)),
-            0x1C => self.decode(Instruction::POP(B)),
-            0x1D => self.decode(Instruction::POP(D)),
-            0x2A => self.decode(Instruction::ANA(D)),
-            0x2C => self.decode(Instruction::JNZ),
 
-            0x21 => self.decode(Instruction::STAX_D),
-            0x23 => self.decode(Instruction::STA),
-            0x26 => self.decode(Instruction::MOV(H, D)),
-            0x37 => self.decode(Instruction::MOV(M, E)),
-            0x39 => self.decode(Instruction::SUB(E)),
-            0x3B => self.decode(Instruction::ORA(E)),
+            0x20 => self.decode(Instruction::NOP),
+            0x21 => self.decode(Instruction::LXI(H)),
+            0x22 => self.decode(Instruction::SHLD),
+            0x23 => self.decode(Instruction::INX(H)),
+            0x24 => self.decode(Instruction::INR(H)),
+            0x25 => self.decode(Instruction::DCR(H)),
+            0x26 => self.decode(Instruction::MVI(H)),
+            0x27 => self.decode(Instruction::DAA),
+            0x28 => self.decode(Instruction::NOP),
+            0x29 => self.decode(Instruction::DAD(H)),
 
-            0x4 => self.decode(Instruction::INR_B),
+            0x2A => self.decode(Instruction::LHLD),
+            0x2B => self.decode(Instruction::DCX(H)),
+            0x2C => self.decode(Instruction::INR(L)),
+            0x2D => self.decode(Instruction::DCR(L)),
+            0x2E => self.decode(Instruction::MVI(L)),
+            0x2F => self.decode(Instruction::CMA),
+
+
+            // SP specific instructions are separated from the Register & RegisterPair enum's
+            // Depending on how many instructions call the stack pointer it might be good to keep this out
+            // the generic instruction functions.
+
+            0x30 => self.decode(Instruction::NOP),
+            0x31 => self.decode(Instruction::LXI_SP),
+            0x32 => self.decode(Instruction::STA),
+            0x33 => self.decode(Instruction::INX_SP),
+            0x34 => self.decode(Instruction::INR(M)),
+            0x35 => self.decode(Instruction::DCR(M)),
+            0x36 => self.decode(Instruction::MVI(M)),
+            0x37 => self.decode(Instruction::STC),
+            0x38 => self.decode(Instruction::NOP),
+            0x39 => self.decode(Instruction::DAD_SP),
+
+            0x3A => self.decode(Instruction::LDA),
+            0x3B => self.decode(Instruction::DCX_SP),
+            0x3C => self.decode(Instruction::INR(A)),
+            0x3D => self.decode(Instruction::DCR(A)),
+            0x3E => self.decode(Instruction::MVI(A)),
+            0x3F => self.decode(Instruction::CMC),
+
+            // MOV Instructions 0x40 - 0x7F
+            0x40 => self.decode(Instruction::MOV(B, B)),
+            0x41 => self.decode(Instruction::MOV(B, C)),
+            0x42 => self.decode(Instruction::MOV(B, D)),
+            0x43 => self.decode(Instruction::MOV(B, E)),
             0x44 => self.decode(Instruction::MOV(B, H)),
-            0x4C => self.decode(Instruction::CNZ),
-            0x4E => self.decode(Instruction::CPO),
-            0x4F => self.decode(Instruction::CP),
-            0x5D => self.decode(Instruction::PUSH_D),
-            0x9 => self.decode(Instruction::SUB(B)),
-            0xA => self.decode(Instruction::ANA(B)),
+            0x45 => self.decode(Instruction::MOV(B, L)),
+            0x46 => self.decode(Instruction::MOV(B, M)),
+            0x47 => self.decode(Instruction::MOV(B, A)),
+
+            0x48 => self.decode(Instruction::MOV(C, B)),
+            0x49 => self.decode(Instruction::MOV(C, C)),
+            0x4A => self.decode(Instruction::MOV(C, D)),
+            0x4B => self.decode(Instruction::MOV(C, E)),
+            0x4C => self.decode(Instruction::MOV(C, H)),
+            0x4D => self.decode(Instruction::MOV(C, L)),
+            0x4E => self.decode(Instruction::MOV(C, M)),
+            0x4F => self.decode(Instruction::MOV(C, A)),
+
+            0x50 => self.decode(Instruction::MOV(D, B)),
+            0x51 => self.decode(Instruction::MOV(D, C)),
+            0x52 => self.decode(Instruction::MOV(D, D)),
+            0x53 => self.decode(Instruction::MOV(D, E)),
+            0x54 => self.decode(Instruction::MOV(D, H)),
+            0x55 => self.decode(Instruction::MOV(D, L)),
+            0x56 => self.decode(Instruction::MOV(D, M)),
+            0x57 => self.decode(Instruction::MOV(D, A)),
+
+            0x58 => self.decode(Instruction::MOV(E, B)),
+            0x59 => self.decode(Instruction::MOV(E, C)),
+            0x5A => self.decode(Instruction::MOV(E, D)),
+            0x5B => self.decode(Instruction::MOV(E, E)),
+            0x5C => self.decode(Instruction::MOV(E, H)),
+            0x5D => self.decode(Instruction::MOV(E, L)),
+            0x5E => self.decode(Instruction::MOV(E, M)),
+            0x5F => self.decode(Instruction::MOV(E, A)),
+
+            0x60 => self.decode(Instruction::MOV(H, B)),
+            0x61 => self.decode(Instruction::MOV(H, C)),
+            0x62 => self.decode(Instruction::MOV(H, D)),
+            0x63 => self.decode(Instruction::MOV(H, E)),
+            0x64 => self.decode(Instruction::MOV(H, H)),
+            0x65 => self.decode(Instruction::MOV(H, L)),
+            0x66 => self.decode(Instruction::MOV(H, M)),
+            0x67 => self.decode(Instruction::MOV(H, A)),
+
+            0x68 => self.decode(Instruction::MOV(L, B)),
+            0x69 => self.decode(Instruction::MOV(L, C)),
+            0x6A => self.decode(Instruction::MOV(L, D)),
+            0x6B => self.decode(Instruction::MOV(L, E)),
+            0x6C => self.decode(Instruction::MOV(L, H)),
+            0x6D => self.decode(Instruction::MOV(L, L)),
+            0x6E => self.decode(Instruction::MOV(L, M)),
+            0x6F => self.decode(Instruction::MOV(L, A)),
+
+            0x70 => self.decode(Instruction::MOV(M, B)),
+            0x71 => self.decode(Instruction::MOV(M, C)),
+            0x72 => self.decode(Instruction::MOV(M, D)),
+            0x73 => self.decode(Instruction::MOV(M, E)),
+            0x74 => self.decode(Instruction::MOV(M, H)),
+            0x75 => self.decode(Instruction::MOV(M, L)),
+            0x76 => self.decode(Instruction::HLT),
+            0x77 => self.decode(Instruction::MOV(M, A)),
+
+            0x78 => self.decode(Instruction::MOV(A, B)),
+            0x79 => self.decode(Instruction::MOV(A, C)),
+            0x7A => self.decode(Instruction::MOV(A, D)),
+            0x7B => self.decode(Instruction::MOV(A, E)),
+            0x7C => self.decode(Instruction::MOV(A, H)),
+            0x7D => self.decode(Instruction::MOV(A, L)),
+            0x7E => self.decode(Instruction::MOV(A, M)),
+            0x7F => self.decode(Instruction::MOV(A, A)),
+
+            // ADD Instructions
+            0x80 => self.decode(Instruction::ADD(B)),
+            0x81 => self.decode(Instruction::ADD(C)),
+            0x82 => self.decode(Instruction::ADD(D)),
+            0x83 => self.decode(Instruction::ADD(E)),
+            0x84 => self.decode(Instruction::ADD(H)),
+            0x85 => self.decode(Instruction::ADD(L)),
+            0x86 => self.decode(Instruction::ADD(M)),
+            0x87 => self.decode(Instruction::ADD(A)),
+
+            0x88 => self.decode(Instruction::ADC(B)),
+            0x89 => self.decode(Instruction::ADC(C)),
+            0x8A => self.decode(Instruction::ADC(D)),
+            0x8B => self.decode(Instruction::ADC(E)),
+            0x8C => self.decode(Instruction::ADC(H)),
+            0x8D => self.decode(Instruction::ADC(L)),
+            0x8E => self.decode(Instruction::ADC(M)),
+            0x8F => self.decode(Instruction::ADC(A)),
+
+            // SUB Instructions
+            0x90 => self.decode(Instruction::SUB(B)),
+            0x91 => self.decode(Instruction::SUB(C)),
+            0x92 => self.decode(Instruction::SUB(D)),
+            0x93 => self.decode(Instruction::SUB(E)),
+            0x94 => self.decode(Instruction::SUB(H)),
+            0x95 => self.decode(Instruction::SUB(L)),
+            0x96 => self.decode(Instruction::SUB(M)),
+            0x97 => self.decode(Instruction::SUB(A)),
+
+            0x98 => self.decode(Instruction::SBB(B)),
+            0x99 => self.decode(Instruction::SBB(C)),
+            0x9A => self.decode(Instruction::SBB(D)),
+            0x9B => self.decode(Instruction::SBB(E)),
+            0x9C => self.decode(Instruction::SBB(H)),
+            0x9D => self.decode(Instruction::SBB(L)),
+            0x9E => self.decode(Instruction::SBB(M)),
+            0x9F => self.decode(Instruction::SBB(A)),
+
+            // ANA & XRA Instructions
+            0xA0 => self.decode(Instruction::ANA(B)),
+            0xA1 => self.decode(Instruction::ANA(C)),
+            0xA2 => self.decode(Instruction::ANA(D)),
             0xA3 => self.decode(Instruction::ANA(E)),
-            0xAF => self.decode(Instruction::XRA_A),
-            0xA7 => self.decode(Instruction::MOV_A_D),
+            0xA4 => self.decode(Instruction::ANA(H)),
+            0xA5 => self.decode(Instruction::ANA(L)),
+            0xA6 => self.decode(Instruction::ANA(M)),
+            0xA7 => self.decode(Instruction::ANA(A)),
+
+            0xA8 => self.decode(Instruction::XRA(B)),
+            0xA9 => self.decode(Instruction::XRA(C)),
+            0xAA => self.decode(Instruction::XRA(D)),
+            0xAB => self.decode(Instruction::XRA(E)),
+            0xAC => self.decode(Instruction::XRA(H)),
+            0xAD => self.decode(Instruction::XRA(L)),
+            0xAE => self.decode(Instruction::XRA(M)),
+            0xAF => self.decode(Instruction::XRA(A)),
 
             // ORA Instructions  0xB(reg)
             0xB0 => self.decode(Instruction::ORA(B)),
@@ -553,82 +716,84 @@ impl Cpu {
             0xB7 => self.decode(Instruction::ORA(A)),
 
             // CMP
-            0xB8 => self.decode(Instruction::CMP_B),
-            0xB9 => self.decode(Instruction::CMP_C),
-            0xBA => self.decode(Instruction::CMP_D),
-            0xBB => self.decode(Instruction::CMP_E),
-            0xBC => self.decode(Instruction::CMP_H),
-            0xBD => self.decode(Instruction::CMP_L),
-            0xBE => self.decode(Instruction::CMP_M),
-            0xBF => self.decode(Instruction::CMP_A),
+            0xB8 => self.decode(Instruction::CMP(B)),
+            0xB9 => self.decode(Instruction::CMP(C)),
+            0xBA => self.decode(Instruction::CMP(D)),
+            0xBB => self.decode(Instruction::CMP(E)),
+            0xBC => self.decode(Instruction::CMP(H)),
+            0xBD => self.decode(Instruction::CMP(L)),
+            0xBE => self.decode(Instruction::CMP(M)),
+            0xBF => self.decode(Instruction::CMP(A)),
 
             0xC0 => self.decode(Instruction::RNZ),
-            0xC1 => self.decode(Instruction::INR_E),
-            0xC2 => self.decode(Instruction::RNZ),
+            0xC1 => self.decode(Instruction::POP(B)),
+            0xC2 => self.decode(Instruction::JNZ),
             0xC3 => self.decode(Instruction::JMP),
-            0xC5 => self.decode(Instruction::PUSH_B),
-            0xC7 => self.decode(Instruction::MOV(A, H)),
+            0xC4 => self.decode(Instruction::CNZ),
+            0xC5 => self.decode(Instruction::PUSH(B)),
+            0xC6 => self.decode(Instruction::ADI),
+            0xC7 => self.decode(Instruction::RST_0),
             0xC8 => self.decode(Instruction::RZ),
-            0xC9 => self.decode(Instruction::SBB(H)),
-            0xCA => self.decode(Instruction::XRA_H),
+            0xC9 => self.decode(Instruction::RET),
+
+            0xCA => self.decode(Instruction::JZ),
             0xCB => self.decode(Instruction::JMP),
-            0xCD => self.decode(Instruction::CC(0xBEEF)),
-            0xCF => self.decode(Instruction::CM),
-            0xD => self.decode(Instruction::DCR_C),
-            0xD1 => self.decode(Instruction::POP_D),
-            0xD9 => self.decode(Instruction::SBB(L)),
+            0xCD => self.decode(Instruction::CALL(0xCD)),
+            0xCE => self.decode(Instruction::ADI),
+            0xCF => self.decode(Instruction::RST_1),
 
-            0xE => self.decode(Instruction::MVI_C),
-            0xEA => self.decode(Instruction::XRA_A),
+            0xD0 => self.decode(Instruction::RNC),
+            0xD1 => self.decode(Instruction::POP(D)),
+            0xD2 => self.decode(Instruction::JNC),
+            0xD3 => self.decode(Instruction::OUT),
+            0xD4 => self.decode(Instruction::CNC),
+            0xD5 => self.decode(Instruction::PUSH(D)),
+            0xD6 => self.decode(Instruction::SUI),
+            0xD7 => self.decode(Instruction::RST_2),
+            0xD8 => self.decode(Instruction::RC),
+            0xD9 => self.decode(Instruction::RET),
+
+            0xDA => self.decode(Instruction::JC),
+            0xDB => self.decode(Instruction::IN),
+            0xDC => self.decode(Instruction::CC(0xDC)),
+            0xDD => self.decode(Instruction::CALL(0xDD)),
+            0xDE => self.decode(Instruction::SBI),
+            0xDF => self.decode(Instruction::RST_3),
+
+            0xE0 => self.decode(Instruction::RPO),
+            0xE1 => self.decode(Instruction::POP(H)),
+            0xE2 => self.decode(Instruction::JPO),
+            0xE3 => self.decode(Instruction::XTHL),
+            0xE4 => self.decode(Instruction::CPO),
+            0xE5 => self.decode(Instruction::PUSH(H)),
             0xE6 => self.decode(Instruction::ANI),
+            0xE7 => self.decode(Instruction::RST_4),
+            0xE8 => self.decode(Instruction::RPE),
+            0xE9 => self.decode(Instruction::PCHL),
 
-            0x3A => self.decode(Instruction::ANA_E),
-            0x3C => self.decode(Instruction::JMP),
-            0x3D => self.decode(Instruction::OUT),
+            0xEA => self.decode(Instruction::JPE),
+            0xEB => self.decode(Instruction::XCHG),
+            0xEC => self.decode(Instruction::CPE),
+            0xED => self.decode(Instruction::CALL(0xED)),
+            0xEE => self.decode(Instruction::XRI),
+            0xEF => self.decode(Instruction::RST_5),
 
-            0x3E => self.decode(Instruction::MVI_A),
+            0xF0 => self.decode(Instruction::RP),
+            0xF1 => self.decode(Instruction::POP(H)),
+            0xF2 => self.decode(Instruction::JPO),
+            0xF3 => self.decode(Instruction::XTHL),
+            0xF4 => self.decode(Instruction::CPO),
+            0xF5 => self.decode(Instruction::PUSH(H)),
+            0xF6 => self.decode(Instruction::ANI),
+            0xF7 => self.decode(Instruction::RST_4),
+            0xF8 => self.decode(Instruction::RPE),
+            0xF9 => self.decode(Instruction::PCHL),
 
-            0x32 => self.decode(Instruction::INX_H),
-            0x33 => self.decode(Instruction::INX_SP),
-            0x34 => self.decode(Instruction::MOV(B, E)),
-            0x35 => self.decode(Instruction::MOV(D, E)),
-            0xDA => self.decode(Instruction::XRA_L),
-            0xD3 => self.decode(Instruction::DCR_A),
-            0xD8 => self.decode(Instruction::ADC(L)),
-            0xFA => self.decode(Instruction::JM),
-            0xFE => self.adv_pc(),
-            0xE9 => self.decode(Instruction::RPE),
-            0xEB => self.decode(Instruction::CMP_M),
-            0xEF => self.decode(Instruction::CPI),
-
-            // Instructions from 0x4A - 0x4F to 0x7A to 0x7F are MOV instructions
-            0x47 => self.decode(Instruction::MOV(M, H)),
-            0x49 => self.decode(Instruction::SUB_H),
-            0x56 => self.decode(Instruction::MOV(H, M)),
-            0x59 => self.decode(Instruction::SUB_L),
-            0x6C => self.decode(Instruction::ADI),
-            0x6F => self.decode(Instruction::MOV_L_A),
-            0x67 => self.decode(Instruction::HLT),
-            0x72 => self.decode(Instruction::DAA),
-            0x74 => self.adv_pc(),
-            0x75 => self.decode(Instruction::MOV_D_A),
-
-            // ADD instructions
-            0x80 => self.decode(Instruction::ADD(B)),
-            0x81 => self.decode(Instruction::ADD(C)),
-            0x82 => self.decode(Instruction::ADD(D)),
-            0x83 => self.decode(Instruction::ADD(E)),
-            0x84 => self.decode(Instruction::ADD(H)),
-            0x85 => self.decode(Instruction::ADD(L)),
-            0x86 => self.decode(Instruction::ADD(M)),
-
-            0x87 => self.decode(Instruction::ADD(A)),
-            0x88 => self.decode(Instruction::ADC(B)),
-            0x89 => self.decode(Instruction::ADC(C)),
-            0x93 => self.decode(Instruction::DAD(H)),
-            0x98 => self.decode(Instruction::ADC(C)),
-            0xF => self.decode(Instruction::RRC),
-            0xF3 => self.decode(Instruction::CMC),
+            0xFA => self.decode(Instruction::JPE),
+            0xFB => self.decode(Instruction::XCHG),
+            0xFC => self.decode(Instruction::CPE),
+            0xFD => self.decode(Instruction::CALL(0xFD)),
+            0xFE => self.decode(Instruction::XRI),
             0xFF => self.decode(Instruction::RST_7),
 
             _ => println!("Unknown opcode: {:X}", self.opcode),
