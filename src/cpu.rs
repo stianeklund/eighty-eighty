@@ -25,7 +25,7 @@ const DEBUG: bool = true;
 
 pub struct Cpu {
 
-    memory: Box<[u8; 65536]>,
+    pub memory: Box<[u8; 65536]>,
     opcode: u8,
 
     pc: u16,
