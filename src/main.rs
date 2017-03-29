@@ -22,7 +22,7 @@ fn main() {
     let timer = sdl_ctx.timer().expect("timer failed");
 
     cpu.load_bin(bin);
-    let mut display = Display::new(&sdl_ctx);
+    // let mut display = Display::new(&sdl_ctx);
 
     loop {
         cpu.execute_instruction();

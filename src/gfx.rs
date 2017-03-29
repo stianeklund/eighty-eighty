@@ -4,8 +4,8 @@ use sdl2::Sdl;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 
-pub const WIDTH: usize = 128;
-pub const HEIGHT: usize = 64;
+pub const WIDTH: usize = 256;
+pub const HEIGHT: usize = 224;
 
 
 pub struct Display<'a> {
@@ -45,6 +45,7 @@ impl<'a> Display<'a> {
         let x = HEIGHT - y;
         let y = xi;
         let byte = self.memory[0x2400 + (y * (HEIGHT / 8) + (x / 8))];
+        // TODO Investigate byte size here
         if byte & (1 << (x % 8)) > 0 & 0xFFFFFF {
             self.renderer.set_draw_color(Color::RGB(251, 241, 199));
         } else {
