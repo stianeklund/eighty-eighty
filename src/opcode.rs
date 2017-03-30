@@ -50,7 +50,7 @@ pub enum Instruction {
     MOV(Register, Register),
     MOV_R_PR(RegisterPair, Register),
     MOV_R_RP(Register, RegisterPair),
-    MVI(Register),
+    MVI(Register, u8),
     RAR,
     RC,
     RET,
