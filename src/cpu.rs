@@ -101,32 +101,32 @@ impl Cpu {
     }
 
     #[allow(dead_code)]
-    pub fn set_sp(&mut self, byte: u16) {
+    fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }
 
-    pub fn read_byte(&mut self, addr: u8) -> u8 {
+    fn read_byte(&mut self, addr: u8) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
 
-    pub fn write_byte(&mut self, addr: u8, mut byte: u16) {
+    fn write_byte(&mut self, addr: u8, mut byte: u16) {
         byte = self.memory[addr as usize & 0xFFFF] as u16;
     }
 
-    pub fn read_word(&mut self, addr: u8) -> u16 {
+    fn read_word(&mut self, addr: u8) -> u16 {
         (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }
     fn read_short(&mut self, addr: usize) -> u16 {
         (self.memory[addr] | self.memory[addr]) as u16
     }
 
-    pub fn write_word(&mut self, addr: u8, word: u16) {
+    fn write_word(&mut self, addr: u8, word: u16) {
         self.write_byte(addr, word & 0xFF);
         self.write_byte(addr + 1, (word >> 8) & 0xFF);
     }
 
 
-    pub fn read_reg(&self, reg: Register) -> u8 {
+    fn read_reg(&self, reg: Register) -> u8 {
         match reg {
             Register::A => self.reg_a,
             Register::B => self.reg_b,
@@ -139,7 +139,7 @@ impl Cpu {
         }
     }
 
-    pub fn read_reg16(&self, reg: RegisterPair) -> u16 {
+    fn read_reg16(&self, reg: RegisterPair) -> u16 {
         match reg {
             RegisterPair::BC => self.reg_bc,
             RegisterPair::DE => self.reg_de,
@@ -147,7 +147,7 @@ impl Cpu {
         }
     }
 
-    pub fn write_reg(&mut self, reg: Register, value: u8) {
+    fn write_reg(&mut self, reg: Register, value: u8) {
         match reg {
             Register::A => self.reg_a = value,
             Register::B => self.reg_b = value,
@@ -160,7 +160,7 @@ impl Cpu {
         }
     }
 
-    pub fn write_reg16(&mut self, reg: RegisterPair, value: u16) {
+    fn write_reg_pair(&mut self, reg: RegisterPair, value: u16) {
         match reg {
             RegisterPair::BC => self.reg_bc = value,
             RegisterPair::DE => self.reg_de = value,
@@ -176,11 +176,12 @@ impl Cpu {
         self.pc += 1;
     }
 
-    pub fn adc(&mut self, reg: Register) {
-        self.pc += 1;
-
+    // TODO
+    fn adc(&mut self, reg: Register) {
+        self.adv_pc()
     }
-    pub fn add(&mut self, reg: Register) {
+
+    fn add(&mut self, reg: Register) {
         match reg {
             Register => self.read_reg(reg),
         };
@@ -233,55 +234,52 @@ impl Cpu {
     }
 
     fn ani(&mut self) {
-        // AND Immediate with accumulator
         // The byte of immediate data is ANDed with the contents of the accumulator (reg_a).
         // The Carry bit is reset to zero.
-
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
+
         self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
-        let ana_value = (self.reg_a | self.opcode) & 0x08;
-    if DEBUG {
-        println!("half carry value: {:?}", ana_value);
-    } 
         self.reg_a &= self.opcode;
         self.carry = false;
         self.adv_pc();
     }
 
     // TODO
-    pub fn aci(&mut self) {
-        self.pc += 1;
+    fn aci(&mut self) {
+        self.adv_pc();
     }
 
-    pub fn jmp(&mut self) {
+    fn jmp(&mut self) {
         self.pc = (self.opcode & 0x0FFF) as u16;
     }
 
-    pub fn lxi_sp(&mut self) {
-        self.sp = (self.memory[self.pc as usize] as u16) << 8 |
-        (self.memory[self.pc as usize + 1] as u16);
-
-        self.pc += 1;
+    fn lxi_sp(&mut self) {
+        self.sp = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+        self.adv_pc();
     }
 
-    pub fn lxi(&mut self, reg: Register) {
+    fn lxi(&mut self, reg: Register) {
         let mut reg = self.read_reg(reg);
         reg = self.memory[self.pc as usize + 1];
 
     }
-    pub fn mvi_a(&mut self) {
+    fn mvi_a(&mut self) {
         let byte = self.reg_a;
         self.read_byte(byte);
-        self.pc += 1;
+        self.adv_pc();
     }
 
-    pub fn sta(&mut self) {
+    fn sta(&mut self) {
         let reg_a = self.reg_a;
         let reg_bc = self.reg_bc;
         self.write_word(reg_a, reg_bc);
     }
 
-    pub fn call(&mut self, addr: u16) {
+    fn call(&mut self, addr: u16) {
+        // CALL is just like JMP but also pushes a return address
+        // to stack.
+        // All CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
+
         match self.opcode {
             0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD | 0xFF  => {
                 let ret = self.pc + 3;
@@ -297,82 +295,57 @@ impl Cpu {
     }
 
     // TODO
-    pub fn cmp(&mut self, reg: Register) {
-        self.pc += 1;
+    fn cmp(&mut self, reg: Register) {
+        self.adv_pc();
     }
+
     // TODO Compare Immidiate with Accumulator
-    pub fn cpi(&mut self) {
-        self.pc +=1;
+    fn cpi(&mut self) {
+        self.adv_pc();
     }
 
-    pub fn dcr(&mut self, register: Register) {
-        // TODO See Add function
-        // self.reg_b -= self.reg_b;
-        self.pc += 1;
-    }
+    fn dcr(&mut self, reg: Register) {
+        match reg {
+            Register::A => self.reg_a -= self.reg_a,
+            Register::B => self.reg_b -= self.reg_b,
+            Register::C => self.reg_c -= self.reg_c,
+            Register::D => self.reg_d -= self.reg_d,
+            Register::E => self.reg_e -= self.reg_e,
+            Register::H => self.reg_h -= self.reg_h,
+            Register::L => self.reg_l -= self.reg_l,
+            Register::M => self.reg_m -= self.reg_m,
 
-    // TODO
-    pub fn daa(&mut self) {
-        self.pc += 1;}
-
-    // TODO
-    pub fn ei(&mut self) {
-        self.pc += 1;
-    }
-
-    // TODO
-    pub fn rnz(&mut self) {
-        self.pc += 1;
+        }
+        self.adv_pc();
     }
 
     // TODO
-    pub fn rz(&mut self) {
-        self.pc += 1;
+    fn daa(&mut self) {
+        self.adv_pc();
     }
 
     // TODO
-    pub fn move_mh(&mut self) {
-        self.pc += 1;
+    fn ei(&mut self) {
+        self.adv_pc();
     }
 
     // TODO
-    pub fn move_ad(&mut self) {
-        self.pc += 1;
+    fn rnz(&mut self) {
+        self.adv_pc();
     }
 
     // TODO
-    pub fn move_dc(&mut self) {
-        self.pc += 1;
+    fn rz(&mut self) {
+        self.adv_pc();
     }
+
 
     // TODO
-    pub fn move_la(&mut self) {
-        self.pc += 1;
+    fn mvi(&mut self, reg: Register) {
+        self.adv_pc();
     }
 
-    // TODO
-    pub fn move_hd(&mut self) {
-        self.pc += 1;
-    }
-
-    // TODO
-    pub fn move_hb(&mut self) {
-        self.pc += 1;
-    }
-
-    // TODO
-    pub fn move_hc(&mut self) {
-        self.pc += 1;
-    }
-
-    // TODO
-    pub fn mvi(&mut self, reg: Register) {
-        self.pc += 1;
-    }
-
-
-    // TODO Increment Register
-    pub fn inr(&mut self, reg: Register) {
+    fn inr(&mut self, reg: Register) {
         match reg {
             Register::A => self.write_reg(Register::A, 1),
             Register::B => self.write_reg(Register::B, 1),
@@ -383,70 +356,69 @@ impl Cpu {
             Register::L => self.write_reg(Register::D, 1),
             Register::M => self.write_reg(Register::M, 1),
         }
-    }
-    // Increment BC
-    pub fn inr_bc(&mut self) {
-        self.reg_bc += self.reg_bc;
-        self.pc += 1;
+        self.adv_pc();
     }
 
-    // Increment PC
-    pub fn inr_pc(&mut self, amount: u16) {
-        self.pc += amount;
+    fn inr_reg_pair(&mut self, reg: RegisterPair) {
+        match reg {
+            RegisterPair::BC => self.write_reg_pair(RegisterPair::BC, 1),
+            RegisterPair::DE => self.write_reg_pair(RegisterPair::DE, 1),
+            RegisterPair::HL => self.write_reg_pair(RegisterPair::HL, 1),
+        }
+        self.adv_pc();
     }
 
     // TODO
-    pub fn inx_h(&mut self) {
+    fn inx_h(&mut self) {
         self.reg_h < self.reg_h + 1;
-        self.pc += 1;
+        self.adv_pc();
     }
 
     // TODO
-    pub fn inx_sp(&mut self) {
+    fn inx_sp(&mut self) {
         self.sp < self.sp + 1;
-        self.pc += 1;
+        self.adv_pc();
     }
 
     // PUSH B register
-    pub fn push_b(&mut self) {
+    fn push_b(&mut self) {
         self.sp -= 2;
         let sp = self.sp;
         let b = self.reg_b;
         self.write_word(b, sp);
-        self.pc += 1;
+        self.adv_pc();
     }
     // PUSH D register
-    pub fn push_d(&mut self) {
+    fn push_d(&mut self) {
         // self.sp -= 2;
         self.sp.wrapping_sub(2);
         let sp = self.sp;
         let d = self.reg_d;
         self.write_word(d, sp);
-        self.pc += 1;
+        self.adv_pc();
     }
 
     // TODO STAX_D
-    pub fn stax_d(&mut self) {
-        self.pc += 1;
+    fn stax_d(&mut self) {
+        self.adv_pc();
     }
 
     // TODO SBB
-    pub fn sbb(&mut self, reg: Register) {
-        self.pc += 1;
+    fn sbb(&mut self, reg: Register) {
+        self.adv_pc();
     }
     // TODO SUB
-    pub fn sub(&mut self, reg: Register) {
-        self.pc += 1;
+    fn sub(&mut self, reg: Register) {
+        self.adv_pc();
     }
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
-    pub fn xra(&mut self, reg: Register) {
-        //
-        self.pc += 1;
+    fn xra(&mut self, reg: Register) {
+        self.adv_pc();
     }
 
     // TODO
     fn rpe(&mut self) {
-        self.pc += 1;
+        self.adv_pc();
     }
 
     fn pop_stack(&mut self) -> u16 {
@@ -461,11 +433,11 @@ impl Cpu {
     }
 
     // TODO
-    pub fn out(&mut self) {
-        self.pc += 1;
+    fn out(&mut self) {
+        self.adv_pc();
     }
 
-    pub fn mov(&mut self,src: Register, dst: Register) {
+    fn mov(&mut self,src: Register, dst: Register) {
         let value = self.read_reg(src);
         self.write_reg(dst, value);
         if DEBUG { println!("Read reg value: {}, src: {:?}, dst:{:?}", value, src, dst)}
@@ -544,7 +516,6 @@ impl Cpu {
 
             _ => println!("Unknown instruction {:X}", self.opcode),
         }
-        self.pc += 1;
 
     }
     pub fn execute_instruction(&mut self) {
