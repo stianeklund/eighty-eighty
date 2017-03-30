@@ -45,7 +45,7 @@ pub enum Instruction {
     JMP,
     JPO,
     LDA,
-    LDAX(Register),
+    LDAX(RegisterPair),
     LXI(Register),
     MOV(Register, Register),
     MOV_R_PR(RegisterPair, Register),

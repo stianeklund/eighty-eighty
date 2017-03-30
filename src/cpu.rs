@@ -365,6 +365,14 @@ impl Cpu {
     }
 
 
+    fn ldax(&mut self, reg: RegisterPair) {
+        match reg {
+            RegisterPair::BC => self.adv_pc(),
+            RegisterPair::DE => self.adv_pc(),
+            RegisterPair::HL => self.adv_pc(),
+        }
+    }
+
     fn inr(&mut self, reg: Register) {
         match reg {
             Register::A => self.write_reg(Register::A, 1),
@@ -388,9 +396,17 @@ impl Cpu {
         self.adv_pc();
     }
 
-    // TODO
-    fn inx_h(&mut self) {
-        self.reg_h < self.reg_h + 1;
+    fn inx(&mut self, reg: Register) {
+        match reg {
+            Register::A => self.reg_a < self.reg_a + 1,
+            Register::B => self.reg_b < self.reg_b + 1,
+            Register::C => self.reg_c < self.reg_c + 1,
+            Register::D => self.reg_d < self.reg_d + 1,
+            Register::E => self.reg_d < self.reg_d + 1,
+            Register::H => self.reg_h < self.reg_h + 1,
+            Register::L => self.reg_l < self.reg_l + 1,
+            Register::M => self.reg_m < self.reg_m + 1,
+        };
         self.adv_pc();
     }
 
@@ -400,21 +416,29 @@ impl Cpu {
         self.adv_pc();
     }
 
-    // PUSH B register
-    fn push_b(&mut self) {
-        self.sp -= 2;
-        let sp = self.sp;
-        let b = self.reg_b;
-        self.write_word(b, sp);
-        self.adv_pc();
-    }
-    // PUSH D register
-    fn push_d(&mut self) {
-        // self.sp -= 2;
+    // Push register
+    fn push(&mut self, reg: Register) {
+        match reg {
+            Register::B => {
+                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_c;
+                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_b;
+                self.sp.wrapping_sub(2);
+            },
+
+            Register::D => {
+                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_e;
+                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_d;
+                self.sp.wrapping_sub(2);
+            },
+
+            Register::H => {
+                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_l;
+                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_h;
+                self.sp.wrapping_sub(2);
+            },
+            _ => println!("Unknown push instruction"),
+        }
         self.sp.wrapping_sub(2);
-        let sp = self.sp;
-        let d = self.reg_d;
-        self.write_word(d, sp);
         self.adv_pc();
     }
 
@@ -441,51 +465,38 @@ impl Cpu {
         self.adv_pc();
     }
 
-    fn pop(&mut self, reg: Register) {
-
-        match reg {
-            Register::A => {
-                self.memory[self.reg_a as usize + 1] | self.memory[self.reg_a as usize];
+    // POP Register Pairs (TODO PSW)
+    fn pop(&mut self) {
+        match self.opcode {
+            0xC1 =>  {
+                self.reg_c = (self.memory[self.sp as usize + 0]) & 0xFFFF;
+                self.reg_b = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
+            0xD1 => {
+                self.reg_e = (self.memory[self.sp as usize + 0]) & 0xFFFF;
+                self.reg_d = (self.memory[self.sp as usize + 1]) & 0xFFFF;
 
-            Register::B => {
-                self.memory[self.reg_b as usize + 1] | self.memory[self.reg_b as usize];
             },
-
-            Register::C => {
-                self.memory[self.reg_c as usize + 1] | self.memory[self.reg_c as usize];
+            0xE1 => {
+                self.reg_l = (self.memory[self.sp as usize + 0]) & 0xFFFF;
+                self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
-
-            Register::D => {
-                self.memory[self.reg_d as usize + 1] | self.memory[self.reg_d as usize];
+            0xF1 => {
+                self.reg_a = (self.memory[self.sp as usize]) & 0xFFFF;
+                self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
-
-            Register::E => {
-                self.memory[self.reg_e as usize + 1] | self.memory[self.reg_e as usize];
-            },
-
-            Register::H => {
-                self.memory[self.reg_h as usize + 1] | self.memory[self.reg_h as usize];
-            },
-
-            Register::L => {
-                self.memory[self.reg_l as usize + 1] | self.memory[self.reg_l as usize];
-            },
-
-            Register::M => {
-                self.memory[self.reg_m as usize + 1] | self.memory[self.reg_m as usize];
-            },
+            _ => println!("Unknown pair, can't pop"),
         }
+        self.sp.wrapping_add(2);
         self.adv_pc();
     }
 
 
+
     fn pop_stack(&mut self) -> u16 {
         let sp = (self.memory[self.sp as usize + 1] | self.memory[self.sp as usize]) as u16;
-        // self.sp += 2;
-        self.adv_pc();
+        self.sp += 2;
         sp
-
     }
 
     fn ret(&mut self) {
@@ -541,15 +552,18 @@ impl Cpu {
             Instruction::RPE => self.rpe(),
             Instruction::RET => self.ret(),
 
-            Instruction::PUSH_D => self.push_d(),
+            Instruction::PUSH(reg)=> self.push(reg),
 
-            Instruction::INX_H => self.inx_h(),
+            Instruction::IN => self.adv_pc(),
+            Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
             Instruction::OUT => self.out(),
             Instruction::ANI => self.ani(),
             Instruction::STAX_D => self.stax_d(),
+            Instruction::LDAX(reg) => self.ldax(reg),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
+
 
             Instruction::RST_0 => self.call(0x0),
             Instruction::RST_1 => self.call(0x8),
@@ -568,7 +582,7 @@ impl Cpu {
 
             Instruction::ORA(reg) => self.adv_pc(), // TODO
 
-            Instruction::POP(reg) => self.pop(reg),
+            Instruction::POP(reg) => self.pop(),
             Instruction::POP_PSW => self.adv_pc(), // TODO
 
             Instruction::JNZ => self.adv_pc(), // TODO
@@ -588,7 +602,7 @@ impl Cpu {
 
         match self.opcode {
 
-            0x0 => self.decode(Instruction::CALL(0x0)),
+            0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STAX(B)),
             0x03 => self.decode(Instruction::INX(B)),
@@ -599,7 +613,7 @@ impl Cpu {
             0x08 => self.decode(Instruction::NOP),
             0x09 => self.decode(Instruction::DAD(B)),
 
-            0x0A => self.decode(Instruction::LDAX(B)),
+            0x0A => self.decode(Instruction::LDAX(BC)),
             0x0B => self.decode(Instruction::DCX(B)),
             0x0C => self.decode(Instruction::INR(C)),
             0x0D => self.decode(Instruction::DCR(D)),
@@ -618,7 +632,7 @@ impl Cpu {
             0x18 => self.decode(Instruction::NOP),
             0x19 => self.decode(Instruction::DAD(D)),
 
-            0x1A => self.decode(Instruction::LDAX(D)),
+            0x1A => self.decode(Instruction::LDAX(DE)),
             0x1B => self.decode(Instruction::DCX(D)),
             0x1C => self.decode(Instruction::INR(E)),
             0x1D => self.decode(Instruction::DCR(E)),
