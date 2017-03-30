@@ -113,6 +113,9 @@ impl Cpu {
     pub fn read_word(&mut self, addr: u8) -> u16 {
         (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }
+    fn read_short(&mut self, addr: usize) -> u16 {
+        (self.memory[addr] | self.memory[addr]) as u16
+    }
 
     pub fn write_word(&mut self, addr: u8, word: u16) {
         self.write_byte(addr, word & 0xFF);
@@ -186,7 +189,7 @@ impl Cpu {
 
     // TODO
     pub fn ani(&mut self) {
-        self.pc+=1;
+        self.pc += 1;
     }
 
     // TODO
@@ -205,13 +208,9 @@ impl Cpu {
         self.pc += 1;
     }
 
-    // LXI
     pub fn lxi(&mut self, reg: Register) {
-        if DEBUG { println!(" LXI on reg: {:?}", reg);}
         let mut reg = self.read_reg(reg);
-        if DEBUG { println!(" read_reg: {:X}", reg);}
         reg = self.memory[self.pc as usize + 1];
-        if DEBUG { println!(" reg: {:X}", reg);}
 
     }
     pub fn mvi_a(&mut self) {
@@ -229,14 +228,14 @@ impl Cpu {
     // TODO
     pub fn call(&mut self, addr: u16) {
         match self.opcode {
-            0xCD => {
+            0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD | 0xFF  => {
                 let ret = self.pc + 2;
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
             },
             _ => println!("Unknown call address"),
         }
         self.pc = addr;
-        self.pc += 1;
+        self.pc += 2;
     }
 
     // TODO
@@ -389,6 +388,7 @@ impl Cpu {
     }
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     pub fn xra(&mut self, reg: Register) {
+        //
         self.pc += 1;
     }
 
@@ -396,17 +396,16 @@ impl Cpu {
     fn rpe(&mut self) {
         self.pc += 1;
     }
-    fn rst(&mut self, instruction: Instruction) {
 
-        match self.opcode  {
-            0xC7 | 0xE7 |  0xF7 | 0xCF | 0xDF | 0xEF | 0xFF  => {
-                self.memory[(self.sp as usize -1) & 0xFFFF] = (self.reg_h) & 0xFF;
-                self.memory[(self.sp as usize - 2) & 0xFFFF] = (self.reg_l) & 0xFF;
-                self.sp -= 2;
-                self.pc = (self.opcode & 0x38) as u16;
-            },
-            _ => println!("Unknown instruction: {:?}", instruction),
-        }
+    fn pop_stack(&mut self) -> u16 {
+        let sp = (self.memory[self.sp as usize + 1] | self.memory[self.sp as usize]) as u16;
+        self.sp += 2;
+        sp
+    }
+
+    fn ret(&mut self) {
+        if DEBUG { println!("Returning to previous subroutine"); }
+        self.pc = self.pop_stack();
     }
 
     // TODO
@@ -442,7 +441,7 @@ impl Cpu {
 
             Instruction::DAA =>  self.daa(),
             Instruction::EI => self.ei(),
-            Instruction::JMP =>  { self.pc = (self.opcode & 0x0FFF) as u16; },
+            Instruction::JMP =>  self.jmp(),
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
 
@@ -454,6 +453,7 @@ impl Cpu {
 
             Instruction::XRA(reg) => self.xra(reg),
             Instruction::RPE => self.rpe(),
+            Instruction::RET => self.ret(),
 
             Instruction::PUSH_D => self.push_d(),
 
@@ -465,7 +465,16 @@ impl Cpu {
             Instruction::STAX_D => self.stax_d(),
             Instruction::LXI(reg) => self.lxi(D),
             Instruction::LXI_SP => self.lxi_sp(),
-            Instruction::RST_7 => self.adv_pc(), // self.reset(),
+
+            Instruction::RST_0 => self.call(0x0),
+            Instruction::RST_1 => self.call(0x8),
+            Instruction::RST_2 => self.call(0x10),
+            Instruction::RST_3 => self.call(0x18),
+            Instruction::RST_4 => self.call(0x20),
+            Instruction::RST_5 => self.call(0x28),
+            Instruction::RST_6 => self.call(0x30),
+            Instruction::RST_7 => self.call(0x38),
+
             Instruction::INR_E => self.inr_e(),
             Instruction::CM => self.adv_pc(), // TODO
             Instruction::CMC => self.adv_pc(), // TODO
