@@ -5,6 +5,7 @@ use opcode::{Instruction, Register, RegisterPair};
 
 const DEBUG: bool = true;
 
+
 // Intel 8080 Notes:
 //
 // The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
@@ -23,6 +24,7 @@ const DEBUG: bool = true;
 
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
+#[allow(dead_code)]
 pub struct Cpu {
 
     pub memory: Box<[u8; 65536]>,
@@ -49,12 +51,12 @@ pub struct Cpu {
     reg_psw: u16,
 
     // Status Register (Flags)
-    sign: u8,
-    zero: u8,
-    parity: u8,
+    sign: bool,
+    zero: bool,
+    parity: bool,
 
-    carry: u8,
-    half_carry: u8,
+    carry: bool,
+    half_carry: bool,
 
     interrupt: u8,
     interrupt_addr: u16,
@@ -85,12 +87,12 @@ impl Cpu {
 
             reg_psw: 0,
 
-            sign: 0,
-            zero: 0,
-            parity: 0,
+            sign: false,
+            zero: false,
+            parity: false,
 
-            carry: 0,
-            half_carry: 0,
+            carry: false,
+            half_carry: false,
 
             interrupt: 0,
             interrupt_addr: 0,
@@ -98,6 +100,7 @@ impl Cpu {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }
@@ -183,13 +186,66 @@ impl Cpu {
         };
     }
 
-    pub fn ana(&mut self, reg: Register) {
-        self.pc += 1;
+    fn ana(&mut self, reg: Register) {
+        // Check if the 4th bit is set on all registers
+        match reg {
+            Register::A => {
+                self.half_carry = (self.reg_a | self.reg_a) & 0x08 != 0;
+                self.reg_a &= self.reg_a;
+            },
+
+            Register::B => {
+                self.half_carry = (self.reg_a | self.reg_b) & 0x08 != 0;
+                self.reg_a &= self.reg_b;
+            },
+
+            Register::C => {
+                self.half_carry = (self.reg_a | self.reg_c) & 0x08 != 0;
+                self.reg_a &= self.reg_c;
+            },
+
+            Register::D => {
+                self.half_carry = (self.reg_a | self.reg_d) & 0x08 != 0;
+                self.reg_a &= self.reg_d;
+            },
+
+            Register::E => {
+                self.half_carry = (self.reg_a | self.reg_e) & 0x08 != 0;
+                self.reg_a &= self.reg_e;
+            },
+
+            Register::H => {
+                self.half_carry = (self.reg_a | self.reg_h) & 0x08 != 0;
+                self.reg_a &= self.reg_h;
+            },
+
+            Register::L => {
+                self.half_carry = (self.reg_a | self.reg_l) & 0x08 != 0;
+                self.reg_a &= self.reg_l;
+            },
+
+            Register::M => {
+                self.half_carry = (self.reg_a | self.reg_m) & 0x08 != 0;
+                self.reg_a &= self.reg_m;
+            }
+        }
+        self.adv_pc();
     }
 
-    // TODO
-    pub fn ani(&mut self) {
-        self.pc += 1;
+    fn ani(&mut self) {
+        // AND Immediate with accumulator
+        // The byte of immediate data is ANDed with the contents of the accumulator (reg_a).
+        // The Carry bit is reset to zero.
+
+        // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
+        self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
+        let ana_value = (self.reg_a | self.opcode) & 0x08;
+    if DEBUG {
+        println!("half carry value: {:?}", ana_value);
+    } 
+        self.reg_a &= self.opcode;
+        self.carry = false;
+        self.adv_pc();
     }
 
     // TODO
@@ -225,17 +281,19 @@ impl Cpu {
         self.write_word(reg_a, reg_bc);
     }
 
-    // TODO
     pub fn call(&mut self, addr: u16) {
         match self.opcode {
             0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD | 0xFF  => {
-                let ret = self.pc + 2;
+                let ret = self.pc + 3;
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+                self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
+
+                self.sp.wrapping_sub(2);
+
+                self.pc += 2 & 0xFFFF;
             },
             _ => println!("Unknown call address"),
         }
-        self.pc = addr;
-        self.pc += 2;
     }
 
     // TODO
@@ -337,12 +395,6 @@ impl Cpu {
         self.pc += amount;
     }
 
-    // Increment E register
-    pub fn inr_e(&mut self) {
-        self.reg_e += self.reg_e;
-        self.pc += 1;
-    }
-
     // TODO
     pub fn inx_h(&mut self) {
         self.reg_h < self.reg_h + 1;
@@ -423,6 +475,7 @@ impl Cpu {
     // Move logical operations to a separate file, jump & call to one etc?
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
+        if DEBUG { println!("Instruction: {:?},", instruction) };
 
         match instruction {
             Instruction::NOP => self.adv_pc(),
@@ -459,7 +512,6 @@ impl Cpu {
 
             Instruction::INX_H => self.inx_h(),
             Instruction::INX_SP => self.inx_sp(),
-            Instruction::INR_B => self.inr(B),
             Instruction::OUT => self.out(),
             Instruction::ANI => self.ani(),
             Instruction::STAX_D => self.stax_d(),
@@ -475,7 +527,6 @@ impl Cpu {
             Instruction::RST_6 => self.call(0x30),
             Instruction::RST_7 => self.call(0x38),
 
-            Instruction::INR_E => self.inr_e(),
             Instruction::CM => self.adv_pc(), // TODO
             Instruction::CMC => self.adv_pc(), // TODO
             Instruction::HLT => self.adv_pc(), // self.reset(),
@@ -503,6 +554,7 @@ impl Cpu {
         use self::RegisterPair::*;
 
         if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
+        println!("Opcode value: {:X}", self.opcode);
 
         match self.opcode {
 
@@ -824,12 +876,12 @@ impl Cpu {
         self.reg_de = 0;
         self.reg_hl = 0;
 
-        self.sign = 0;
-        self.zero = 0;
-        self.parity = 0;
-
-        self.carry = 0;
-        self.half_carry = 0;
+        // Reset flag conditions
+        self.sign = false;
+        self.zero = false;
+        self.parity = false;
+        self.carry = false;
+        self.half_carry = false;
         self.reg_psw = 0;
 
         self.interrupt = 0;

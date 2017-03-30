@@ -44,7 +44,6 @@ pub enum Instruction {
     JZ,
     JMP,
     JPO,
-
     LDA,
     LDAX(Register),
     LXI(Register),
