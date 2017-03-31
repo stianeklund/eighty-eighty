@@ -36,7 +36,7 @@ pub enum Instruction {
     DCR(Register),
     DCX(Register),
     HLT,
-    INX(Register),
+    INX(RegisterPair),
     INR(Register),
     JC,
     JNC,

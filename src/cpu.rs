@@ -60,6 +60,7 @@ pub struct Cpu {
 
     interrupt: u8,
     interrupt_addr: u16,
+    cycles: u8,
 
 }
 
@@ -96,6 +97,7 @@ impl Cpu {
 
             interrupt: 0,
             interrupt_addr: 0,
+            cycles: 0,
 
         }
     }
@@ -185,6 +187,7 @@ impl Cpu {
         match reg {
             Register => self.read_reg(reg),
         };
+        self.adv_pc();
     }
 
     fn ana(&mut self, reg: Register) {
@@ -240,6 +243,7 @@ impl Cpu {
 
         self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
         self.reg_a &= self.opcode;
+
         self.carry = false;
         self.adv_pc();
     }
@@ -252,6 +256,12 @@ impl Cpu {
     fn jmp(&mut self) {
         self.pc = (self.opcode & 0x0FFF) as u16;
     }
+
+    //TODO Conditional jump
+    fn jc(&mut self) {
+        self.pc = (self.opcode & 0x0FFF) as u16;
+    }
+
 
     fn lxi_sp(&mut self) {
         self.sp = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
@@ -274,16 +284,11 @@ impl Cpu {
         self.adv_pc();
     }
 
-    fn mvi_a(&mut self) {
-        let byte = self.reg_a;
-        self.read_byte(byte);
-        self.adv_pc();
-    }
-
     fn sta(&mut self) {
         let reg_a = self.reg_a;
         let reg_bc = self.reg_bc;
         self.write_word(reg_a, reg_bc);
+        self.adv_pc();
     }
 
     fn call(&mut self, addr: u16) {
@@ -292,7 +297,7 @@ impl Cpu {
         // All CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
 
         match self.opcode {
-            0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD | 0xFF  => {
+            0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD |  0xEF | 0xFF => {
                 let ret = self.pc + 3;
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
@@ -301,7 +306,7 @@ impl Cpu {
 
                 self.pc += 2 & 0xFFFF;
             },
-            _ => println!("Unknown call address"),
+            _ => println!("Unknown call address: {:X}", self.opcode),
         }
     }
 
@@ -313,6 +318,44 @@ impl Cpu {
     // TODO Compare Immidiate with Accumulator
     fn cpi(&mut self) {
         self.adv_pc();
+    }
+
+    fn dad(&mut self, reg: Register) {
+        // Double precision ADD.
+        // For these instructions, HL functions as an accumulator.
+        // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
+        let mut value: u8;
+
+        match reg {
+            Register::B => {
+                value = self.reg_h.wrapping_shl(8) | self.reg_l;
+                value.wrapping_add(self.reg_b.wrapping_shl(8) | self.reg_c);
+            },
+
+            Register::D => {
+                value = self.reg_h.wrapping_shl(8) | self.reg_l;
+                value.wrapping_add(self.reg_d.wrapping_shl(8) | self.reg_e);
+            },
+            Register::H => {
+                value = self.reg_h.wrapping_shl(8) | self.reg_l;
+                value.wrapping_add(self.reg_h.wrapping_shl(8) | self.reg_l);
+            },
+
+            Register::A =>  println!("DAD should not run on this register"),
+            Register::C =>  println!("DAD should not run on this register"),
+            Register::E =>  println!("DAD should not run on this register"),
+            Register::M =>  println!("DAD should not run on this register"),
+            Register::L =>  println!("DAD should not run on this register"),
+        };
+        self.adv_pc();
+    }
+
+    fn dad_sp(&mut self) {
+        let mut value:u16;
+        value = (self.reg_h.wrapping_shl(8) | self.reg_l) as u16;
+        self.carry = true;
+        self.adv_pc();
+        value = self.sp
     }
 
     fn dcr(&mut self, reg: Register) {
@@ -364,13 +407,17 @@ impl Cpu {
         self.adv_pc();
     }
 
-
+    fn lda (&mut self) {
+        self.reg_a = self.memory[self.pc as usize];
+        self.adv_pc();
+    }
     fn ldax(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => self.adv_pc(),
             RegisterPair::DE => self.adv_pc(),
             RegisterPair::HL => self.adv_pc(),
         }
+        self.adv_pc();
     }
 
     fn inr(&mut self, reg: Register) {
@@ -387,7 +434,7 @@ impl Cpu {
         self.adv_pc();
     }
 
-    fn inr_reg_pair(&mut self, reg: RegisterPair) {
+    fn inx_rp(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => self.write_reg_pair(RegisterPair::BC, 1),
             RegisterPair::DE => self.write_reg_pair(RegisterPair::DE, 1),
@@ -396,6 +443,7 @@ impl Cpu {
         self.adv_pc();
     }
 
+    // Increment register pair by one
     fn inx(&mut self, reg: Register) {
         match reg {
             Register::A => self.reg_a < self.reg_a + 1,
@@ -412,7 +460,7 @@ impl Cpu {
 
     // TODO
     fn inx_sp(&mut self) {
-        self.sp +=  1;
+        self.sp < self.sp + 1;
         self.adv_pc();
     }
 
@@ -442,8 +490,21 @@ impl Cpu {
         self.adv_pc();
     }
 
-    // TODO STAX_D
-    fn stax_d(&mut self) {
+    // Store the contents of the accumulator addressed by registers B, C
+    // or by registers D and E.
+    fn stax(&mut self, reg: Register) {
+        let reg_bc = self.reg_bc;
+
+        match reg {
+            Register::A => println!("Shouldn't store to register A"),
+            Register::B => self.memory[self.reg_b.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+            Register::C => self.memory[self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+            Register::D => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+            Register::E => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+            Register::H => println!("Shouldn't store to register H"),
+            Register::L => println!("Shouldn't store to register L"),
+            Register::M => println!("Shouldn't store to register M"),
+        };
         self.adv_pc();
     }
 
@@ -451,9 +512,20 @@ impl Cpu {
     fn sbb(&mut self, reg: Register) {
         self.adv_pc();
     }
-    // TODO SUB
+
     fn sub(&mut self, reg: Register) {
+        match reg {
+            Register::A => self.reg_a - self.reg_a,
+            Register::B => self.reg_b - self.reg_b,
+            Register::C => self.reg_c - self.reg_c,
+            Register::D => self.reg_d - self.reg_d,
+            Register::E => self.reg_e - self.reg_e,
+            Register::H => self.reg_h - self.reg_h,
+            Register::L => self.reg_l - self.reg_l,
+            Register::M => self.reg_m - self.reg_m,
+        };
         self.adv_pc();
+
     }
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
@@ -513,6 +585,7 @@ impl Cpu {
         let value = self.read_reg(src);
         self.write_reg(dst, value);
         if DEBUG { println!("Read reg value: {}, src: {:?}, dst:{:?}", value, src, dst)}
+        self.adv_pc();
     }
 
     // I think it might be a good idea to segment instructions based on functionality.
@@ -529,20 +602,24 @@ impl Cpu {
             Instruction::ADI => self.adv_pc(),
             Instruction::ADC(reg) => self.adc(reg),
             Instruction::ANA(reg) => self.ana(reg),
+            Instruction::ANI => self.ani(),
 
-            Instruction::INR(reg) => self.inr(reg),
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
+            Instruction::CM => self.adv_pc(),      // TODO
+            Instruction::CNC => self.adv_pc(),     // TODO
+            Instruction::CMC => self.adv_pc(),     // TODO
             Instruction::CMP(reg) => self.cmp(reg),
+            Instruction::CPE => self.adv_pc(),     // TODO
             Instruction::DCR(reg) => self.dcr(reg),
 
             Instruction::DAA =>  self.daa(),
+            Instruction::DAD(reg) => self.dad(reg),
+            Instruction::DAD_SP => self.dad_sp(),
             Instruction::EI => self.ei(),
+            Instruction::JC => self.jc(),
             Instruction::JMP =>  self.jmp(),
-            Instruction::RNZ => self.rnz(),
-            Instruction::RZ => self.rz(),
 
-            // MOV Instructions
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
             Instruction::SUB(reg) => self.sub(reg),
@@ -552,19 +629,26 @@ impl Cpu {
             Instruction::RPE => self.rpe(),
             Instruction::RET => self.ret(),
 
+            Instruction::POP(reg) => self.pop(),
+            Instruction::POP_PSW => self.adv_pc(), // TODO
             Instruction::PUSH(reg)=> self.push(reg),
 
             Instruction::IN => self.adv_pc(),
-            Instruction::INX(reg) => self.inx(reg),
+            Instruction::INR(reg) => self.inr(reg),
+            Instruction::INX(reg) => self.inx_rp(reg),
             Instruction::INX_SP => self.inx_sp(),
             Instruction::OUT => self.out(),
-            Instruction::ANI => self.ani(),
-            Instruction::STAX_D => self.stax_d(),
+            Instruction::STA => self.sta(),
+            Instruction::STAX(reg) => self.stax(reg),
+            Instruction::LDA => self.lda(),
             Instruction::LDAX(reg) => self.ldax(reg),
+            Instruction::LHLD => self.adv_pc(),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
+            Instruction::RAL => self.adv_pc(),
 
+            Instruction::RC => self.adv_pc(),     // TODO
             Instruction::RST_0 => self.call(0x0),
             Instruction::RST_1 => self.call(0x8),
             Instruction::RST_2 => self.call(0x10),
@@ -574,19 +658,24 @@ impl Cpu {
             Instruction::RST_6 => self.call(0x30),
             Instruction::RST_7 => self.call(0x38),
 
-            Instruction::CM => self.adv_pc(), // TODO
-            Instruction::CMC => self.adv_pc(), // TODO
-            Instruction::HLT => self.adv_pc(), // self.reset(),
-            Instruction::RRC => self.adv_pc(), // TODO
-            Instruction::XRA_L => self.adv_pc(), // TODO
+            Instruction::RNZ => self.rnz(),
+            Instruction::RZ => self.rz(),
 
-            Instruction::ORA(reg) => self.adv_pc(), // TODO
+            Instruction::HLT => self.adv_pc(),     // TODO
+            Instruction::RLC => self.adv_pc(),     // TODO
+            Instruction::RNC => self.adv_pc(),     // TODO
+            Instruction::RRC => self.adv_pc(),     // TODO
 
-            Instruction::POP(reg) => self.pop(),
-            Instruction::POP_PSW => self.adv_pc(), // TODO
+            Instruction::STC => self.adv_pc(),     // TODO
+            Instruction::ORA(reg) => self.adv_pc(),// TODO
 
-            Instruction::JNZ => self.adv_pc(), // TODO
-            Instruction::JM => self.adv_pc(), // TODO
+            Instruction::JNZ => self.adv_pc(),     // TODO
+            Instruction::JM => self.adv_pc(),      // TODO
+            Instruction::JZ => self.adv_pc(),      // TODO
+            Instruction::XRA_L => self.adv_pc(),   // TODO
+            Instruction::XRI => self.adv_pc(),
+            Instruction::XCHG => self.adv_pc(),    // TODO
+            Instruction::XTHL => self.adv_pc(),    // TODO
 
             _ => println!("Unknown instruction {:X}", self.opcode),
         }
@@ -605,9 +694,9 @@ impl Cpu {
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STAX(B)),
-            0x03 => self.decode(Instruction::INX(B)),
+            0x03 => self.decode(Instruction::INX(BC)),
             0x04 => self.decode(Instruction::INR(B)),
-            0x05 => self.decode(Instruction::DCR_B),
+            0x05 => self.decode(Instruction::DCR(B)),
             0x06 => self.decode(Instruction::MVI(B, 0xD8)),
             0x07 => self.decode(Instruction::RLC),
             0x08 => self.decode(Instruction::NOP),
@@ -624,7 +713,7 @@ impl Cpu {
             0x10 => self.decode(Instruction::NOP),
             0x11 => self.decode(Instruction::LXI(D)),
             0x12 => self.decode(Instruction::STAX(D)),
-            0x13 => self.decode(Instruction::INX(D)),
+            0x13 => self.decode(Instruction::INX(DE)),
             0x14 => self.decode(Instruction::INR(D)),
             0x15 => self.decode(Instruction::DCR(D)),
             0x16 => self.decode(Instruction::MVI(D, 0xD8)),
@@ -643,7 +732,7 @@ impl Cpu {
             0x20 => self.decode(Instruction::NOP),
             0x21 => self.decode(Instruction::LXI(H)),
             0x22 => self.decode(Instruction::SHLD),
-            0x23 => self.decode(Instruction::INX(H)),
+            0x23 => self.decode(Instruction::INX(HL)),
             0x24 => self.decode(Instruction::INR(H)),
             0x25 => self.decode(Instruction::DCR(H)),
             0x26 => self.decode(Instruction::MVI(H, 0xD8)),
