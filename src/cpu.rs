@@ -254,7 +254,9 @@ impl Cpu {
     }
 
     fn jmp(&mut self) {
-        self.pc = (self.opcode & 0x0FFF) as u16;
+        ((self.memory[self.pc as usize + 1] as u16) << 8) | (self.memory[self.pc as usize + 2] as u16);
+
+        self.adv_pc();
     }
 
     //TODO Conditional jump
@@ -303,11 +305,13 @@ impl Cpu {
                 self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
 
                 self.sp.wrapping_sub(2);
-
-                self.pc += 2 & 0xFFFF;
-            },
+                self.pc = (self.memory[self.pc as usize + 1] as u16) << 8 |
+                (self.memory[self.pc as usize + 2] as u16);
+            }
             _ => println!("Unknown call address: {:X}", self.opcode),
         }
+        // self.adv_pc()
+
     }
 
     // TODO
@@ -606,6 +610,7 @@ impl Cpu {
 
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
+            Instruction::CZ => self.adv_pc(),      // TODO
             Instruction::CM => self.adv_pc(),      // TODO
             Instruction::CNC => self.adv_pc(),     // TODO
             Instruction::CMC => self.adv_pc(),     // TODO
@@ -619,6 +624,7 @@ impl Cpu {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP =>  self.jmp(),
+            Instruction::JPE =>  self.adv_pc(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
@@ -667,8 +673,10 @@ impl Cpu {
             Instruction::RRC => self.adv_pc(),     // TODO
 
             Instruction::STC => self.adv_pc(),     // TODO
+            Instruction::SHLD => self.adv_pc(),    // TODO
             Instruction::ORA(reg) => self.adv_pc(),// TODO
 
+            Instruction::JNC => self.adv_pc(),     // TODO
             Instruction::JNZ => self.adv_pc(),     // TODO
             Instruction::JM => self.adv_pc(),      // TODO
             Instruction::JZ => self.adv_pc(),      // TODO
@@ -683,11 +691,10 @@ impl Cpu {
     }
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
-
         use self::Register::*;
         use self::RegisterPair::*;
 
-        if DEBUG { println!("Opcode: 0x{:X}, PC: {}, SP: {}", self.opcode, self.pc, self.sp); }
+        if DEBUG { println!("Opcode: 0x{:X}, PC: {:X}, SP: {}", self.opcode, self.pc, self.sp); }
 
         match self.opcode {
 
@@ -933,6 +940,7 @@ impl Cpu {
 
             0xCA => self.decode(Instruction::JZ),
             0xCB => self.decode(Instruction::JMP),
+            0xCC => self.decode(Instruction::CZ),
             0xCD => self.decode(Instruction::CALL(0xCD)),
             0xCE => self.decode(Instruction::ADI),
             0xCF => self.decode(Instruction::RST_1),
