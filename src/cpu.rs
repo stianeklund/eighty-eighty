@@ -118,6 +118,7 @@ impl Cpu {
     fn read_word(&mut self, addr: u8) -> u16 {
         (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }
+
     fn read_short(&mut self, addr: usize) -> u16 {
         (self.memory[addr] | self.memory[addr]) as u16
     }
@@ -254,9 +255,7 @@ impl Cpu {
     }
 
     fn jmp(&mut self) {
-        ((self.memory[self.pc as usize + 1] as u16) << 8) | (self.memory[self.pc as usize + 2] as u16);
-
-        self.adv_pc();
+        self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
     }
 
     //TODO Conditional jump
@@ -294,28 +293,26 @@ impl Cpu {
     }
 
     fn call(&mut self, addr: u16) {
+        // CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
-        // All CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
 
         let ret: u16 = self.pc + 3;
 
         match self.opcode {
             0xCD |  0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
+
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
 
                 self.sp.wrapping_sub(2);
 
-                self.pc = (self.memory[self.pc as usize + 2] as u16) << 8
-                    | (self.memory[self.pc as usize + 1] as u16);
+                self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
             },
             _ => println!("Unknown call address: {:X}", self.opcode),
         }
-        println!("Subroutine call: {:X}", self.pc);
-        println!("Return address is: {:X}", ret);
 
-        // Set the PC to the return address so we jump back at the end of the subroutine.
-        self.pc = ret;
+        // println!("Subroutine call: {:X}", self.pc);
+        // println!("Return address is: {:X}", ret);
     }
 
 
