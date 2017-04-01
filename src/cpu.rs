@@ -294,25 +294,22 @@ impl Cpu {
     }
 
     fn call(&mut self, addr: u16) {
-        // CALL is just like JMP but also pushes a return address
-        // to stack.
+        // CALL is just like JMP but also pushes a return address  to stack.
         // All CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
 
-        match self.opcode {
-            0x0 | 0x8 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 | 0xCD |  0xEF | 0xFF => {
+        match addr {
+            0xCD |  0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
                 let ret = self.pc + 3;
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
-
-                self.sp.wrapping_sub(2);
-                self.pc = (self.memory[self.pc as usize + 1] as u16) << 8 |
-                (self.memory[self.pc as usize + 2] as u16);
-            }
+            },
             _ => println!("Unknown call address: {:X}", self.opcode),
         }
-        // self.adv_pc()
+        self.sp.wrapping_sub(2);
+        (self.memory[self.pc as usize + 1] as u16) << 8 | (self.memory[self.pc as usize + 2] as u16);
+        self.adv_pc();
+        }
 
-    }
 
     // TODO
     fn cmp(&mut self, reg: Register) {
@@ -592,6 +589,29 @@ impl Cpu {
         self.adv_pc();
     }
 
+    fn rst(&mut self, value: u8) {
+        // use self::Instruction::RST;
+
+        let mut reset = 0u8;
+
+        match value {
+            0 => reset = 0x00,
+            1 => reset = 0x08,
+            2 => reset = 0x10,
+            3 => reset = 0x18,
+            4 => reset = 0x20,
+            5 => reset = 0x28,
+            6 => reset = 0x30,
+            7 => reset = 0x38,
+            _ => println!("RESET address unknown: {:?}", reset),
+        }
+        // let reset = self.pc;
+        self.sp.wrapping_sub(2);
+        self.pc = reset as u16;
+    }
+
+
+
     // I think it might be a good idea to segment instructions based on functionality.
     // Move logical operations to a separate file, jump & call to one etc?
     pub fn decode(&mut self, instruction: Instruction) {
@@ -655,14 +675,14 @@ impl Cpu {
             Instruction::RAL => self.adv_pc(),
 
             Instruction::RC => self.adv_pc(),     // TODO
-            Instruction::RST_0 => self.call(0x0),
-            Instruction::RST_1 => self.call(0x8),
-            Instruction::RST_2 => self.call(0x10),
-            Instruction::RST_3 => self.call(0x18),
-            Instruction::RST_4 => self.call(0x20),
-            Instruction::RST_5 => self.call(0x28),
-            Instruction::RST_6 => self.call(0x30),
-            Instruction::RST_7 => self.call(0x38),
+            Instruction::RST(0) => self.rst(1),
+            Instruction::RST(1) => self.rst(2),
+            Instruction::RST(2) => self.rst(2),
+            Instruction::RST(3) => self.rst(3),
+            Instruction::RST(4)=> self.rst(4),
+            Instruction::RST(5) => self.rst(5),
+            Instruction::RST(6) => self.rst(6),
+            Instruction::RST(7) => self.rst(7),
 
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
@@ -934,7 +954,7 @@ impl Cpu {
             0xC4 => self.decode(Instruction::CNZ),
             0xC5 => self.decode(Instruction::PUSH(B)),
             0xC6 => self.decode(Instruction::ADI),
-            0xC7 => self.decode(Instruction::RST_0),
+            0xC7 => self.decode(Instruction::RST(0)),
             0xC8 => self.decode(Instruction::RZ),
             0xC9 => self.decode(Instruction::RET),
 
@@ -943,7 +963,7 @@ impl Cpu {
             0xCC => self.decode(Instruction::CZ),
             0xCD => self.decode(Instruction::CALL(0xCD)),
             0xCE => self.decode(Instruction::ADI),
-            0xCF => self.decode(Instruction::RST_1),
+            0xCF => self.decode(Instruction::RST(1)),
 
             0xD0 => self.decode(Instruction::RNC),
             0xD1 => self.decode(Instruction::POP(D)),
@@ -952,7 +972,7 @@ impl Cpu {
             0xD4 => self.decode(Instruction::CNC),
             0xD5 => self.decode(Instruction::PUSH(D)),
             0xD6 => self.decode(Instruction::SUI),
-            0xD7 => self.decode(Instruction::RST_2),
+            0xD7 => self.decode(Instruction::RST(2)),
             0xD8 => self.decode(Instruction::RC),
             0xD9 => self.decode(Instruction::RET),
 
@@ -961,7 +981,7 @@ impl Cpu {
             0xDC => self.decode(Instruction::CC(0xDC)),
             0xDD => self.decode(Instruction::CALL(0xDD)),
             0xDE => self.decode(Instruction::SBI),
-            0xDF => self.decode(Instruction::RST_3),
+            0xDF => self.decode(Instruction::RST(3)),
 
             0xE0 => self.decode(Instruction::RPO),
             0xE1 => self.decode(Instruction::POP(H)),
@@ -970,7 +990,7 @@ impl Cpu {
             0xE4 => self.decode(Instruction::CPO),
             0xE5 => self.decode(Instruction::PUSH(H)),
             0xE6 => self.decode(Instruction::ANI),
-            0xE7 => self.decode(Instruction::RST_4),
+            0xE7 => self.decode(Instruction::RST(4)),
             0xE8 => self.decode(Instruction::RPE),
             0xE9 => self.decode(Instruction::PCHL),
 
@@ -979,7 +999,7 @@ impl Cpu {
             0xEC => self.decode(Instruction::CPE),
             0xED => self.decode(Instruction::CALL(0xED)),
             0xEE => self.decode(Instruction::XRI),
-            0xEF => self.decode(Instruction::RST_5),
+            0xEF => self.decode(Instruction::RST(5)),
 
             0xF0 => self.decode(Instruction::RP),
             0xF1 => self.decode(Instruction::POP(H)),
@@ -988,7 +1008,7 @@ impl Cpu {
             0xF4 => self.decode(Instruction::CPO),
             0xF5 => self.decode(Instruction::PUSH(H)),
             0xF6 => self.decode(Instruction::ANI),
-            0xF7 => self.decode(Instruction::RST_4),
+            0xF7 => self.decode(Instruction::RST(4)),
             0xF8 => self.decode(Instruction::RPE),
             0xF9 => self.decode(Instruction::PCHL),
 
@@ -997,7 +1017,7 @@ impl Cpu {
             0xFC => self.decode(Instruction::CPE),
             0xFD => self.decode(Instruction::CALL(0xFD)),
             0xFE => self.decode(Instruction::XRI),
-            0xFF => self.decode(Instruction::RST_7),
+            0xFF => self.decode(Instruction::RST(7)),
 
             _ => println!("Unknown opcode: {:X}", self.opcode),
         }

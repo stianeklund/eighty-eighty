@@ -57,7 +57,7 @@ pub enum Instruction {
     RNC,
     RLC,
     RIM,
-    RST,
+    RST(u8),
     RPO,
     RPE,
     RNZ,
