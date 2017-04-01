@@ -298,21 +298,25 @@ impl Cpu {
         // All CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
 
         let ret: u16 = self.pc + 3;
+
         match self.opcode {
             0xCD |  0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
                 self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
+
                 self.sp.wrapping_sub(2);
-                self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+
+                self.pc = (self.memory[self.pc as usize + 2] as u16) << 8
+                    | (self.memory[self.pc as usize + 1] as u16);
             },
             _ => println!("Unknown call address: {:X}", self.opcode),
         }
         println!("Subroutine call: {:X}", self.pc);
         println!("Return address is: {:X}", ret);
 
-        self.pc = 0xFF & ret;
-        // self.adv_pc();
-        }
+        // Set the PC to the return address so we jump back at the end of the subroutine.
+        self.pc = ret;
+    }
 
 
     // TODO
