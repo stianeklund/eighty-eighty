@@ -60,7 +60,7 @@ pub struct Cpu {
 
     interrupt: u8,
     interrupt_addr: u16,
-    cycles: u8,
+    cycles: usize,
 
 }
 
@@ -146,20 +146,34 @@ impl Cpu {
     // Instruction functions, possible improvement is to group functions
     // by type or separate them by type, e.g mov goes together.
 
-    fn adv_pc(&mut self) {
-        self.pc += 1;
+    fn adv_pc(&mut self, t: u16) {
+        self.pc += t;
+    }
+    fn adv_cycles(&mut self, t: usize) {
+       self.cycles += t;
     }
 
     // TODO
     fn adc(&mut self, reg: Register) {
-        self.adv_pc()
+        self.adv_pc(1)
     }
 
     fn add(&mut self, reg: Register) {
+        let mut a = self.reg_a;
+
         match reg {
-            Register => self.read_reg(reg),
-        };
-        self.adv_pc();
+            Register::A => a += self.reg_a,
+            Register::B => a += self.reg_b,
+            Register::C => a += self.reg_c,
+            Register::D => a += self.reg_d,
+            Register::E => a += self.reg_e,
+            Register::H => a += self.reg_h,
+            Register::L => a += self.reg_l,
+            Register::M => a += self.reg_m,
+        }
+
+        self.adv_pc(1);
+        self.adv_cycles(4)
     }
 
     fn ana(&mut self, reg: Register) {
@@ -205,7 +219,9 @@ impl Cpu {
                 self.reg_a &= self.reg_m;
             }
         }
-        self.adv_pc();
+
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
 
     fn ani(&mut self) {
@@ -217,50 +233,68 @@ impl Cpu {
         self.reg_a &= self.opcode;
 
         self.carry = false;
-        self.adv_pc();
+        self.adv_pc(2);
+        self.adv_cycles(7);
     }
 
     // TODO
     fn aci(&mut self) {
-        self.adv_pc();
+        self.adv_pc(2);
+        self.adv_cycles(7);
     }
 
     fn jmp(&mut self) {
         self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+        self.adv_cycles(10);
     }
 
     //TODO Conditional jump
     fn jc(&mut self) {
         self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+
+        self.adv_cycles(10);
     }
 
 
     fn lxi_sp(&mut self) {
         self.sp = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
-        self.adv_pc();
+        self.adv_pc(3);
+        self.adv_cycles(10);
     }
 
     // Load Register Pair Immediate
     // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory pointer)
     fn lxi(&mut self, reg: Register) {
         match reg {
-            Register::A => self.reg_a,
-            Register::B => self.reg_b,
-            Register::C => self.reg_c,
-            Register::D => self.reg_d,
-            Register::E => self.reg_e,
-            Register::H => self.reg_h,
-            Register::L => self.reg_l,
-            Register::M => self.reg_m,
+            Register::B => {
+                self.reg_b = self.memory[self.pc as usize + 2];
+                self.reg_c = self.memory[self.pc as usize + 1];
+            },
+
+            Register::D => {
+                self.reg_d = self.memory[self.pc as usize + 2];
+                self.reg_e = self.memory[self.pc as usize + 1];
+            },
+
+            Register::H => {
+                self.reg_h = self.memory[self.pc as usize + 2];
+                self.reg_l = self.memory[self.pc as usize + 1];
+            },
+            _ => println!("LXI should be run on registry pairs only"),
+
         };
-        self.adv_pc();
+
+        self.adv_pc(3);
+        self.adv_cycles(10);
     }
 
     fn sta(&mut self) {
         let reg_a = self.reg_a;
         let reg_bc = self.reg_bc;
         self.write_word(reg_a, reg_bc);
-        self.adv_pc();
+
+        self.adv_pc(3);
+        self.adv_cycles(13);
     }
 
     fn call(&mut self, addr: u16) {
@@ -282,19 +316,25 @@ impl Cpu {
             _ => println!("Unknown call address: {:#X}", self.opcode),
         }
 
-        // println!("Subroutine call: {:X}", self.pc);
-        // println!("Return address is: {:X}", ret);
+        if DEBUG {
+            println!("Subroutine call: {:X}", self.pc);
+            println!("Return address is: {:X}", ret);
+        }
+
+        self.adv_cycles(17);
     }
 
 
     // TODO
     fn cmp(&mut self, reg: Register) {
-        self.adv_pc();
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
 
     // TODO Compare Immidiate with Accumulator
     fn cpi(&mut self) {
-        self.adv_pc();
+        self.adv_pc(2);
+        self.adv_cycles(7);
     }
 
     fn dad(&mut self, reg: Register) {
@@ -320,15 +360,18 @@ impl Cpu {
 
             _ => println!("DAD on wrong register"),
         };
-        self.adv_pc();
+        self.adv_pc(1);
+        self.adv_cycles(10);
     }
 
     fn dad_sp(&mut self) {
         let mut value:u16;
         value = (self.reg_h.wrapping_shl(8) | self.reg_l) as u16;
         self.carry = true;
-        self.adv_pc();
+        self.adv_pc(1);
+        self.adv_cycles(10);
         value = self.sp
+
     }
 
     fn dcr(&mut self, reg: Register) {
@@ -343,27 +386,45 @@ impl Cpu {
             Register::M => self.reg_m -= self.reg_m,
 
         }
-        self.adv_pc();
+
+        if reg == Register::M {
+            self.adv_cycles(6);
+        }
+
+        self.adv_pc(1);
+        self.adv_cycles(5);
     }
 
     // TODO
     fn daa(&mut self) {
-        self.adv_pc();
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
 
     // TODO
     fn ei(&mut self) {
-        self.adv_pc();
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
 
     // TODO
     fn rnz(&mut self) {
-        self.adv_pc();
+        // Cycles should be 11 if the carry flag is false
+        if self.carry == false {
+            self.adv_cycles(6)
+        }
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
     // TODO
     fn rz(&mut self) {
-        self.adv_pc();
+        // Cycles should be 11 if the carry flag is false
+        if self.carry == false {
+            self.adv_cycles(6)
+        }
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
     fn mvi(&mut self, reg: Register, value: u8) {
@@ -377,12 +438,18 @@ impl Cpu {
             Register::L => self.write_reg(Register::D, value),
             Register::M => self.write_reg(Register::M, value),
         }
-        self.adv_pc();
+        if reg == Register::M {
+            self.adv_cycles(3)
+        }
+
+        self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     fn lda (&mut self) {
         self.reg_a = self.memory[self.pc as usize];
-        self.adv_pc();
+        self.adv_pc(3);
+        self.adv_cycles(13);
     }
 
     fn ldax(&mut self, reg: Register) {
@@ -393,10 +460,12 @@ impl Cpu {
         match reg {
             Register::B =>  self.reg_a = 0xF,
             Register::D =>  self.reg_a = 0xD,
+
             _ => println!("LDAX on invalid register"),
         };
 
-        self.adv_pc();
+        self.adv_cycles(7);
+        self.adv_pc(1);
     }
 
     fn inr(&mut self, reg: Register) {
@@ -406,12 +475,17 @@ impl Cpu {
             Register::C => self.reg_c += 1,
             Register::D => self.reg_d += 1,
             Register::E => self.reg_e += 1,
-            Register::H => self.reg_h += 1 ,
+            Register::H => self.reg_h += 1,
             Register::L => self.reg_l += 1,
             Register::M => self.reg_m += 1,
         };
 
-        self.adv_pc();
+        if reg == Register::M {
+            self.adv_cycles(5);
+        }
+
+        self.adv_cycles(5);
+        self.adv_pc(2);
     }
 
     fn inx(&mut self, reg: Register) {
@@ -437,19 +511,21 @@ impl Cpu {
                     self.reg_h += 1;
                 }
             },
+
             _ => println!("INX call on the wrong register"),
         };
 
-        self.adv_pc();
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
-    // TODO
     fn inx_sp(&mut self) {
         self.sp += 1;
-        self.adv_pc();
+
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
-    // Push register
     fn push(&mut self, reg: Register) {
         match reg {
             Register::B => {
@@ -469,10 +545,14 @@ impl Cpu {
                 self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_h;
                 self.sp.wrapping_sub(2);
             },
+
             _ => println!("Unknown push instruction"),
         }
+
         self.sp.wrapping_sub(2);
-        self.adv_pc();
+
+        self.adv_cycles(11);
+        self.adv_pc(1);
     }
 
     // Store the contents of the accumulator addressed by registers B, C
@@ -485,14 +565,18 @@ impl Cpu {
             Register::C => self.memory[self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
             Register::D => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
             Register::E => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+
             _ => println!("STAX call to invalid registry"),
         };
-        self.adv_pc();
+
+        self.adv_cycles(7);
+        self.adv_pc(1);
     }
 
     // TODO SBB
     fn sbb(&mut self, reg: Register) {
-        self.adv_pc();
+        self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     fn sub(&mut self, reg: Register) {
@@ -506,43 +590,75 @@ impl Cpu {
             Register::L => self.reg_l - self.reg_l,
             Register::M => self.reg_m - self.reg_m,
         };
-        self.adv_pc();
+
+        if reg == Register::M {
+            self.adv_cycles(4);
+        }
+
+        self.adv_cycles(4);
+        self.adv_pc(1);
 
     }
+
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
-        self.adv_pc();
+        match reg {
+            Register::A => self.reg_a ^= self.reg_a,
+            Register::B => self.reg_a ^= self.reg_b,
+            Register::C => self.reg_a ^= self.reg_c,
+            Register::D => self.reg_a ^= self.reg_d,
+            Register::E => self.reg_a ^= self.reg_e,
+            Register::H => self.reg_a ^= self.reg_h,
+            Register::L => self.reg_a ^= self.reg_l,
+            Register::M => self.reg_a ^= self.reg_m,
+        };
+
+        if reg == Register::M {
+            self.adv_cycles(3);
+        }
+
+        self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // TODO
     fn rpe(&mut self) {
-        self.adv_pc();
+        self.adv_pc(1);
+        // TODO Cycles 11 / 5
+        // self.adv_cycles(4);
     }
 
     // POP Register Pairs (TODO PSW)
-    fn pop(&mut self) {
-        match self.opcode {
-            0xC1 =>  {
+    fn pop(&mut self, reg: Register) {
+        match reg {
+            Register::B =>  {
                 self.reg_c = (self.memory[self.sp as usize + 0]) & 0xFFFF;
                 self.reg_b = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
-            0xD1 => {
+
+            Register::D => {
                 self.reg_e = (self.memory[self.sp as usize + 0]) & 0xFFFF;
                 self.reg_d = (self.memory[self.sp as usize + 1]) & 0xFFFF;
 
             },
-            0xE1 => {
+
+            Register::H => {
                 self.reg_l = (self.memory[self.sp as usize + 0]) & 0xFFFF;
                 self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
-            0xF1 => {
+
+            Register::L => {
                 self.reg_a = (self.memory[self.sp as usize]) & 0xFFFF;
                 self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
             },
-            _ => println!("Unknown pair, can't pop"),
+
+            _ => println!("Can't pop this register"),
         }
+
         self.sp.wrapping_add(2);
-        self.adv_pc();
+
+        self.adv_pc(1);
+        self.adv_cycles(10);
     }
 
 
@@ -551,6 +667,7 @@ impl Cpu {
         let sp = (self.memory[self.sp as usize + 1] | self.memory[self.sp as usize]) as u16;
         self.sp += 2;
         sp
+
     }
 
     fn ret(&mut self) {
@@ -560,15 +677,21 @@ impl Cpu {
 
     // TODO
     fn out(&mut self) {
-        self.adv_pc();
+        self.adv_pc(2);
+        self.adv_cycles(10);
     }
 
-    fn mov(&mut self, dst: Register, src: Register,) {
+    fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
         self.write_reg(dst, value);
+
         if DEBUG {
-            println!("Read reg value: {:X}, Source: {:?}, Destination:{:?}", value, src, dst) }
-        self.adv_pc();
+            println!("Read reg value: {:X}, Source: {:?}, Destination:{:?}", value, src, dst);
+        }
+
+        self.adv_pc(1);
+        // Cycles depend on the registry, TODO
+        self.adv_cycles(5);
     }
 
     fn rst(&mut self, value: u8) {
@@ -584,39 +707,40 @@ impl Cpu {
             5 => reset = 0x28,
             6 => reset = 0x30,
             7 => reset = 0x38,
+
             _ => println!("RESET address unknown: {:#X}", reset),
         }
+
         self.sp.wrapping_sub(2);
+
         self.pc = reset as u16;
+        self.adv_cycles(11);
     }
 
 
-
-    // I think it might be a good idea to segment instructions based on functionality.
-    // Move logical operations to a separate file, jump & call to one etc?
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
 
         if DEBUG { println!("Instruction: {:?},", instruction) };
 
         match instruction {
-            Instruction::NOP =>  self.adv_pc(),
+            Instruction::NOP =>  self.adv_pc(1),
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
-            Instruction::ADI => self.adv_pc(),
+            Instruction::ADI => self.adv_pc(2),
             Instruction::ADC(reg) => self.adc(reg),
             Instruction::ANA(reg) => self.ana(reg),
             Instruction::ANI => self.ani(),
 
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
-            Instruction::CZ => self.adv_pc(),      // TODO
-            Instruction::CM => self.adv_pc(),      // TODO
-            Instruction::CNC => self.adv_pc(),     // TODO
-            Instruction::CMC => self.adv_pc(),     // TODO
+            Instruction::CZ => self.adv_pc(3),      // TODO
+            Instruction::CM => self.adv_pc(3),      // TODO
+            Instruction::CNC => self.adv_pc(3),     // TODO
+            Instruction::CMC => self.adv_pc(1),     // TODO
             Instruction::CMP(reg) => self.cmp(reg),
-            Instruction::CPE => self.adv_pc(),     // TODO
+            Instruction::CPE => self.adv_pc(3),     // TODO
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcr(reg),
 
@@ -626,7 +750,7 @@ impl Cpu {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP =>  self.jmp(),
-            Instruction::JPE =>  self.adv_pc(),
+            Instruction::JPE =>  self.adv_pc(3),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
@@ -637,11 +761,11 @@ impl Cpu {
             Instruction::RPE => self.rpe(),
             Instruction::RET => self.ret(),
 
-            Instruction::POP(reg) => self.pop(),
-            Instruction::POP_PSW => self.adv_pc(), // TODO
+            Instruction::POP(reg) => self.pop(reg),
+            Instruction::POP_PSW => self.adv_pc(1), // TODO
             Instruction::PUSH(reg)=> self.push(reg),
 
-            Instruction::IN => self.adv_pc(),
+            Instruction::IN => self.adv_pc(2),
             Instruction::INR(reg) => self.inr(reg),
             Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
@@ -650,18 +774,18 @@ impl Cpu {
             Instruction::STAX(reg) => self.stax(reg),
             Instruction::LDA => self.lda(),
             Instruction::LDAX(reg) => self.ldax(reg),
-            Instruction::LHLD => self.adv_pc(),
+            Instruction::LHLD => self.adv_pc(3),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
-            Instruction::RAL => self.adv_pc(),
+            Instruction::RAL => self.adv_pc(1),
 
-            Instruction::RC => self.adv_pc(),     // TODO
+            Instruction::RC => self.adv_pc(1),     // TODO
             Instruction::RST(0) => self.rst(1),
             Instruction::RST(1) => self.rst(2),
             Instruction::RST(2) => self.rst(2),
             Instruction::RST(3) => self.rst(3),
-            Instruction::RST(4)=> self.rst(4),
+            Instruction::RST(4) => self.rst(4),
             Instruction::RST(5) => self.rst(5),
             Instruction::RST(6) => self.rst(6),
             Instruction::RST(7) => self.rst(7),
@@ -669,35 +793,37 @@ impl Cpu {
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
 
-            Instruction::HLT => self.adv_pc(),     // TODO
-            Instruction::RLC => self.adv_pc(),     // TODO
-            Instruction::RNC => self.adv_pc(),     // TODO
-            Instruction::RRC => self.adv_pc(),     // TODO
+            Instruction::HLT => self.adv_pc(1),     // TODO
+            Instruction::RLC => self.adv_pc(1),     // TODO
+            Instruction::RNC => self.adv_pc(1),     // TODO
+            Instruction::RRC => self.adv_pc(1),     // TODO
 
-            Instruction::STC => self.adv_pc(),     // TODO
-            Instruction::SHLD => self.adv_pc(),    // TODO
-            Instruction::ORA(reg) => self.adv_pc(),// TODO
+            Instruction::STC => self.adv_pc(1),     // TODO
+            Instruction::SHLD => self.adv_pc(3),    // TODO
+            Instruction::ORA(reg) => self.adv_pc(1),// TODO
 
-            Instruction::JNC => self.adv_pc(),     // TODO
-            Instruction::JNZ => self.adv_pc(),     // TODO
-            Instruction::JM => self.adv_pc(),      // TODO
-            Instruction::JZ => self.adv_pc(),      // TODO
-            Instruction::XRA_L => self.adv_pc(),   // TODO
-            Instruction::XRI => self.adv_pc(),
-            Instruction::XCHG => self.adv_pc(),    // TODO
-            Instruction::XTHL => self.adv_pc(),    // TODO
+            Instruction::JNC => self.adv_pc(3),     // TODO
+            Instruction::JNZ => self.adv_pc(3),     // TODO
+            Instruction::JM => self.adv_pc(3),      // TODO
+            Instruction::JZ => self.adv_pc(3),      // TODO
+            Instruction::XRA_L => self.adv_pc(1),   // TODO
+            Instruction::XRI => self.adv_pc(1),
+            Instruction::XCHG => self.adv_pc(1),    // TODO
+            Instruction::XTHL => self.adv_pc(1),    // TODO
 
             _ => println!("Unknown instruction {:#X}", self.opcode),
         }
 
     }
+
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
         use self::Register::*;
 
         if DEBUG {
             println!("Opcode: {:#X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp);
-            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, M: {:X}", self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_m)
+            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, M: {:X}",
+                     self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_m);
         };
 
         match self.opcode {
