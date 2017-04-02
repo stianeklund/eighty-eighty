@@ -1,7 +1,10 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+
 use opcode::{Instruction, Register};
+use super::interconnect::Interconnect;
+use super::memory;
 
 const DEBUG: bool = true;
 
@@ -27,7 +30,7 @@ const DEBUG: bool = true;
 #[allow(dead_code)]
 pub struct Cpu {
 
-    pub memory: Box<[u8; 65536]>,
+    memory: memory::Memory,
     opcode: u8,
 
     pc: u16,
@@ -66,8 +69,9 @@ pub struct Cpu {
 
 impl Cpu {
     pub fn new() -> Cpu {
+        let memory = memory::Memory::new();
         Cpu {
-            memory: Box::new([0; 65536]),
+            memory: memory,
             opcode: 0,
 
             pc: 0,
@@ -105,16 +109,6 @@ impl Cpu {
     fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }
-
-    fn write_byte(&mut self, addr: u8, mut byte: u16) {
-        byte = self.memory[addr as usize & 0xFFFF] as u16
-    }
-
-    fn write_word(&mut self, addr: u8, word: u16) {
-        self.write_byte(addr, word & 0xFF);
-        self.write_byte(addr + 1, (word >> 8) & 0xFF);
-    }
-
 
     fn read_reg(&self, reg: Register) -> u8 {
         match reg {
@@ -243,20 +237,20 @@ impl Cpu {
     }
 
     fn jmp(&mut self) {
-        self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+        self.pc = self.memory.read_word(self.pc);
         self.adv_cycles(10);
     }
 
     //TODO Conditional jump
     fn jc(&mut self) {
-        self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
-
+        self.pc = self.memory.read_word(self.pc);
         self.adv_cycles(10);
     }
 
 
     fn lxi_sp(&mut self) {
-        self.sp = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+        self.sp = self.memory.read_word(self.pc);
+
         self.adv_pc(3);
         self.adv_cycles(10);
     }
@@ -266,18 +260,18 @@ impl Cpu {
     fn lxi(&mut self, reg: Register) {
         match reg {
             Register::B => {
-                self.reg_b = self.memory[self.pc as usize + 2];
-                self.reg_c = self.memory[self.pc as usize + 1];
+                self.reg_b = self.memory.read(self.pc as usize + 2);
+                self.reg_c = self.memory.read(self.pc as usize + 1);
             },
 
             Register::D => {
-                self.reg_d = self.memory[self.pc as usize + 2];
-                self.reg_e = self.memory[self.pc as usize + 1];
+                self.reg_d = self.memory.read(self.pc as usize + 2);
+                self.reg_e = self.memory.read(self.pc as usize + 1);
             },
 
             Register::H => {
-                self.reg_h = self.memory[self.pc as usize + 2];
-                self.reg_l = self.memory[self.pc as usize + 1];
+                self.reg_h = self.memory.read(self.pc as usize + 2);
+                self.reg_l = self.memory.read(self.pc as usize + 1);
             },
             _ => println!("LXI should be run on registry pairs only"),
 
@@ -290,27 +284,29 @@ impl Cpu {
     fn sta(&mut self) {
         let reg_a = self.reg_a;
         let reg_bc = self.reg_bc;
-        self.write_word(reg_a, reg_bc);
+        self.memory.write_word(reg_a, reg_bc);
 
         self.adv_pc(3);
         self.adv_cycles(13);
     }
 
     fn call(&mut self, addr: u16) {
-        // CALL instructions occupy three bytes. (See page 34 of the 8080 Prrogrammers Manual)
+        // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
 
         let ret: u16 = self.pc + 3;
+        let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize);
 
         match self.opcode {
             0xCD |  0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
-                self.memory[self.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
-                self.memory[self.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
+                sub1 = (ret >> 8 & 0xFF) as u8;
+                sub2 = (ret & 0xFF) as u8;
 
                 self.sp.wrapping_sub(2);
 
-                self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
+                self.pc = self.memory.read_word(self.pc);
             },
             _ => println!("Unknown call address: {:#X}", self.opcode),
         }
@@ -446,7 +442,7 @@ impl Cpu {
     }
 
     fn lda (&mut self) {
-        self.reg_a = self.memory[self.pc as usize];
+        self.reg_a = self.memory.read(self.pc as usize);
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -526,22 +522,25 @@ impl Cpu {
     }
 
     fn push(&mut self, reg: Register) {
+        let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize);
+
         match reg {
             Register::B => {
-                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_c;
-                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_b;
+                sub2 = self.reg_c;
+                sub1  = self.reg_b;
                 self.sp.wrapping_sub(2);
             },
 
             Register::D => {
-                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_e;
-                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_d;
+                sub2 = self.reg_e;
+                sub1 = self.reg_d;
                 self.sp.wrapping_sub(2);
             },
 
             Register::H => {
-                self.memory[self.sp.wrapping_sub(2) as usize] = self.reg_l;
-                self.memory[self.sp.wrapping_sub(1) as usize] = self.reg_h;
+                sub2 = self.reg_l;
+                sub2 = self.reg_h;
                 self.sp.wrapping_sub(2);
             },
 
@@ -560,13 +559,29 @@ impl Cpu {
         let reg_bc = self.reg_bc;
 
         match reg {
-            Register::B => self.memory[self.reg_b.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
-            Register::C => self.memory[self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
-            Register::D => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
-            Register::E => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
+            Register::B => {
+                let mut b = self.memory.read_or(self.reg_b.wrapping_shl(8) as usize | self.reg_c as usize);
+                    b = self.reg_a;
+            },
+
+            Register::C => {
+                let mut c = self.memory.read_or(self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize);
+                c = self.reg_b;
+            },
+
+            Register::D => {
+                let mut d = self.memory.read_or(self.reg_d.wrapping_shl(8) as usize | self.reg_c as usize);
+                d = self.reg_b;
+
+            },
+
+            Register::E => {
+                let mut e = self.memory.read_or(self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize);
+                e = self.reg_a;
+            },
 
             _ => println!("STAX call to invalid registry"),
-        };
+        }
 
         self.adv_cycles(7);
         self.adv_pc(1);
@@ -631,24 +646,24 @@ impl Cpu {
     fn pop(&mut self, reg: Register) {
         match reg {
             Register::B =>  {
-                self.reg_c = (self.memory[self.sp as usize + 0]) & 0xFFFF;
-                self.reg_b = (self.memory[self.sp as usize + 1]) & 0xFFFF;
+                self.reg_c = self.memory.read(self.sp as usize + 0) & 0xFFFF;
+                self.reg_b = self.memory.read(self.sp as usize + 1) & 0xFFFF;
             },
 
             Register::D => {
-                self.reg_e = (self.memory[self.sp as usize + 0]) & 0xFFFF;
-                self.reg_d = (self.memory[self.sp as usize + 1]) & 0xFFFF;
+                self.reg_e = self.memory.read(self.sp as usize + 0) & 0xFFFF;
+                self.reg_d = self.memory.read(self.sp as usize + 1) & 0xFFFF;
 
             },
 
             Register::H => {
-                self.reg_l = (self.memory[self.sp as usize + 0]) & 0xFFFF;
-                self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
+                self.reg_l = self.memory.read(self.sp as usize + 0) & 0xFFFF;
+                self.reg_h = self.memory.read(self.sp as usize + 1) & 0xFFFF;
             },
 
             Register::L => {
-                self.reg_a = (self.memory[self.sp as usize]) & 0xFFFF;
-                self.reg_h = (self.memory[self.sp as usize + 1]) & 0xFFFF;
+                self.reg_a = self.memory.read(self.sp as usize) & 0xFFFF;
+                self.reg_h = self.memory.read(self.sp as usize + 1) & 0xFFFF;
             },
 
             _ => println!("Can't pop this register"),
@@ -663,7 +678,7 @@ impl Cpu {
 
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = (self.memory[self.sp as usize + 1] | self.memory[self.sp as usize]) as u16;
+        let sp = self.memory.read_rp(self.sp as usize + 1) | self.memory.read_rp(self.sp as usize) as u16;
         self.sp += 2;
         sp
 
@@ -816,7 +831,7 @@ impl Cpu {
     }
 
     pub fn execute_instruction(&mut self) {
-        self.opcode = self.memory[self.pc as usize];
+        self.opcode = self.memory.read(self.pc as usize);
         use self::Register::*;
 
         if DEBUG {
@@ -1167,8 +1182,10 @@ impl Cpu {
         file.read_to_end(&mut buf).expect("Failed to read file");
 
 
+        let ref mut mem = self.memory.memory;
         let buf_len = buf.len();
-        for i in 0..buf_len { self.memory[i] = buf[i]; }
+        for i in 0..buf_len {
+            mem[i] = buf[i]; }
         println!("Loaded binary");
     }
 }

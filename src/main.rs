@@ -8,6 +8,7 @@ mod display;
 mod interconnect;
 mod memory;
 
+
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -17,14 +18,10 @@ fn main() {
     }
 
     let bin = &args[1];
-
     let mut cpu = cpu::Cpu::new();
-
-    // let sdl_ctx = sdl2::init().expect("sdl2 init failed");
-    // let timer = sdl_ctx.timer().expect("timer failed");
-
+    let mut inter = interconnect::Interconnect::new();
     cpu.load_bin(bin);
-    // let mut display = Display::new(&sdl_ctx);
+
 
     loop {
         cpu.execute_instruction();
