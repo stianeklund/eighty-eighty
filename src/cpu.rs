@@ -102,7 +102,6 @@ impl Cpu {
         }
     }
 
-    #[allow(dead_code)]
     fn set_sp(&mut self, byte: u16) {
         self.sp = byte & 0xFFFF;
     }

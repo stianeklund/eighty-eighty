@@ -4,8 +4,9 @@ use std::env;
 
 mod cpu;
 mod opcode;
-mod gfx;
-use gfx::Display;
+mod display;
+mod interconnect;
+mod memory;
 
 fn main() {
 
@@ -19,8 +20,8 @@ fn main() {
 
     let mut cpu = cpu::Cpu::new();
 
-    let sdl_ctx = sdl2::init().expect("sdl2 init failed");
-    let timer = sdl_ctx.timer().expect("timer failed");
+    // let sdl_ctx = sdl2::init().expect("sdl2 init failed");
+    // let timer = sdl_ctx.timer().expect("timer failed");
 
     cpu.load_bin(bin);
     // let mut display = Display::new(&sdl_ctx);

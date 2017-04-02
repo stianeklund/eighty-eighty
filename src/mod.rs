@@ -1,4 +1,6 @@
 pub mod cpu;
 pub mod opcode;
-pub mod gfx;
+pub mod display;
+pub mod memory;
+pub mod interconnect;
 
