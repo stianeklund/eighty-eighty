@@ -22,10 +22,6 @@ impl fmt::UpperHex for Register {
   }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
-pub enum RegisterPair {
-    BC, DE, HL
-}
 
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
@@ -63,8 +59,6 @@ pub enum Instruction {
     LDAX(Register),
     LXI(Register),
     MOV(Register, Register),
-    MOV_R_PR(RegisterPair, Register),
-    MOV_R_RP(Register, RegisterPair),
     MVI(Register, u8),
     RAR,
     RC,

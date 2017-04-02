@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use opcode::{Instruction, Register, RegisterPair};
+use opcode::{Instruction, Register};
 
 const DEBUG: bool = true;
 
@@ -107,20 +107,8 @@ impl Cpu {
         self.sp = byte & 0xFFFF;
     }
 
-    fn read_byte(&mut self, addr: u8) -> u8 {
-        self.memory[addr as usize & 0xFFFF]
-    }
-
     fn write_byte(&mut self, addr: u8, mut byte: u16) {
-        byte = self.memory[addr as usize & 0xFFFF] as u16;
-    }
-
-    fn read_word(&mut self, addr: u8) -> u16 {
-        (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
-    }
-
-    fn read_short(&mut self, addr: usize) -> u16 {
-        (self.memory[addr] | self.memory[addr]) as u16
+        byte = self.memory[addr as usize & 0xFFFF] as u16
     }
 
     fn write_word(&mut self, addr: u8, word: u16) {
@@ -142,14 +130,6 @@ impl Cpu {
         }
     }
 
-    fn read_reg16(&self, reg: RegisterPair) -> u16 {
-        match reg {
-            RegisterPair::BC => self.reg_bc,
-            RegisterPair::DE => self.reg_de,
-            RegisterPair::HL => self.reg_hl,
-        }
-    }
-
     fn write_reg(&mut self, reg: Register, value: u8) {
         match reg {
             Register::A => self.reg_a = value,
@@ -162,15 +142,6 @@ impl Cpu {
             Register::M => self.reg_m = value,
         }
     }
-
-    fn write_reg_pair(&mut self, reg: RegisterPair, value: u16) {
-        match reg {
-            RegisterPair::BC => self.reg_bc = value,
-            RegisterPair::DE => self.reg_de = value,
-            RegisterPair::HL => self.reg_hl = value,
-        }
-    }
-
 
     // Instruction functions, possible improvement is to group functions
     // by type or separate them by type, e.g mov goes together.
@@ -260,7 +231,7 @@ impl Cpu {
 
     //TODO Conditional jump
     fn jc(&mut self) {
-        self.pc = (self.opcode & 0x0FFF) as u16;
+        self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
     }
 
 
@@ -330,7 +301,7 @@ impl Cpu {
         // Double precision ADD.
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
-        let mut value: u8;
+        let value: u8;
 
         match reg {
             Register::B => {
@@ -601,7 +572,6 @@ impl Cpu {
     }
 
     fn rst(&mut self, value: u8) {
-        // use self::Instruction::RST;
 
         let mut reset = 0u8;
 
@@ -616,7 +586,6 @@ impl Cpu {
             7 => reset = 0x38,
             _ => println!("RESET address unknown: {:#X}", reset),
         }
-        // let reset = self.pc;
         self.sp.wrapping_sub(2);
         self.pc = reset as u16;
     }
@@ -627,6 +596,7 @@ impl Cpu {
     // Move logical operations to a separate file, jump & call to one etc?
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
+
         if DEBUG { println!("Instruction: {:?},", instruction) };
 
         match instruction {
@@ -724,7 +694,6 @@ impl Cpu {
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory[self.pc as usize];
         use self::Register::*;
-        use self::RegisterPair::*;
 
         if DEBUG {
             println!("Opcode: {:#X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp);
