@@ -1,11 +1,26 @@
+use std::fmt;
+
 #[derive(Debug)]
 pub struct Opcode;
+
+impl fmt::UpperHex for Opcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:X}", val)
+    }
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum Register {
     A, B, C, D, E, H, L, M
 }
 
+impl fmt::UpperHex for Register {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:X}", val)
+  }
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum RegisterPair {
@@ -36,7 +51,7 @@ pub enum Instruction {
     DCR(Register),
     DCX(Register),
     HLT,
-    INX(RegisterPair),
+    INX(Register),
     INR(Register),
     JC,
     JNC,
@@ -45,7 +60,7 @@ pub enum Instruction {
     JMP,
     JPO,
     LDA,
-    LDAX(RegisterPair),
+    LDAX(Register),
     LXI(Register),
     MOV(Register, Register),
     MOV_R_PR(RegisterPair, Register),

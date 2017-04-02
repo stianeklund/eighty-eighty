@@ -308,7 +308,7 @@ impl Cpu {
 
                 self.pc = (self.memory[self.pc as usize + 2] as u16) << 8 | (self.memory[self.pc as usize + 1] as u16);
             },
-            _ => println!("Unknown call address: {:X}", self.opcode),
+            _ => println!("Unknown call address: {:#X}", self.opcode),
         }
 
         // println!("Subroutine call: {:X}", self.pc);
@@ -347,11 +347,7 @@ impl Cpu {
                 value.wrapping_add(self.reg_h.wrapping_shl(8) | self.reg_l);
             },
 
-            Register::A =>  println!("DAD should not run on this register"),
-            Register::C =>  println!("DAD should not run on this register"),
-            Register::E =>  println!("DAD should not run on this register"),
-            Register::M =>  println!("DAD should not run on this register"),
-            Register::L =>  println!("DAD should not run on this register"),
+            _ => println!("DAD on wrong register"),
         };
         self.adv_pc();
     }
@@ -417,56 +413,68 @@ impl Cpu {
         self.reg_a = self.memory[self.pc as usize];
         self.adv_pc();
     }
-    fn ldax(&mut self, reg: RegisterPair) {
+
+    fn ldax(&mut self, reg: Register) {
+        // LDAX(Load accumulator indirect):
+        // The contents of the designated register pair point to a memory location.
+        // This instruction copies the contents of that memory location into the accumulator.
+        // The contents of either the register pair or the memory location are not altered.
         match reg {
-            RegisterPair::BC => self.adv_pc(),
-            RegisterPair::DE => self.adv_pc(),
-            RegisterPair::HL => self.adv_pc(),
-        }
+            Register::B =>  self.reg_a = 0xF,
+            Register::D =>  self.reg_a = 0xD,
+            _ => println!("LDAX on invalid register"),
+        };
+
         self.adv_pc();
     }
 
     fn inr(&mut self, reg: Register) {
         match reg {
-            Register::A => self.write_reg(Register::A, 1),
-            Register::B => self.write_reg(Register::B, 1),
-            Register::C => self.write_reg(Register::C, 1),
-            Register::D => self.write_reg(Register::D, 1),
-            Register::E => self.write_reg(Register::D, 1),
-            Register::H => self.write_reg(Register::D, 1),
-            Register::L => self.write_reg(Register::D, 1),
-            Register::M => self.write_reg(Register::M, 1),
-        }
-        self.adv_pc();
-    }
-
-    fn inx_rp(&mut self, reg: RegisterPair) {
-        match reg {
-            RegisterPair::BC => self.write_reg_pair(RegisterPair::BC, 1),
-            RegisterPair::DE => self.write_reg_pair(RegisterPair::DE, 1),
-            RegisterPair::HL => self.write_reg_pair(RegisterPair::HL, 1),
-        }
-        self.adv_pc();
-    }
-
-    // Increment register pair by one
-    fn inx(&mut self, reg: Register) {
-        match reg {
-            Register::A => self.reg_a < self.reg_a + 1,
-            Register::B => self.reg_b < self.reg_b + 1,
-            Register::C => self.reg_c < self.reg_c + 1,
-            Register::D => self.reg_d < self.reg_d + 1,
-            Register::E => self.reg_d < self.reg_d + 1,
-            Register::H => self.reg_h < self.reg_h + 1,
-            Register::L => self.reg_l < self.reg_l + 1,
-            Register::M => self.reg_m < self.reg_m + 1,
+            Register::A => self.reg_a += 1,
+            Register::B => self.reg_b += 1,
+            Register::C => self.reg_c += 1,
+            Register::D => self.reg_d += 1,
+            Register::E => self.reg_e += 1,
+            Register::H => self.reg_h += 1 ,
+            Register::L => self.reg_l += 1,
+            Register::M => self.reg_m += 1,
         };
+
+        self.adv_pc();
+    }
+
+    fn inx(&mut self, reg: Register) {
+
+        match reg {
+            Register::B => {
+                self.reg_c += 1;
+                if self.reg_c == 0 {
+                    self.reg_b += 1;
+                }
+            },
+
+            Register::D => {
+                self.reg_e += 1;
+                if self.reg_e == 0 {
+                    self.reg_d += 1;
+                }
+            },
+
+            Register::H => {
+                self.reg_l += 1;
+                if self.reg_l == 0 {
+                    self.reg_h += 1;
+                }
+            },
+            _ => println!("INX call on the wrong register"),
+        };
+
         self.adv_pc();
     }
 
     // TODO
     fn inx_sp(&mut self) {
-        self.sp < self.sp + 1;
+        self.sp += 1;
         self.adv_pc();
     }
 
@@ -502,14 +510,11 @@ impl Cpu {
         let reg_bc = self.reg_bc;
 
         match reg {
-            Register::A => println!("Shouldn't store to register A"),
             Register::B => self.memory[self.reg_b.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
             Register::C => self.memory[self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
             Register::D => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
             Register::E => self.memory[self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize] = self.reg_a,
-            Register::H => println!("Shouldn't store to register H"),
-            Register::L => println!("Shouldn't store to register L"),
-            Register::M => println!("Shouldn't store to register M"),
+            _ => println!("STAX call to invalid registry"),
         };
         self.adv_pc();
     }
@@ -587,10 +592,11 @@ impl Cpu {
         self.adv_pc();
     }
 
-    fn mov(&mut self,src: Register, dst: Register) {
+    fn mov(&mut self, dst: Register, src: Register,) {
         let value = self.read_reg(src);
         self.write_reg(dst, value);
-        if DEBUG { println!("Read reg value: {}, src: {:?}, dst:{:?}", value, src, dst)}
+        if DEBUG {
+            println!("Read reg value: {:X}, Source: {:?}, Destination:{:?}", value, src, dst) }
         self.adv_pc();
     }
 
@@ -608,7 +614,7 @@ impl Cpu {
             5 => reset = 0x28,
             6 => reset = 0x30,
             7 => reset = 0x38,
-            _ => println!("RESET address unknown: {:?}", reset),
+            _ => println!("RESET address unknown: {:#X}", reset),
         }
         // let reset = self.pc;
         self.sp.wrapping_sub(2);
@@ -624,7 +630,7 @@ impl Cpu {
         if DEBUG { println!("Instruction: {:?},", instruction) };
 
         match instruction {
-            Instruction::NOP => self.adv_pc(),
+            Instruction::NOP =>  self.adv_pc(),
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
@@ -642,6 +648,7 @@ impl Cpu {
             Instruction::CMP(reg) => self.cmp(reg),
             Instruction::CPE => self.adv_pc(),     // TODO
             Instruction::DCR(reg) => self.dcr(reg),
+            Instruction::DCX(reg) => self.dcr(reg),
 
             Instruction::DAA =>  self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
@@ -666,7 +673,7 @@ impl Cpu {
 
             Instruction::IN => self.adv_pc(),
             Instruction::INR(reg) => self.inr(reg),
-            Instruction::INX(reg) => self.inx_rp(reg),
+            Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
             Instruction::OUT => self.out(),
             Instruction::STA => self.sta(),
@@ -710,7 +717,7 @@ impl Cpu {
             Instruction::XCHG => self.adv_pc(),    // TODO
             Instruction::XTHL => self.adv_pc(),    // TODO
 
-            _ => println!("Unknown instruction {:X}", self.opcode),
+            _ => println!("Unknown instruction {:#X}", self.opcode),
         }
 
     }
@@ -719,14 +726,17 @@ impl Cpu {
         use self::Register::*;
         use self::RegisterPair::*;
 
-        if DEBUG { println!("Opcode: 0x{:X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp); }
+        if DEBUG {
+            println!("Opcode: {:#X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp);
+            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, M: {:X}", self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_m)
+        };
 
         match self.opcode {
 
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STAX(B)),
-            0x03 => self.decode(Instruction::INX(BC)),
+            0x03 => self.decode(Instruction::INX(B)),
             0x04 => self.decode(Instruction::INR(B)),
             0x05 => self.decode(Instruction::DCR(B)),
             0x06 => self.decode(Instruction::MVI(B, 0xD8)),
@@ -734,7 +744,7 @@ impl Cpu {
             0x08 => self.decode(Instruction::NOP),
             0x09 => self.decode(Instruction::DAD(B)),
 
-            0x0A => self.decode(Instruction::LDAX(BC)),
+            0x0A => self.decode(Instruction::LDAX(B)),
             0x0B => self.decode(Instruction::DCX(B)),
             0x0C => self.decode(Instruction::INR(C)),
             0x0D => self.decode(Instruction::DCR(D)),
@@ -745,7 +755,7 @@ impl Cpu {
             0x10 => self.decode(Instruction::NOP),
             0x11 => self.decode(Instruction::LXI(D)),
             0x12 => self.decode(Instruction::STAX(D)),
-            0x13 => self.decode(Instruction::INX(DE)),
+            0x13 => self.decode(Instruction::INX(D)),
             0x14 => self.decode(Instruction::INR(D)),
             0x15 => self.decode(Instruction::DCR(D)),
             0x16 => self.decode(Instruction::MVI(D, 0xD8)),
@@ -753,7 +763,7 @@ impl Cpu {
             0x18 => self.decode(Instruction::NOP),
             0x19 => self.decode(Instruction::DAD(D)),
 
-            0x1A => self.decode(Instruction::LDAX(DE)),
+            0x1A => self.decode(Instruction::LDAX(D)),
             0x1B => self.decode(Instruction::DCX(D)),
             0x1C => self.decode(Instruction::INR(E)),
             0x1D => self.decode(Instruction::DCR(E)),
@@ -764,7 +774,7 @@ impl Cpu {
             0x20 => self.decode(Instruction::NOP),
             0x21 => self.decode(Instruction::LXI(H)),
             0x22 => self.decode(Instruction::SHLD),
-            0x23 => self.decode(Instruction::INX(HL)),
+            0x23 => self.decode(Instruction::INX(H)),
             0x24 => self.decode(Instruction::INR(H)),
             0x25 => self.decode(Instruction::DCR(H)),
             0x26 => self.decode(Instruction::MVI(H, 0xD8)),
@@ -1024,7 +1034,7 @@ impl Cpu {
             0xFE => self.decode(Instruction::XRI),
             0xFF => self.decode(Instruction::RST(7)),
 
-            _ => println!("Unknown opcode: {:X}", self.opcode),
+            _ => println!("Unknown opcode: {:#X}", self.opcode),
         }
     }
 
