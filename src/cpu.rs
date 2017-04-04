@@ -259,23 +259,11 @@ impl Cpu {
     // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory pointer)
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
-            RegisterPair::BC => {
-                self.reg_bc = self.memory.read_word(self.pc);
-                // self.reg_c = self.memory.read(self.pc as usize + 1);
-            },
-
-            RegisterPair::DE => {
-                self.reg_de = self.memory.read_word(self.pc);
-                // self.reg_e = self.memory.read(self.pc as usize + 1);
-            },
-
-            RegisterPair::HL => {
-                self.reg_hl = self.memory.read_word(self.pc);
-                // self.reg_l = self.memory.read(self.pc as usize + 1);
-            },
+            RegisterPair::BC => self.reg_bc = self.memory.read_word(self.pc),
+            RegisterPair::DE => self.reg_de = self.memory.read_word(self.pc),
+            RegisterPair::HL => self.reg_hl = self.memory.read_word(self.pc),
 
         };
-
         self.adv_pc(3);
         self.adv_cycles(10);
     }
@@ -532,6 +520,7 @@ impl Cpu {
 
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
+    // TODO Use RegisterPair
     fn stax(&mut self, reg: Register) {
         let reg_bc = self.reg_bc;
 
@@ -619,31 +608,15 @@ impl Cpu {
         // self.adv_cycles(4);
     }
 
-    // POP Register Pairs (TODO PSW)
-    fn pop(&mut self, reg: Register) {
+    fn pop(&mut self, reg: RegisterPair) {
         match reg {
-            Register::B =>  {
-                self.reg_c = self.memory.read(self.sp as usize + 0) & 0xFFFF;
-                self.reg_b = self.memory.read(self.sp as usize + 1) & 0xFFFF;
-            },
+            RegisterPair::BC => self.reg_bc = self.memory.read_word(self.sp + 1) & 0xFFFF,
+            RegisterPair::DE => self.reg_de = self.memory.read_word(self.sp + 1) & 0xFFFF,
+            RegisterPair::HL => self.reg_hl = self.memory.read_word(self.sp + 1) & 0xFFFF,
 
-            Register::D => {
-                self.reg_e = self.memory.read(self.sp as usize + 0) & 0xFFFF;
-                self.reg_d = self.memory.read(self.sp as usize + 1) & 0xFFFF;
-
-            },
-
-            Register::H => {
-                self.reg_l = self.memory.read(self.sp as usize + 0) & 0xFFFF;
-                self.reg_h = self.memory.read(self.sp as usize + 1) & 0xFFFF;
-            },
-
-            Register::L => {
-                self.reg_a = self.memory.read(self.sp as usize) & 0xFFFF;
-                self.reg_h = self.memory.read(self.sp as usize + 1) & 0xFFFF;
-            },
-
-            _ => println!("Can't pop this register"),
+            _ => {
+                self.reg_psw = self.memory.read_word(self.sp + 1) & 0xFFFF as u16;
+            }
         }
 
         self.sp.wrapping_add(2);
@@ -709,6 +682,7 @@ impl Cpu {
     }
 
 
+
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
         use self::RegisterPair::*;
@@ -716,34 +690,37 @@ impl Cpu {
         if DEBUG { println!("Instruction: {:?},", instruction) };
 
         match instruction {
-            Instruction::NOP =>  self.adv_pc(1),
+            Instruction::NOP => self.adv_pc(1),
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
-            Instruction::ADI => self.adv_pc(2),
+            Instruction::ADI => println!("Not implemented: {:?}", instruction),
+
             Instruction::ADC(reg) => self.adc(reg),
             Instruction::ANA(reg) => self.ana(reg),
             Instruction::ANI => self.ani(),
 
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
-            Instruction::CZ => self.adv_pc(3),      // TODO
-            Instruction::CM => self.adv_pc(3),      // TODO
-            Instruction::CNC => self.adv_pc(3),     // TODO
-            Instruction::CMC => self.adv_pc(1),     // TODO
+            Instruction::CZ => println!("Not implemented: {:?}", instruction),
+            Instruction::CM => println!("Not implemented: {:?}", instruction),
+            Instruction::CNC => println!("Not implemented: {:?}", instruction),
+            Instruction::CMC => println!("Not implemented: {:?}", instruction),
+
             Instruction::CMP(reg) => self.cmp(reg),
-            Instruction::CPE => self.adv_pc(3),     // TODO
+            Instruction::CPE => println!("Not implemented: {:?}", instruction),
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
 
-            Instruction::DAA =>  self.daa(),
+            Instruction::DAA => self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
             Instruction::DAD_SP => self.dad_sp(),
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
-            Instruction::JMP =>  self.jmp(),
-            Instruction::JPE =>  self.jmp(), // TODO
-            Instruction::JPO =>  self.jmp(), // TODO 
+            Instruction::JMP => self.jmp(),
+            Instruction::JPE => println!("Not implemented: {:?}", instruction),
+            Instruction::JPO => println!("Not implemented: {:?}", instruction),
+
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
@@ -755,10 +732,10 @@ impl Cpu {
             Instruction::RET => self.ret(),
 
             Instruction::POP(reg) => self.pop(reg),
-            Instruction::POP_PSW => self.adv_pc(1), // TODO
+            Instruction::POP_PSW(reg) => self.pop(reg),
             Instruction::PUSH(reg)=> self.push(reg),
 
-            Instruction::IN => self.adv_pc(2),
+            Instruction::IN => println!("Not implemented: {:?}", instruction),
             Instruction::INR(reg) => self.inr(reg),
             Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
@@ -767,13 +744,12 @@ impl Cpu {
             Instruction::STAX(reg) => self.stax(reg),
             Instruction::LDA => self.lda(),
             Instruction::LDAX(reg) => self.ldax(reg),
-            Instruction::LHLD => self.adv_pc(3),
+            Instruction::LHLD => println!("Not implemented: {:?}", instruction),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
-            Instruction::RAL => self.adv_pc(1),
-
-            Instruction::RC => self.adv_pc(1),     // TODO
+            Instruction::RAL => println!("Not implemented: {:?}", instruction),
+            Instruction::RC => println!("Not implemented: {:?}", instruction),
             Instruction::RST(0) => self.rst(1),
             Instruction::RST(1) => self.rst(2),
             Instruction::RST(2) => self.rst(2),
@@ -787,22 +763,24 @@ impl Cpu {
             Instruction::RZ => self.rz(),
 
             Instruction::HLT => self.adv_pc(1),     // TODO
-            Instruction::RLC => self.adv_pc(1),     // TODO
-            Instruction::RNC => self.adv_pc(1),     // TODO
-            Instruction::RRC => self.adv_pc(1),     // TODO
+            Instruction::RLC => println!("Not implemented: {:?}", instruction),
+            Instruction::RNC => println!("Not implemented: {:?}", instruction),
+            Instruction::RRC => println!("Not implemented: {:?}", instruction),
 
-            Instruction::STC => self.adv_pc(1),     // TODO
-            Instruction::SHLD => self.adv_pc(3),    // TODO
-            Instruction::ORA(reg) => self.adv_pc(1),// TODO
+            Instruction::STC => println!("Not implemented: {:?}", instruction),
+            Instruction::SHLD => println!("Not implemented: {:?}", instruction),
+            Instruction::ORA(reg) => println!("Not implemented: {:?}", instruction),
 
-            Instruction::JNC => self.adv_pc(3),     // TODO
-            Instruction::JNZ => self.adv_pc(3),     // TODO
-            Instruction::JM => self.adv_pc(3),      // TODO
-            Instruction::JZ => self.adv_pc(3),      // TODO
-            Instruction::XRA_L => self.adv_pc(1),   // TODO
-            Instruction::XRI => self.adv_pc(1),
-            Instruction::XCHG => self.adv_pc(1),    // TODO
-            Instruction::XTHL => self.adv_pc(1),    // TODO
+            // Jump instructions can probably use just one function.
+            Instruction::JNC => println!("Not implemented: {:?}", instruction),
+            Instruction::JNZ => println!("Not implemented: {:?}", instruction),
+            Instruction::JM => println!("Not implemented: {:?}", instruction),
+            Instruction::JZ => println!("Not implemented: {:?}", instruction),
+            Instruction::XRA_L => println!("Not implemented: {:?}", instruction),
+            Instruction::XRI => println!("Not implemented: {:?}", instruction),
+
+            Instruction::XCHG => println!("Not implemented: {:?}", instruction),
+            Instruction::XTHL => println!("Not implemented: {:?}", instruction),
 
             _ => println!("Unknown instruction {:#X}", self.opcode),
         }
@@ -1053,7 +1031,7 @@ impl Cpu {
             0xBF => self.decode(Instruction::CMP(A)),
 
             0xC0 => self.decode(Instruction::RNZ),
-            0xC1 => self.decode(Instruction::POP(B)),
+            0xC1 => self.decode(Instruction::POP(BC)),
             0xC2 => self.decode(Instruction::JNZ),
             0xC3 => self.decode(Instruction::JMP),
             0xC4 => self.decode(Instruction::CNZ),
@@ -1071,7 +1049,7 @@ impl Cpu {
             0xCF => self.decode(Instruction::RST(1)),
 
             0xD0 => self.decode(Instruction::RNC),
-            0xD1 => self.decode(Instruction::POP(D)),
+            0xD1 => self.decode(Instruction::POP(DE)),
             0xD2 => self.decode(Instruction::JNC),
             0xD3 => self.decode(Instruction::OUT),
             0xD4 => self.decode(Instruction::CALL(0xD4)),
@@ -1089,7 +1067,7 @@ impl Cpu {
             0xDF => self.decode(Instruction::RST(3)),
 
             0xE0 => self.decode(Instruction::RPO),
-            0xE1 => self.decode(Instruction::POP(H)),
+            0xE1 => self.decode(Instruction::POP(HL)),
             0xE2 => self.decode(Instruction::JPO),
             0xE3 => self.decode(Instruction::XTHL),
             0xE4 => self.decode(Instruction::CPO),
@@ -1107,7 +1085,7 @@ impl Cpu {
             0xEF => self.decode(Instruction::RST(5)),
 
             0xF0 => self.decode(Instruction::RP),
-            0xF1 => self.decode(Instruction::POP(H)),
+            0xF1 => self.decode(Instruction::POP(HL)),
             0xF2 => self.decode(Instruction::JPO),
             0xF3 => self.decode(Instruction::XTHL),
             0xF4 => self.decode(Instruction::CPO),

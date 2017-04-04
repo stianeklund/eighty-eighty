@@ -1,5 +1,6 @@
 use std::fmt;
 
+
 #[derive(Debug)]
 pub struct Opcode;
 
@@ -90,7 +91,7 @@ pub enum Instruction {
     SUI,
     SBB(Register),
     STAX(Register),
-    POP(Register),
+    POP(RegisterPair),
     PUSH(Register),
     XRA(Register),
     ORA(Register),
@@ -105,7 +106,7 @@ pub enum Instruction {
     XRI,
     RST_5,
     RP,
-    POP_PSW,
+    POP_PSW(RegisterPair),
     JP,
     DI,
     CP,
