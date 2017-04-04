@@ -30,6 +30,6 @@ fn main() {
             keypad::State::Continue => {}
         }
         cpu.execute_instruction();
-        inter.memory.render_vram();
+        inter.display.render_vram();
         }
     }

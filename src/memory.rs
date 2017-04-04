@@ -5,12 +5,14 @@ use std::env;
 
 pub struct Memory {
     pub memory: Box<[u8; 65536]>,
+    pub raster: Box<([u8; 10000])>,
 }
 
 impl Memory {
     pub fn new() -> Memory {
         Memory {
             memory: Box::new([0; 65536]),
+            raster: Box::new([0; 10000]),
         }
     }
 
@@ -67,21 +69,5 @@ impl Memory {
         }
         println!("Loaded binary");
     }
-
-    pub fn render_vram(&mut self) {
-        // 0x2400 is the beginning of VRAM
-        let mut base: u8 = 0x2400;
-
-        for j in 0..224 {
-            let src = 0x2400 + (j << 5);
-            for i in 0..32 {
-                if self.memory[i] & 1u8.wrapping_shl(j) != 0 {
-                    self.memory[src as usize] ^= 0xFFFF;
-
-                } else {
-                    self.memory[src as usize] ^= 0x0000;
-                }
-            }
-        }
-    }
 }
+

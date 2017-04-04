@@ -3,7 +3,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use opcode::{Instruction, Register, RegisterPair};
-use super::interconnect::Interconnect;
+// use super::interconnect::Interconnect;
 use super::memory;
 
 const DEBUG: bool = true;
