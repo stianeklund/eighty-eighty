@@ -24,7 +24,7 @@ impl Display {
         let video = ctx.video().unwrap();
 
         // Create window
-        let window = video.window("Eighty Eighty", WIDTH as u32, HEIGHT as u32)
+        let window = video.window("Eighty Eighty", WIDTH as u32 * 2, HEIGHT as u32 * 2)
             .position_centered()
             .build()
             .expect("Window creation failed");
