@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use opcode::{Instruction, Register};
+use opcode::{Instruction, Register, RegisterPair};
 use super::interconnect::Interconnect;
 use super::memory;
 
@@ -257,23 +257,22 @@ impl Cpu {
 
     // Load Register Pair Immediate
     // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory pointer)
-    fn lxi(&mut self, reg: Register) {
+    fn lxi(&mut self, reg: RegisterPair) {
         match reg {
-            Register::B => {
-                self.reg_b = self.memory.read(self.pc as usize + 2);
-                self.reg_c = self.memory.read(self.pc as usize + 1);
+            RegisterPair::BC => {
+                self.reg_bc = self.memory.read_word(self.pc);
+                // self.reg_c = self.memory.read(self.pc as usize + 1);
             },
 
-            Register::D => {
-                self.reg_d = self.memory.read(self.pc as usize + 2);
-                self.reg_e = self.memory.read(self.pc as usize + 1);
+            RegisterPair::DE => {
+                self.reg_de = self.memory.read_word(self.pc);
+                // self.reg_e = self.memory.read(self.pc as usize + 1);
             },
 
-            Register::H => {
-                self.reg_h = self.memory.read(self.pc as usize + 2);
-                self.reg_l = self.memory.read(self.pc as usize + 1);
+            RegisterPair::HL => {
+                self.reg_hl = self.memory.read_word(self.pc);
+                // self.reg_l = self.memory.read(self.pc as usize + 1);
             },
-            _ => println!("LXI should be run on registry pairs only"),
 
         };
 
@@ -291,6 +290,7 @@ impl Cpu {
     }
 
     fn call(&mut self, addr: u16) {
+        // TODO Implement all CALL types into here.
         // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
 
@@ -299,7 +299,8 @@ impl Cpu {
         let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize);
 
         match self.opcode {
-            0xCD |  0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
+            0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC  => {
+            // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
                 sub1 = (ret >> 8 & 0xFF) as u8;
                 sub2 = (ret & 0xFF) as u8;
@@ -332,28 +333,16 @@ impl Cpu {
         self.adv_cycles(7);
     }
 
-    fn dad(&mut self, reg: Register) {
+    fn dad(&mut self, reg: RegisterPair) {
         // Double precision ADD.
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
-        let value: u8;
 
+        let mut value = self.reg_hl;
         match reg {
-            Register::B => {
-                value = self.reg_h.wrapping_shl(8) | self.reg_l;
-                value.wrapping_add(self.reg_b.wrapping_shl(8) | self.reg_c);
-            },
-
-            Register::D => {
-                value = self.reg_h.wrapping_shl(8) | self.reg_l;
-                value.wrapping_add(self.reg_d.wrapping_shl(8) | self.reg_e);
-            },
-            Register::H => {
-                value = self.reg_h.wrapping_shl(8) | self.reg_l;
-                value.wrapping_add(self.reg_h.wrapping_shl(8) | self.reg_l);
-            },
-
-            _ => println!("DAD on wrong register"),
+            RegisterPair::BC => value += self.reg_hl +self.reg_bc,
+            RegisterPair::DE => value += self.reg_hl + self.reg_de,
+            RegisterPair::HL => value += self.reg_hl + self.reg_hl,
         };
         self.adv_pc(1);
         self.adv_cycles(10);
@@ -388,6 +377,13 @@ impl Cpu {
 
         self.adv_pc(1);
         self.adv_cycles(5);
+    }
+    fn dcx(&mut self, reg: RegisterPair) {
+        match reg {
+            RegisterPair::BC => self.reg_bc -= self.reg_bc,
+            RegisterPair::DE => self.reg_de -= self.reg_de,
+            RegisterPair::HL => self.reg_hl -= self.reg_hl,
+        }
     }
 
     // TODO
@@ -453,8 +449,8 @@ impl Cpu {
         // This instruction copies the contents of that memory location into the accumulator.
         // The contents of either the register pair or the memory location are not altered.
         match reg {
-            Register::B =>  self.reg_a = 0xF,
-            Register::D =>  self.reg_a = 0xD,
+            Register::B =>  self.reg_bc = 0xF,
+            Register::D =>  self.reg_de = 0xD,
 
             _ => println!("LDAX on invalid register"),
         };
@@ -483,31 +479,12 @@ impl Cpu {
         self.adv_pc(2);
     }
 
-    fn inx(&mut self, reg: Register) {
+    fn inx(&mut self, reg: RegisterPair) {
 
         match reg {
-            Register::B => {
-                self.reg_c += 1;
-                if self.reg_c == 0 {
-                    self.reg_b += 1;
-                }
-            },
-
-            Register::D => {
-                self.reg_e += 1;
-                if self.reg_e == 0 {
-                    self.reg_d += 1;
-                }
-            },
-
-            Register::H => {
-                self.reg_l += 1;
-                if self.reg_l == 0 {
-                    self.reg_h += 1;
-                }
-            },
-
-            _ => println!("INX call on the wrong register"),
+            RegisterPair::BC => self.reg_bc += 1,
+            RegisterPair::DE => self.reg_de += 1,
+            RegisterPair::HL => self.reg_hl += 1,
         };
 
         self.adv_cycles(5);
@@ -734,6 +711,7 @@ impl Cpu {
 
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
+        use self::RegisterPair::*;
 
         if DEBUG { println!("Instruction: {:?},", instruction) };
 
@@ -756,7 +734,7 @@ impl Cpu {
             Instruction::CMP(reg) => self.cmp(reg),
             Instruction::CPE => self.adv_pc(3),     // TODO
             Instruction::DCR(reg) => self.dcr(reg),
-            Instruction::DCX(reg) => self.dcr(reg),
+            Instruction::DCX(reg) => self.dcx(reg),
 
             Instruction::DAA =>  self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
@@ -764,7 +742,8 @@ impl Cpu {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP =>  self.jmp(),
-            Instruction::JPE =>  self.adv_pc(3),
+            Instruction::JPE =>  self.jmp(), // TODO
+            Instruction::JPO =>  self.jmp(), // TODO 
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
@@ -833,11 +812,13 @@ impl Cpu {
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory.read(self.pc as usize);
         use self::Register::*;
+        use self::RegisterPair::*;
 
         if DEBUG {
             println!("Opcode: {:#X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp);
-            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, M: {:X}",
-                     self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_m);
+            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
+                     self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
+            println!("BC: {:X}, DE: {:X}, HL: {:X}", self.reg_bc, self.reg_de, self.reg_hl);
         };
 
         match self.opcode {
@@ -845,16 +826,16 @@ impl Cpu {
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STAX(B)),
-            0x03 => self.decode(Instruction::INX(B)),
+            0x03 => self.decode(Instruction::INX(BC)),
             0x04 => self.decode(Instruction::INR(B)),
             0x05 => self.decode(Instruction::DCR(B)),
             0x06 => self.decode(Instruction::MVI(B, 0xD8)),
             0x07 => self.decode(Instruction::RLC),
             0x08 => self.decode(Instruction::NOP),
-            0x09 => self.decode(Instruction::DAD(B)),
+            0x09 => self.decode(Instruction::DAD(BC)),
 
             0x0A => self.decode(Instruction::LDAX(B)),
-            0x0B => self.decode(Instruction::DCX(B)),
+            0x0B => self.decode(Instruction::DCX(BC)),
             0x0C => self.decode(Instruction::INR(C)),
             0x0D => self.decode(Instruction::DCR(D)),
             0x0E => self.decode(Instruction::MVI(C, 0xD8)),
@@ -862,18 +843,18 @@ impl Cpu {
 
 
             0x10 => self.decode(Instruction::NOP),
-            0x11 => self.decode(Instruction::LXI(D)),
+            0x11 => self.decode(Instruction::LXI(DE)),
             0x12 => self.decode(Instruction::STAX(D)),
-            0x13 => self.decode(Instruction::INX(D)),
+            0x13 => self.decode(Instruction::INX(DE)),
             0x14 => self.decode(Instruction::INR(D)),
             0x15 => self.decode(Instruction::DCR(D)),
             0x16 => self.decode(Instruction::MVI(D, 0xD8)),
             0x17 => self.decode(Instruction::RAL),
             0x18 => self.decode(Instruction::NOP),
-            0x19 => self.decode(Instruction::DAD(D)),
+            0x19 => self.decode(Instruction::DAD(DE)),
 
             0x1A => self.decode(Instruction::LDAX(D)),
-            0x1B => self.decode(Instruction::DCX(D)),
+            0x1B => self.decode(Instruction::DCX(DE)),
             0x1C => self.decode(Instruction::INR(E)),
             0x1D => self.decode(Instruction::DCR(E)),
             0x1E => self.decode(Instruction::MVI(E, 0xD8)),
@@ -881,18 +862,18 @@ impl Cpu {
 
 
             0x20 => self.decode(Instruction::NOP),
-            0x21 => self.decode(Instruction::LXI(H)),
+            0x21 => self.decode(Instruction::LXI(HL)),
             0x22 => self.decode(Instruction::SHLD),
-            0x23 => self.decode(Instruction::INX(H)),
+            0x23 => self.decode(Instruction::INX(HL)),
             0x24 => self.decode(Instruction::INR(H)),
             0x25 => self.decode(Instruction::DCR(H)),
             0x26 => self.decode(Instruction::MVI(H, 0xD8)),
             0x27 => self.decode(Instruction::DAA),
             0x28 => self.decode(Instruction::NOP),
-            0x29 => self.decode(Instruction::DAD(H)),
+            0x29 => self.decode(Instruction::DAD(HL)),
 
             0x2A => self.decode(Instruction::LHLD),
-            0x2B => self.decode(Instruction::DCX(H)),
+            0x2B => self.decode(Instruction::DCX(HL)),
             0x2C => self.decode(Instruction::INR(L)),
             0x2D => self.decode(Instruction::DCR(L)),
             0x2E => self.decode(Instruction::MVI(L, 0xD8)),
@@ -1093,7 +1074,7 @@ impl Cpu {
             0xD1 => self.decode(Instruction::POP(D)),
             0xD2 => self.decode(Instruction::JNC),
             0xD3 => self.decode(Instruction::OUT),
-            0xD4 => self.decode(Instruction::CNC),
+            0xD4 => self.decode(Instruction::CALL(0xD4)),
             0xD5 => self.decode(Instruction::PUSH(D)),
             0xD6 => self.decode(Instruction::SUI),
             0xD7 => self.decode(Instruction::RST(2)),
