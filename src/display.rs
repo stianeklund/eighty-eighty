@@ -1,5 +1,6 @@
 extern crate sdl2;
 
+use std::fmt;
 use super::sdl2::Sdl;
 use super::sdl2::pixels::Color;
 use super::sdl2::rect::Rect;
@@ -15,6 +16,13 @@ pub struct Display {
     vblank: bool,
     memory: memory::Memory,
     draw_flag: bool,
+}
+
+impl fmt::Debug for Display {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:?}", val)
+    }
 }
 
 impl Display {
@@ -43,15 +51,17 @@ impl Display {
         }
     }
 
+
     pub fn render_vram(&mut self) {
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
 
         let mut counter = 0;
-        // Iterate over all offset the memory locations from addr: $2400 - $3FFF reading it into memory
+        // Iterate over all the memory locations from addr: $2400 - $3FFF (offset) reading it into memory
         // and point to the byte of the current memory location
         for offset in 0..(256 * 244 / 8) {
+            // println!("VRAM value: {:?}", self.memory);
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (self.memory.read(base as usize + offset as usize) >> shift) & 1 != 1 {
@@ -69,6 +79,7 @@ impl Display {
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
                 if self.raster[y.wrapping_mul(WIDTH) + x] != 0 {
+
                     // Foreground
                     self.renderer.set_draw_color(Color::RGB(251, 241, 199));
                 } else {
@@ -82,4 +93,3 @@ impl Display {
         self.draw_flag = true;
     }
 }
-
