@@ -90,7 +90,7 @@ pub enum Instruction {
     SUB(Register),
     SUI,
     SBB(Register),
-    STAX(Register),
+    STAX(RegisterPair),
     POP(RegisterPair),
     PUSH(Register),
     XRA(Register),

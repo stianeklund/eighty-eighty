@@ -1,6 +1,6 @@
 extern crate sdl2;
 use std::env;
-
+use std::thread;
 mod cpu;
 mod opcode;
 mod display;
@@ -31,5 +31,6 @@ fn main() {
         }
         cpu.execute_instruction();
         inter.display.render_vram();
-        }
+        // thread::sleep_ms(3);
     }
+}

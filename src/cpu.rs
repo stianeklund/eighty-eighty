@@ -187,24 +187,29 @@ impl Cpu {
 
     fn ana(&mut self, reg: Register) {
         // Check if the 4th bit is set on all registers
+        if DEBUG { println!("Call to ANA"); }
         match reg {
             Register::A => {
                 self.half_carry = (self.reg_a | self.reg_a) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
                 self.reg_a &= self.reg_a;
             },
 
             Register::B => {
                 self.half_carry = (self.reg_a | self.reg_b) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
                 self.reg_a &= self.reg_b;
             },
 
             Register::C => {
                 self.half_carry = (self.reg_a | self.reg_c) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
                 self.reg_a &= self.reg_c;
             },
 
             Register::D => {
                 self.half_carry = (self.reg_a | self.reg_d) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
                 self.reg_a &= self.reg_d;
             },
 
@@ -254,6 +259,7 @@ impl Cpu {
 
     fn jmp(&mut self) {
         self.pc = self.memory.read_word(self.pc);
+        println!("Jumping to address: {:X}", self.pc);
         self.adv_cycles(10);
     }
 
@@ -282,10 +288,14 @@ impl Cpu {
     }
 
     // Jump no zero
+    // If the Zero bit is zero program execution continues at the memory address adr
     fn jnz(&mut self) {
-        if self.zero == false {
-            self.pc = self.memory.read_word(self.pc);
-        }
+        if DEBUG { println!("JNZ? :{}", self.zero); }
+        // if self.zero == false {
+          //  self.pc = self.memory.read_word(self.pc);
+        // } else if self.zero == true {
+           self.adv_pc(3);
+        // }
         self.adv_cycles(10);
     }
 
@@ -383,8 +393,7 @@ impl Cpu {
     }
 
 
-    // Complement Carry
-    // If the Carry bit = 0 (false) then set it to 1 (true), if true 1 set to 0
+    // Call If No Carry
     fn cnc(&mut self) {
         if self.carry == false {
             self.carry = true
@@ -412,7 +421,7 @@ impl Cpu {
 
         let mut value = self.reg_hl;
         match reg {
-            RegisterPair::BC => value += self.reg_hl +self.reg_bc,
+            RegisterPair::BC => value += self.reg_hl + self.reg_bc,
             RegisterPair::DE => value += self.reg_hl + self.reg_de,
             RegisterPair::HL => value += self.reg_hl + self.reg_hl,
         };
@@ -432,29 +441,80 @@ impl Cpu {
 
     fn dcr(&mut self, reg: Register) {
         match reg {
-            Register::A => self.reg_a -= self.reg_a,
-            Register::B => self.reg_b -= self.reg_b,
-            Register::C => self.reg_c -= self.reg_c,
-            Register::D => self.reg_d -= self.reg_d,
-            Register::E => self.reg_e -= self.reg_e,
-            Register::H => self.reg_h -= self.reg_h,
-            Register::L => self.reg_l -= self.reg_l,
-            Register::M => self.reg_m -= self.reg_m,
+            Register::A => {
+                self.reg_a -= 1 & 0xFF;
+                self.half_carry = !self.reg_a & 0x0F == 0x0F;
+                self.zero = self.reg_a & 0xFF == 0;
+                self.sign = self.reg_a & 0x80 != 0;
+                self.adv_cycles(5);
+            },
 
+            Register::B => {
+                self.reg_b -= 1 & 0xFF;
+                self.half_carry = self.reg_b & 0xF == 0;
+                self.zero = self.reg_b & 0xFF == 0;
+                self.sign = self.reg_b & 0x80 != 0;
+                self.adv_cycles(5);
+
+            },
+
+            Register::C => {
+                self.reg_c -= 1 & 0xFF;
+                self.half_carry = self.reg_c & 0xF == 0;
+                self.zero = self.reg_c & 0xFF == 0;
+                self.sign = self.reg_c & 0x80 != 0;
+                self.adv_cycles(5);
+            },
+
+            Register::D => {
+                self.reg_d -= 1 & 0xFF;
+                self.half_carry = self.reg_d & 0xF == 0;
+                self.zero = self.reg_d & 0xFF == 0;
+                self.sign = self.reg_d & 0x80 != 0;
+                self.adv_cycles(5);
+            },
+
+            Register::E => {
+                self.reg_e -= 1 & 0xFF;
+                self.half_carry = self.reg_e & 0xF == 0;
+                self.zero = self.reg_e & 0xFF == 0;
+                self.sign = self.reg_e & 0x80 != 0;
+                self.adv_cycles(5);
+            },
+
+            Register::H => {
+                self.reg_h -= 1 & 0xFF;
+                self.half_carry = self.reg_h & 0xF == 0;
+                self.zero = self.reg_h & 0xFF == 0;
+                self.sign = self.reg_h & 0x80 != 0;
+                self.adv_cycles(5);
+            },
+
+            Register::L => {
+                self.reg_l -= 1 & 0xFF;
+                self.half_carry = self.reg_l & 0xF == 0;
+                self.zero = self.reg_l & 0xFF == 0;
+                self.sign = self.reg_l & 0x80 != 0;
+                self.adv_cycles(5);
+
+            },
+
+            Register::M => {
+                self.reg_m -= 1 & 0xFF;
+                self.half_carry = self.reg_m & 0xF == 0;
+                self.zero = self.reg_m & 0xFF == 0;
+                self.sign = self.reg_m & 0x80 != 0;
+                self.adv_cycles(6);
+            }
         }
-
-        if reg == Register::M {
-            self.adv_cycles(6);
-        }
-
         self.adv_pc(1);
-        self.adv_cycles(5);
     }
+
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
-            RegisterPair::BC => self.reg_bc -= self.reg_bc,
-            RegisterPair::DE => self.reg_de -= self.reg_de,
-            RegisterPair::HL => self.reg_hl -= self.reg_hl,
+            RegisterPair::BC => self.reg_bc -= 1 & 0xFF,
+            RegisterPair::DE => self.reg_de -= 1 & 0xFF,
+            RegisterPair::HL => self.reg_hl -= 1 & 0xFF,
         }
     }
 
@@ -605,32 +665,12 @@ impl Cpu {
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
     // TODO Use RegisterPair
-    fn stax(&mut self, reg: Register) {
-        let reg_bc = self.reg_bc;
+    fn stax(&mut self, reg: RegisterPair) {
 
         match reg {
-            Register::B => {
-                let mut b = self.memory.read_or(self.reg_b.wrapping_shl(8) as usize | self.reg_c as usize);
-                    b = self.reg_a;
-            },
-
-            Register::C => {
-                let mut c = self.memory.read_or(self.reg_c.wrapping_shl(8) as usize | self.reg_c as usize);
-                c = self.reg_b;
-            },
-
-            Register::D => {
-                let mut d = self.memory.read_or(self.reg_d.wrapping_shl(8) as usize | self.reg_c as usize);
-                d = self.reg_b;
-
-            },
-
-            Register::E => {
-                let mut e = self.memory.read_or(self.reg_e.wrapping_shl(8) as usize | self.reg_c as usize);
-                e = self.reg_a;
-            },
-
-            _ => println!("STAX call to invalid registry"),
+            RegisterPair::BC => self.reg_bc = self.reg_a as u16,
+            RegisterPair::DE => self.reg_de = self.reg_a as u16,
+            RegisterPair::HL => self.reg_hl = self.reg_a as u16,
         }
 
         self.adv_cycles(7);
@@ -728,7 +768,16 @@ impl Cpu {
 
     fn ret(&mut self) {
         if DEBUG { println!("Returning to previous subroutine"); }
-        self.pc = self.pop_stack();
+        let mut ret;
+        match self.opcode {
+            0xC9 => {
+                ret = self.sp + 1 << 8 | self.memory.read_word(self.sp);
+                self.sp += 2;
+                self.pc = ret;
+            },
+            _ => println!("RET address: {:X}", self.pc)
+        }
+        self.adv_cycles(10);
     }
 
     // TODO
@@ -796,7 +845,7 @@ impl Cpu {
             Instruction::CPI => self.cpi(),
             Instruction::CZ => println!("Not implemented: {:?}", instruction),
             Instruction::CM => println!("Not implemented: {:?}", instruction),
-            Instruction::CNC => println!("Not implemented: {:?}", instruction),
+            Instruction::CNC => self.cnc(),
             Instruction::CMC => println!("Not implemented: {:?}", instruction),
 
             Instruction::CMP(reg) => self.cmp(reg),
@@ -894,7 +943,7 @@ impl Cpu {
 
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
-            0x02 => self.decode(Instruction::STAX(B)),
+            0x02 => self.decode(Instruction::STAX(BC)),
             0x03 => self.decode(Instruction::INX(BC)),
             0x04 => self.decode(Instruction::INR(B)),
             0x05 => self.decode(Instruction::DCR(B)),
@@ -913,7 +962,7 @@ impl Cpu {
 
             0x10 => self.decode(Instruction::NOP),
             0x11 => self.decode(Instruction::LXI(DE)),
-            0x12 => self.decode(Instruction::STAX(D)),
+            0x12 => self.decode(Instruction::STAX(DE)),
             0x13 => self.decode(Instruction::INX(DE)),
             0x14 => self.decode(Instruction::INR(D)),
             0x15 => self.decode(Instruction::DCR(D)),
