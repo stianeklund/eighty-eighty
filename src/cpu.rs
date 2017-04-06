@@ -28,6 +28,7 @@ const DEBUG: bool = true;
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Cpu {
 
     memory: memory::Memory,
