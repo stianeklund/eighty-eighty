@@ -146,9 +146,24 @@ impl Cpu {
        self.cycles += t;
     }
 
-    // TODO
+    // TODO Read page 18 of 8080 Programmers Manual
     fn adc(&mut self, reg: Register) {
-        self.adv_pc(1)
+        let mut a = self.reg_a;
+        match reg {
+            Register::A => {
+                if self.carry == true {
+                    a += self.reg_a;
+                }
+            },
+            Register::B => a += self.reg_b,
+            Register::C => a += self.reg_c,
+            Register::D => a += self.reg_d,
+            Register::E => a += self.reg_e,
+            Register::H => a += self.reg_h,
+            Register::L => a += self.reg_l,
+            Register::M => a += self.reg_m,
+
+        }
     }
 
     fn add(&mut self, reg: Register) {
@@ -241,9 +256,67 @@ impl Cpu {
         self.adv_cycles(10);
     }
 
-    //TODO Conditional jump
+    // Jump if carry
     fn jc(&mut self) {
-        self.pc = self.memory.read_word(self.pc);
+        if self.carry == true {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // Jump if no carry
+    fn jnc(&mut self) {
+        if self.carry == false {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // Jump if zero
+    fn jz(&mut self) {
+        if self.zero == true {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // Jump no zero
+    fn jnz(&mut self) {
+        if self.zero == false {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // If sign bit is one (false) indicating a negative result
+    fn jm(&mut self){
+        if self.sign == false {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // Jump if parity true
+    fn jp(&mut self){
+        if self.parity == true {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // If parity even
+    fn jpe(&mut self) {
+        if self.parity == true {
+            self.pc = self.memory.read_word(self.pc);
+        }
+        self.adv_cycles(10);
+    }
+
+    // If parity off, e.g false
+    fn jpo(&mut self) {
+        if self.parity == false {
+            self.pc = self.memory.read_word(self.pc);
+        }
         self.adv_cycles(10);
     }
 
@@ -309,6 +382,16 @@ impl Cpu {
     }
 
 
+    // Complement Carry
+    // If the Carry bit = 0 (false) then set it to 1 (true), if true 1 set to 0
+    fn cnc(&mut self) {
+        if self.carry == false {
+            self.carry = true
+        } else {
+            self.carry = false;
+        }
+
+    }
     // TODO
     fn cmp(&mut self, reg: Register) {
         self.adv_pc(1);
@@ -577,7 +660,11 @@ impl Cpu {
 
         self.adv_cycles(4);
         self.adv_pc(1);
+    }
 
+    // Set Carry (set carry bit to 0)
+    fn stc(&mut self) {
+        self.carry = false;
     }
 
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
@@ -613,12 +700,16 @@ impl Cpu {
             RegisterPair::BC => self.reg_bc = self.memory.read_word(self.sp + 1) & 0xFFFF,
             RegisterPair::DE => self.reg_de = self.memory.read_word(self.sp + 1) & 0xFFFF,
             RegisterPair::HL => self.reg_hl = self.memory.read_word(self.sp + 1) & 0xFFFF,
-
-            _ => {
-                self.reg_psw = self.memory.read_word(self.sp + 1) & 0xFFFF as u16;
-            }
         }
 
+        self.sp.wrapping_add(2);
+
+        self.adv_pc(1);
+        self.adv_cycles(10);
+    }
+
+    fn pop_psw(&mut self) {
+        self.reg_psw = self.memory.read_word(self.sp + 1) & 0xFFFF as u16;
         self.sp.wrapping_add(2);
 
         self.adv_pc(1);
@@ -718,9 +809,8 @@ impl Cpu {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP => self.jmp(),
-            Instruction::JPE => println!("Not implemented: {:?}", instruction),
-            Instruction::JPO => println!("Not implemented: {:?}", instruction),
-
+            Instruction::JPE => self.jpe(),
+            Instruction::JPO => self.jpo(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
             Instruction::MVI(reg, value) => self.mvi(reg, value),
@@ -732,7 +822,7 @@ impl Cpu {
             Instruction::RET => self.ret(),
 
             Instruction::POP(reg) => self.pop(reg),
-            Instruction::POP_PSW(reg) => self.pop(reg),
+            Instruction::POP_PSW(reg) => self.pop_psw(),
             Instruction::PUSH(reg)=> self.push(reg),
 
             Instruction::IN => println!("Not implemented: {:?}", instruction),
@@ -767,15 +857,15 @@ impl Cpu {
             Instruction::RNC => println!("Not implemented: {:?}", instruction),
             Instruction::RRC => println!("Not implemented: {:?}", instruction),
 
-            Instruction::STC => println!("Not implemented: {:?}", instruction),
+            Instruction::STC => self.stc(),
             Instruction::SHLD => println!("Not implemented: {:?}", instruction),
             Instruction::ORA(reg) => println!("Not implemented: {:?}", instruction),
 
             // Jump instructions can probably use just one function.
-            Instruction::JNC => println!("Not implemented: {:?}", instruction),
-            Instruction::JNZ => println!("Not implemented: {:?}", instruction),
-            Instruction::JM => println!("Not implemented: {:?}", instruction),
-            Instruction::JZ => println!("Not implemented: {:?}", instruction),
+            Instruction::JNC => self.jnc(),
+            Instruction::JNZ => self.jnz(),
+            Instruction::JM => self.jm(),
+            Instruction::JZ => self.jz(),
             Instruction::XRA_L => println!("Not implemented: {:?}", instruction),
             Instruction::XRI => println!("Not implemented: {:?}", instruction),
 
