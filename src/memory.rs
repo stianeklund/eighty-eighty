@@ -2,10 +2,18 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::env;
+use std::fmt;
 
 pub struct Memory {
     pub memory: Box<[u8; 65536]>,
     pub raster: Box<([u8; 10000])>,
+}
+
+impl fmt::Debug for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:?}", val)
+    }
 }
 
 impl Memory {
