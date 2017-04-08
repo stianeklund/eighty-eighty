@@ -389,6 +389,7 @@ impl Cpu {
             println!("Return address is: {:X}", ret);
         }
 
+        self.set_sp(ret);
         self.adv_cycles(17);
     }
 
@@ -396,7 +397,9 @@ impl Cpu {
     // Call If No Carry
     fn cnc(&mut self) {
         if self.carry == false {
-            self.carry = true
+            self.carry = true;
+            println!("CNC: {:X}", self.pc);
+            self.call(08);
         } else {
             self.carry = false;
         }
@@ -760,23 +763,15 @@ impl Cpu {
 
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_rp(self.sp as usize + 1) | self.memory.read_rp(self.sp as usize) as u16;
+        let sp = self.memory.read_word(self.sp + 1) | self.memory.read_word(self.sp) as u16;
         self.sp += 2;
         sp
 
     }
 
     fn ret(&mut self) {
-        if DEBUG { println!("Returning to previous subroutine"); }
-        let mut ret;
-        match self.opcode {
-            0xC9 => {
-                ret = self.sp + 1 << 8 | self.memory.read_word(self.sp);
-                self.sp += 2;
-                self.pc = ret;
-            },
-            _ => println!("RET address: {:X}", self.pc)
-        }
+        if DEBUG { println!("Returning to previous subroutine: {:X}", self.sp); }
+        self.pc = self.sp;
         self.adv_cycles(10);
     }
 
