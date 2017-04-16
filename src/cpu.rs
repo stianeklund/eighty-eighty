@@ -267,6 +267,8 @@ impl Cpu {
     fn jc(&mut self) {
         if self.carry == true {
             self.pc = self.memory.read_word(self.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -275,6 +277,8 @@ impl Cpu {
     fn jnc(&mut self) {
         if self.carry == false {
             self.pc = self.memory.read_word(self.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -283,6 +287,8 @@ impl Cpu {
     fn jz(&mut self) {
         if self.zero == true {
             self.pc = self.memory.read_word(self.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -413,6 +419,12 @@ impl Cpu {
 
     // TODO Compare Immidiate with Accumulator
     fn cpi(&mut self) {
+        // Fetch byte out of memory which we will use to compare & set flags with.
+        let value = self.memory.read_byte(self.pc as u8);
+
+        self.zero = value & 0xFF == 0;
+        self.sign = value & 0x80 != 0;
+        self.carry = value & 0xFF == 0;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -734,7 +746,23 @@ impl Cpu {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
+    // XRI Exclusive-Or Immediate with Accumulator
+    fn xri(&mut self) {
+        self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
+        self.reg_a ^= self.opcode;
+        self.carry = false;
+        self.adv_pc(2);
+        self.adv_cycles(7);
+    }
 
+    fn xchg(&mut self) {
+        let hl = self.reg_hl;
+        let de = self.reg_de;
+        self.reg_hl = hl;
+        self.reg_de = de;
+        self.adv_pc(1);
+        self.adv_cycles(5);
+    }
     // TODO
     fn rpe(&mut self) {
         self.adv_pc(1);
@@ -915,9 +943,9 @@ impl Cpu {
             Instruction::JM => self.jm(),
             Instruction::JZ => self.jz(),
             Instruction::XRA_L => println!("Not implemented: {:?}", instruction),
-            Instruction::XRI => println!("Not implemented: {:?}", instruction),
+            Instruction::XRI => self.xri(),
 
-            Instruction::XCHG => println!("Not implemented: {:?}", instruction),
+            Instruction::XCHG => self.xchg(),
             Instruction::XTHL => println!("Not implemented: {:?}", instruction),
 
             _ => println!("Unknown instruction {:#X}", self.opcode),
@@ -1237,7 +1265,7 @@ impl Cpu {
             0xFB => self.decode(Instruction::XCHG),
             0xFC => self.decode(Instruction::CPE),
             0xFD => self.decode(Instruction::CALL(0xFD)),
-            0xFE => self.decode(Instruction::XRI),
+            0xFE => self.decode(Instruction::CPI),
             0xFF => self.decode(Instruction::RST(7)),
 
             _ => println!("Unknown opcode: {:#X}", self.opcode),
