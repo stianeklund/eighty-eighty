@@ -420,7 +420,8 @@ impl Cpu {
     // TODO Compare Immidiate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.memory.read_byte(self.pc as u8);
+        // let value = self.memory.read_byte(self.pc as u8);
+        let value = self.opcode & 0xFF;
 
         self.zero = value & 0xFF == 0;
         self.sign = value & 0x80 != 0;
@@ -434,6 +435,7 @@ impl Cpu {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
+        // TODO Investigate overflow
         let mut value = self.reg_hl;
         match reg {
             RegisterPair::BC => value += self.reg_hl + self.reg_bc,
@@ -808,7 +810,7 @@ impl Cpu {
 
     // TODO
     fn out(&mut self) {
-        self.adv_pc(2);
+        self.adv_pc(3);
         self.adv_cycles(10);
     }
 
