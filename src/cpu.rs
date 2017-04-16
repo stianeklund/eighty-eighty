@@ -288,14 +288,14 @@ impl Cpu {
     }
 
     // Jump no zero
-    // If the Zero bit is zero program execution continues at the memory address adr
+    // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
         if DEBUG { println!("JNZ? :{}", self.zero); }
-        // if self.zero == false {
-          //  self.pc = self.memory.read_word(self.pc);
-        // } else if self.zero == true {
-           self.adv_pc(3);
-        // }
+        if self.zero == true {
+            self.pc = self.memory.read_word(self.pc);
+        } else if self.zero == false {
+            self.adv_pc(3);
+        }
         self.adv_cycles(10);
     }
 
@@ -453,8 +453,11 @@ impl Cpu {
             },
 
             Register::B => {
-                self.reg_b -= 1 & 0xFF;
+                self.reg_b -= 1;
                 self.half_carry = self.reg_b & 0xF == 0;
+                // TODO Investigate this behavior...
+                // According to the disassembly it looks like we should return from the subroutine
+                // with the zero flag set the JNZ does not jump..
                 self.zero = self.reg_b & 0xFF == 0;
                 self.sign = self.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
