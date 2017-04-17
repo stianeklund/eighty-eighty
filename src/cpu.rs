@@ -265,7 +265,7 @@ impl Cpu {
 
     // Jump if carry
     fn jc(&mut self) {
-        if self.carry == true {
+        if self.carry {
             self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
@@ -285,7 +285,7 @@ impl Cpu {
 
     // Jump if zero
     fn jz(&mut self) {
-        if self.zero == true {
+        if self.zero {
             self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
@@ -297,9 +297,9 @@ impl Cpu {
     // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
         if DEBUG { println!("JNZ? :{}", self.zero); }
-        if self.zero == true {
+        if self.zero {
             self.pc = self.memory.read_word(self.pc);
-        } else if self.zero == false {
+        } else {
             self.adv_pc(3);
         }
         self.adv_cycles(10);
@@ -438,9 +438,9 @@ impl Cpu {
         // TODO Investigate overflow
         let mut value = self.reg_hl;
         match reg {
-            RegisterPair::BC => value += self.reg_hl + self.reg_bc,
-            RegisterPair::DE => value += self.reg_hl + self.reg_de,
-            RegisterPair::HL => value += self.reg_hl + self.reg_hl,
+            RegisterPair::BC => value = self.reg_hl + self.reg_bc,
+            RegisterPair::DE => value = self.reg_hl + self.reg_de,
+            RegisterPair::HL => value = value.wrapping_add(self.reg_hl),
         };
         self.adv_pc(1);
         self.adv_cycles(10);
@@ -459,7 +459,7 @@ impl Cpu {
     fn dcr(&mut self, reg: Register) {
         match reg {
             Register::A => {
-                self.reg_a -= 1 & 0xFF;
+                self.reg_a -= 1;
                 self.half_carry = !self.reg_a & 0x0F == 0x0F;
                 self.zero = self.reg_a & 0xFF == 0;
                 self.sign = self.reg_a & 0x80 != 0;
@@ -468,7 +468,7 @@ impl Cpu {
 
             Register::B => {
                 self.reg_b -= 1;
-                self.half_carry = self.reg_b & 0xF == 0;
+                self.half_carry = !self.reg_b & 0x0F == 0x0F;
                 // TODO Investigate this behavior...
                 // According to the disassembly it looks like we should return from the subroutine
                 // with the zero flag set the JNZ does not jump..
@@ -479,40 +479,40 @@ impl Cpu {
             },
 
             Register::C => {
-                self.reg_c -= 1 & 0xFF;
-                self.half_carry = self.reg_c & 0xF == 0;
+                self.reg_c -= 1;
+                self.half_carry = !self.reg_c & 0x0F == 0x0F;
                 self.zero = self.reg_c & 0xFF == 0;
                 self.sign = self.reg_c & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::D => {
-                self.reg_d -= 1 & 0xFF;
-                self.half_carry = self.reg_d & 0xF == 0;
+                self.reg_d -= 1;
+                self.half_carry = !self.reg_d & 0x0F == 0x0F;
                 self.zero = self.reg_d & 0xFF == 0;
                 self.sign = self.reg_d & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::E => {
-                self.reg_e -= 1 & 0xFF;
-                self.half_carry = self.reg_e & 0xF == 0;
+                self.reg_e -= 1;
+                self.half_carry = !self.reg_e & 0x0F == 0x0F;
                 self.zero = self.reg_e & 0xFF == 0;
                 self.sign = self.reg_e & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::H => {
-                self.reg_h -= 1 & 0xFF;
-                self.half_carry = self.reg_h & 0xF == 0;
+                self.reg_h -= 1;
+                self.half_carry = !self.reg_h & 0x0F == 0x0F;
                 self.zero = self.reg_h & 0xFF == 0;
                 self.sign = self.reg_h & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::L => {
-                self.reg_l -= 1 & 0xFF;
-                self.half_carry = self.reg_l & 0xF == 0;
+                self.reg_l -= 1;
+                self.half_carry = !self.reg_l & 0x0F == 0x0F;
                 self.zero = self.reg_l & 0xFF == 0;
                 self.sign = self.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
@@ -520,8 +520,8 @@ impl Cpu {
             },
 
             Register::M => {
-                self.reg_m -= 1 & 0xFF;
-                self.half_carry = self.reg_m & 0xF == 0;
+                self.reg_m -= 1;
+                self.half_carry = !self.reg_m & 0x0F == 0x0F;
                 self.zero = self.reg_m & 0xFF == 0;
                 self.sign = self.reg_m & 0x80 != 0;
                 self.adv_cycles(6);
@@ -765,6 +765,23 @@ impl Cpu {
         self.adv_pc(1);
         self.adv_cycles(5);
     }
+    // Rotate Accumulator Left
+    fn rlc(&mut self) {
+        // The Carry bit is set equal to the high-order bit of the accumulator
+        // If one of the 4 lower bits are 1 we set the carry flag.
+        self.carry = self.reg_a & 0x08 != 0;
+        self.reg_a = self.reg_a & 0x08;
+    }
+
+    // Return if no carry
+    fn rnc(&mut self) {
+        if self.carry == false {
+            self.ret();
+        } else {
+            self.adv_pc(1);
+        }
+    }
+
     // TODO
     fn rpe(&mut self) {
         self.adv_pc(1);
@@ -931,8 +948,8 @@ impl Cpu {
             Instruction::RZ => self.rz(),
 
             Instruction::HLT => self.adv_pc(1),     // TODO
-            Instruction::RLC => println!("Not implemented: {:?}", instruction),
-            Instruction::RNC => println!("Not implemented: {:?}", instruction),
+            Instruction::RLC => self.rlc(),
+            Instruction::RNC => self.rnc(),
             Instruction::RRC => println!("Not implemented: {:?}", instruction),
 
             Instruction::STC => self.stc(),
