@@ -71,7 +71,7 @@ pub enum Instruction {
     LDAX(Register),
     LXI(RegisterPair),
     MOV(Register, Register),
-    MVI(Register, u8),
+    MVI(Register),
     RAR,
     RC,
     RET,

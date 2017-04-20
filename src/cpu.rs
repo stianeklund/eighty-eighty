@@ -395,7 +395,7 @@ impl Cpu {
             println!("Return address is: {:X}", ret);
         }
 
-        self.set_sp(ret);
+        // self.set_sp(ret);
         self.adv_cycles(17);
     }
 
@@ -467,7 +467,7 @@ impl Cpu {
             },
 
             Register::B => {
-                self.reg_b -= 1;
+                self.reg_b.wrapping_sub(1);
                 self.half_carry = !self.reg_b & 0x0F == 0x0F;
                 // TODO Investigate this behavior...
                 // According to the disassembly it looks like we should return from the subroutine
@@ -570,7 +570,9 @@ impl Cpu {
         self.adv_pc(1);
     }
 
-    fn mvi(&mut self, reg: Register, value: u8) {
+    fn mvi(&mut self, reg: Register) {
+        let value = self.opcode & 0x08;
+        println!("VALUE: {:?}", value);
         match reg {
             Register::A => self.write_reg(Register::A, value),
             Register::B => self.write_reg(Register::B, value),
@@ -775,7 +777,7 @@ impl Cpu {
 
     // Return if no carry
     fn rnc(&mut self) {
-        if self.carry == false {
+        if !self.carry {
             self.ret();
         } else {
             self.adv_pc(1);
@@ -836,7 +838,7 @@ impl Cpu {
         self.write_reg(dst, value);
 
         if DEBUG {
-            println!("Read reg value: {:X}, Source: {:?}, Destination:{:?}", value, src, dst);
+            println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
 
         self.adv_pc(1);
@@ -873,10 +875,13 @@ impl Cpu {
         use self::Register::*;
         use self::RegisterPair::*;
 
-        if DEBUG { println!("Instruction: {:?},", instruction) };
+        println!("Instruction: {:?},", instruction);
 
         match instruction {
-            Instruction::NOP => self.adv_pc(1),
+            Instruction::NOP => {
+                self.adv_pc(1);
+                self.adv_cycles(4);
+            },
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
@@ -908,7 +913,7 @@ impl Cpu {
             Instruction::JPO => self.jpo(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
-            Instruction::MVI(reg, value) => self.mvi(reg, value),
+            Instruction::MVI(reg) => self.mvi(reg),
             Instruction::SUB(reg) => self.sub(reg),
             Instruction::SBB(reg) => self.sbb(reg),
 
@@ -978,7 +983,7 @@ impl Cpu {
         use self::RegisterPair::*;
 
         if DEBUG {
-            println!("Opcode: {:#X}, PC: {:X}, SP: {:X}", self.opcode, self.pc, self.sp);
+            println!("Opcode: {:#X}, PC: {:X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
             println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
             println!("BC: {:X}, DE: {:X}, HL: {:X}", self.reg_bc, self.reg_de, self.reg_hl);
@@ -992,7 +997,7 @@ impl Cpu {
             0x03 => self.decode(Instruction::INX(BC)),
             0x04 => self.decode(Instruction::INR(B)),
             0x05 => self.decode(Instruction::DCR(B)),
-            0x06 => self.decode(Instruction::MVI(B, 0xD8)),
+            0x06 => self.decode(Instruction::MVI(B)),
             0x07 => self.decode(Instruction::RLC),
             0x08 => self.decode(Instruction::NOP),
             0x09 => self.decode(Instruction::DAD(BC)),
@@ -1001,7 +1006,7 @@ impl Cpu {
             0x0B => self.decode(Instruction::DCX(BC)),
             0x0C => self.decode(Instruction::INR(C)),
             0x0D => self.decode(Instruction::DCR(D)),
-            0x0E => self.decode(Instruction::MVI(C, 0xD8)),
+            0x0E => self.decode(Instruction::MVI(C)),
             0x0F => self.decode(Instruction::RRC),
 
 
@@ -1011,7 +1016,7 @@ impl Cpu {
             0x13 => self.decode(Instruction::INX(DE)),
             0x14 => self.decode(Instruction::INR(D)),
             0x15 => self.decode(Instruction::DCR(D)),
-            0x16 => self.decode(Instruction::MVI(D, 0xD8)),
+            0x16 => self.decode(Instruction::MVI(D)),
             0x17 => self.decode(Instruction::RAL),
             0x18 => self.decode(Instruction::NOP),
             0x19 => self.decode(Instruction::DAD(DE)),
@@ -1020,7 +1025,7 @@ impl Cpu {
             0x1B => self.decode(Instruction::DCX(DE)),
             0x1C => self.decode(Instruction::INR(E)),
             0x1D => self.decode(Instruction::DCR(E)),
-            0x1E => self.decode(Instruction::MVI(E, 0xD8)),
+            0x1E => self.decode(Instruction::MVI(E)),
             0x1F => self.decode(Instruction::RAR),
 
 
@@ -1030,7 +1035,7 @@ impl Cpu {
             0x23 => self.decode(Instruction::INX(HL)),
             0x24 => self.decode(Instruction::INR(H)),
             0x25 => self.decode(Instruction::DCR(H)),
-            0x26 => self.decode(Instruction::MVI(H, 0xD8)),
+            0x26 => self.decode(Instruction::MVI(H)),
             0x27 => self.decode(Instruction::DAA),
             0x28 => self.decode(Instruction::NOP),
             0x29 => self.decode(Instruction::DAD(HL)),
@@ -1039,7 +1044,7 @@ impl Cpu {
             0x2B => self.decode(Instruction::DCX(HL)),
             0x2C => self.decode(Instruction::INR(L)),
             0x2D => self.decode(Instruction::DCR(L)),
-            0x2E => self.decode(Instruction::MVI(L, 0xD8)),
+            0x2E => self.decode(Instruction::MVI(L)),
             0x2F => self.decode(Instruction::CMA),
 
 
@@ -1053,7 +1058,7 @@ impl Cpu {
             0x33 => self.decode(Instruction::INX_SP),
             0x34 => self.decode(Instruction::INR(M)),
             0x35 => self.decode(Instruction::DCR(M)),
-            0x36 => self.decode(Instruction::MVI(M, 0xD8)),
+            0x36 => self.decode(Instruction::MVI(M)),
             0x37 => self.decode(Instruction::STC),
             0x38 => self.decode(Instruction::NOP),
             0x39 => self.decode(Instruction::DAD_SP),
@@ -1062,7 +1067,7 @@ impl Cpu {
             0x3B => self.decode(Instruction::DCX_SP),
             0x3C => self.decode(Instruction::INR(A)),
             0x3D => self.decode(Instruction::DCR(A)),
-            0x3E => self.decode(Instruction::MVI(A, 0xD8)),
+            0x3E => self.decode(Instruction::MVI(A)),
             0x3F => self.decode(Instruction::CMC),
 
             // MOV Instructions 0x40 - 0x7F
