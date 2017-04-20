@@ -302,7 +302,9 @@ impl Cpu {
         } else {
             self.adv_pc(3);
         }
-        self.adv_cycles(10);
+        // According to Bluishcoder's JS emulator JNZ advances cycles by 15 instead of 10?
+        // Setting this temporarily to be able to keep track of cycles when comparing with that emulator
+        self.adv_cycles(15);
     }
 
     // If sign bit is one (false) indicating a negative result
@@ -383,7 +385,7 @@ impl Cpu {
                 sub1 = (ret >> 8 & 0xFF) as u8;
                 sub2 = (ret & 0xFF) as u8;
 
-                self.sp.wrapping_sub(2);
+                self.sp = self.sp.wrapping_sub(2);
 
                 self.pc = self.memory.read_word(self.pc);
             },
@@ -610,8 +612,11 @@ impl Cpu {
             },
 
             Register::D =>  {
+                println!("Reg_DE: {:b}", self.reg_de);
                 let source = self.reg_de;
-                self.reg_a = self.memory.read(source as usize);
+                self.reg_a = self.memory.read(source as usize >> 8);
+                println!("LDA RP Register DE value: {:b}", source);
+                println!("LDA RP Register A value: {:b}", self.reg_a);
             },
 
             _ => println!("LDAX on invalid register"),
@@ -619,6 +624,16 @@ impl Cpu {
 
         self.adv_cycles(7);
         self.adv_pc(1);
+    }
+
+    fn lhld(&mut self) {
+        // Load the HL register with 16 bits found at addr & addr + 1
+        let value = self.memory.read_word(self.pc & self.pc + 1);
+        self.reg_hl = value;
+
+        self.adv_pc(3);
+        self.adv_cycles(16);
+
     }
 
     fn inr(&mut self, reg: Register) {
@@ -634,10 +649,10 @@ impl Cpu {
         };
 
         if reg == Register::M {
+            self.adv_cycles(10);
+        } else {
             self.adv_cycles(5);
         }
-
-        self.adv_cycles(5);
         self.adv_pc(2);
     }
 
@@ -649,7 +664,7 @@ impl Cpu {
             RegisterPair::HL => self.reg_hl += 1,
         };
 
-        self.adv_cycles(5);
+        self.adv_cycles(6);
         self.adv_pc(1);
     }
 
@@ -850,8 +865,11 @@ impl Cpu {
         }
 
         self.adv_pc(1);
-        // Cycles depend on the registry, TODO
-        self.adv_cycles(5);
+        // If the destination is the M register, we should advance the cycle counter by 7.
+        match dst {
+            Register::M => self.adv_cycles(7),
+            _ => self.adv_cycles(5),
+        }
     }
 
     fn rst(&mut self, value: u8) {
@@ -957,7 +975,7 @@ impl Cpu {
             Instruction::STAX(reg) => self.stax(reg),
             Instruction::LDA => self.lda(),
             Instruction::LDAX(reg) => self.ldax(reg),
-            Instruction::LHLD => println!("Not implemented: {:?}", instruction),
+            Instruction::LHLD => self.lhld(),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
@@ -1008,9 +1026,9 @@ impl Cpu {
 
         if DEBUG {
             println!("Opcode: {:#X}, PC: {:X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
-            println!("A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
+            println!("Registers: A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
-            println!("BC: {:X}, DE: {:X}, HL: {:X}", self.reg_bc, self.reg_de, self.reg_hl);
+            println!("Register Pairs: BC: {:X}, DE: {:X}, HL: {:X}", self.reg_bc, self.reg_de, self.reg_hl);
         };
 
         match self.opcode {
