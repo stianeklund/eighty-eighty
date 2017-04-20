@@ -602,9 +602,17 @@ impl Cpu {
         // The contents of the designated register pair point to a memory location.
         // This instruction copies the contents of that memory location into the accumulator.
         // The contents of either the register pair or the memory location are not altered.
+
         match reg {
-            Register::B =>  self.reg_bc = 0xF,
-            Register::D =>  self.reg_de = 0xD,
+            Register::B =>  {
+                let source = self.reg_bc;
+                self.reg_a = self.memory.read(source as usize);
+            },
+
+            Register::D =>  {
+                let source = self.reg_de;
+                self.reg_a = self.memory.read(source as usize);
+            },
 
             _ => println!("LDAX on invalid register"),
         };
@@ -869,6 +877,21 @@ impl Cpu {
         self.adv_cycles(11);
     }
 
+    fn sphl(&mut self) {
+        self.sp = self.reg_hl;
+    }
+    // Store H & L direct
+    fn shld(&mut self) {
+        let reg_a = self.reg_a;
+        let reg_hl = self.reg_hl;
+        self.memory.write_word(reg_a, reg_hl);
+
+        self.adv_pc(3);
+        self.adv_cycles(13);
+    }
+
+
+
 
 
     pub fn decode(&mut self, instruction: Instruction) {
@@ -958,7 +981,8 @@ impl Cpu {
             Instruction::RRC => println!("Not implemented: {:?}", instruction),
 
             Instruction::STC => self.stc(),
-            Instruction::SHLD => println!("Not implemented: {:?}", instruction),
+            Instruction::SHLD => self.shld(),
+            Instruction::SPHL => self.sphl(),
             Instruction::ORA(reg) => println!("Not implemented: {:?}", instruction),
 
             // Jump instructions can probably use just one function.
