@@ -607,24 +607,21 @@ impl Cpu {
         self.adv_cycles(13);
     }
 
-    fn ldax(&mut self, reg: Register) {
+    fn ldax(&mut self, reg: RegisterPair) {
         // LDAX(Load accumulator indirect):
         // The contents of the designated register pair point to a memory location.
         // This instruction copies the contents of that memory location into the accumulator.
         // The contents of either the register pair or the memory location are not altered.
 
         match reg {
-            Register::B =>  {
-                let source = self.reg_bc;
-                self.reg_a = self.memory.read(source as usize);
+            RegisterPair::BC =>  {
+                self.reg_a = self.memory.read(self.reg_bc as usize);
             },
 
-            Register::D =>  {
+            RegisterPair::DE =>  {
+                self.reg_a = self.memory.read(self.reg_de as usize);
                 println!("Reg_DE: {:b}", self.reg_de);
-                let source = self.reg_de;
-                self.reg_a = self.memory.read(source as usize >> 8);
-                println!("LDA RP Register DE value: {:b}", source);
-                println!("LDA RP Register A value: {:b}", self.reg_a);
+                println!("LDA RP Register A value: {:X}", self.reg_a);
             },
 
             _ => println!("LDAX on invalid register"),
@@ -667,9 +664,9 @@ impl Cpu {
     fn inx(&mut self, reg: RegisterPair) {
 
         match reg {
-            RegisterPair::BC => self.reg_bc += 1,
-            RegisterPair::DE => self.reg_de += 1,
-            RegisterPair::HL => self.reg_hl += 1,
+            RegisterPair::BC => self.reg_bc += 1 & 0xFFFF,
+            RegisterPair::DE => self.reg_de += 1 & 0xFFFF,
+            RegisterPair::HL => self.reg_hl += 1 & 0xFFFF,
         };
 
         self.adv_cycles(6);
@@ -883,7 +880,7 @@ impl Cpu {
     fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
         // Store A into HL
         let value = self.read_reg(src);
-
+        // if (value < 0x2000 || value > 0xFFFF)
         self.write_rp(dst, value);
         if DEBUG {
             println!("MOV RP: {:?}, Destination: {:?}", src, dst);
@@ -1066,7 +1063,7 @@ impl Cpu {
             0x08 => self.decode(Instruction::NOP),
             0x09 => self.decode(Instruction::DAD(BC)),
 
-            0x0A => self.decode(Instruction::LDAX(B)),
+            0x0A => self.decode(Instruction::LDAX(BC)),
             0x0B => self.decode(Instruction::DCX(BC)),
             0x0C => self.decode(Instruction::INR(C)),
             0x0D => self.decode(Instruction::DCR(D)),
@@ -1085,7 +1082,7 @@ impl Cpu {
             0x18 => self.decode(Instruction::NOP),
             0x19 => self.decode(Instruction::DAD(DE)),
 
-            0x1A => self.decode(Instruction::LDAX(D)),
+            0x1A => self.decode(Instruction::LDAX(DE)),
             0x1B => self.decode(Instruction::DCX(DE)),
             0x1C => self.decode(Instruction::INR(E)),
             0x1D => self.decode(Instruction::DCR(E)),
