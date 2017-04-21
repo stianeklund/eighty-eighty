@@ -359,19 +359,36 @@ impl Cpu {
     // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory pointer)
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
-            RegisterPair::BC => self.reg_bc = self.memory.read_word(self.pc),
-            RegisterPair::DE => self.reg_de = self.memory.read_word(self.pc),
-            RegisterPair::HL => self.reg_hl = self.memory.read_word(self.pc),
+            RegisterPair::BC => {
+                let value = self.memory.read(self.pc as usize);
+                self.reg_b = value + 2;
+                self.reg_c = value + 1;
+            },
+            RegisterPair::DE => {
+                let value = self.memory.read(self.pc as usize);
+                self.reg_d = value + 2;
+                self.reg_e = value + 1;
+
+
+            },
+            RegisterPair::HL => {
+                let value = self.memory.read(self.pc as usize);
+                self.reg_h = value + 2;
+                self.reg_l = value + 1;
+            }
 
         };
-        self.adv_pc(3);
         self.adv_cycles(10);
+        self.adv_pc(3);
     }
 
     fn sta(&mut self) {
         let reg_a = self.reg_a;
-        let reg_bc = self.reg_bc;
-        self.memory.write_word(reg_a, reg_bc);
+
+        let value = self.memory.read_word(self.pc);
+
+        let addr = value + 2 << 8 | value + 1;
+        self.memory.write_word(reg_a, addr);
 
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -445,13 +462,28 @@ impl Cpu {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        // TODO Investigate overflow
-        let mut value = self.reg_hl;
+        let mut value = self.reg_h.wrapping_shl(8) | self.reg_l;
+
         match reg {
-            RegisterPair::BC => value = self.reg_hl + self.reg_bc,
-            RegisterPair::DE => value = self.reg_hl + self.reg_de,
-            RegisterPair::HL => value = value.wrapping_add(self.reg_hl),
+            RegisterPair::BC => {
+                value;
+                value += self.reg_b.wrapping_shl(8) | self.reg_c;
+                self.half_carry = 0 < (value & 0xFFFF);
+            },
+
+            RegisterPair::DE => {
+                value;
+                value += self.reg_d.wrapping_shl(8) | self.reg_e;
+                self.half_carry = 0 < (value & 0xFFFF);
+            },
+
+            RegisterPair::HL => {
+                println!("DAD shouldn't run on HL, dad_sp handles this");
+            }
         };
+        self.reg_h = value.wrapping_shr(8) & 0xFF;
+        self.reg_l = value.wrapping_shr(0) & 0xFF;
+
         self.adv_pc(1);
         self.adv_cycles(10);
     }
@@ -542,10 +574,27 @@ impl Cpu {
 
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
-            RegisterPair::BC => self.reg_bc -= 1 & 0xFF,
-            RegisterPair::DE => self.reg_de -= 1 & 0xFF,
-            RegisterPair::HL => self.reg_hl -= 1 & 0xFF,
+            RegisterPair::BC => {
+                let mut bc = self.reg_b.wrapping_shl(8) | self.reg_c;
+                bc -= 1;
+                self.reg_b = bc.wrapping_shl(8) & 0xFF;
+                self.reg_c = bc.wrapping_shl(0) & 0xFF;
+            },
+            RegisterPair::DE => {
+                let mut de = self.reg_d.wrapping_shl(8) | self.reg_e;
+                de -= 1;
+                self.reg_d = de.wrapping_shl(8) & 0xFF;
+                self.reg_e = de.wrapping_shl(0) & 0xFF;
+            },
+            RegisterPair::HL => {
+                let mut hl = self.reg_h.wrapping_shl(8) | self.reg_l;
+                hl -= 1;
+                self.reg_h = hl.wrapping_shl(8) & 0xFF;
+                self.reg_l = hl.wrapping_shl(0) & 0xFF;
+            }
         }
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
     // TODO
@@ -615,12 +664,15 @@ impl Cpu {
 
         match reg {
             RegisterPair::BC =>  {
-                self.reg_a = self.memory.read(self.reg_bc as usize);
+                // addr = cpu->b << 8 | cpu->c;
+                let addr = (self.reg_b.wrapping_shl(8) | self.reg_c) as u16;
+                self.reg_a = self.memory.memory[addr as usize];
             },
 
             RegisterPair::DE =>  {
-                self.reg_a = self.memory.read(self.reg_de as usize);
-                println!("Reg_DE: {:b}", self.reg_de);
+                let addr = (self.reg_d.wrapping_shl(8) | self.reg_e) as u16;
+                self.reg_a = self.memory.memory[addr as usize];
+                // println!("Reg_DE: {:b}", self.reg_de);
                 println!("LDA RP Register A value: {:X}", self.reg_a);
             },
 
@@ -633,8 +685,10 @@ impl Cpu {
 
     fn lhld(&mut self) {
         // Load the HL register with 16 bits found at addr & addr + 1
-        let value = self.memory.read_word(self.pc & self.pc + 1);
-        self.reg_hl = value;
+        // let value = self.memory.read_word(self.pc & self.pc + 1);
+
+        self.reg_l = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 0;
+        self.reg_h = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 1;
 
         self.adv_pc(3);
         self.adv_cycles(16);
@@ -664,9 +718,24 @@ impl Cpu {
     fn inx(&mut self, reg: RegisterPair) {
 
         match reg {
-            RegisterPair::BC => self.reg_bc += 1 & 0xFFFF,
-            RegisterPair::DE => self.reg_de += 1 & 0xFFFF,
-            RegisterPair::HL => self.reg_hl += 1 & 0xFFFF,
+            RegisterPair::BC => {
+                self.reg_c += 1;
+                if self.reg_c == 0 {
+                    self.reg_b += 1;
+                }
+            },
+            RegisterPair::DE => {
+                self.reg_e += 1;
+                if self.reg_d == 0 {
+                    self.reg_d += 1;
+                }
+            },
+            RegisterPair::HL => {
+                self.reg_l += 1;
+                if self.reg_h == 0 {
+                    self.reg_h += 1;
+                }
+            }
         };
 
         self.adv_cycles(6);
@@ -714,13 +783,21 @@ impl Cpu {
 
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
-    // TODO Use RegisterPair
     fn stax(&mut self, reg: RegisterPair) {
 
         match reg {
-            RegisterPair::BC => self.reg_bc = self.reg_a as u16,
-            RegisterPair::DE => self.reg_de = self.reg_a as u16,
-            RegisterPair::HL => self.reg_hl = self.reg_a as u16,
+            RegisterPair::BC => {
+                let bc = self.reg_b.wrapping_shl(8) | self.reg_c;
+                self.memory.memory[bc as usize] = self.reg_a;
+            },
+            RegisterPair::DE => {
+                let de = self.reg_d.wrapping_shl(8) | self.reg_e;
+                self.memory.memory[de as usize] = self.reg_a;
+            },
+            RegisterPair::HL => {
+                let hl = self.reg_h.wrapping_shl(8) | self.reg_l;
+                self.memory.memory[hl as usize] = self.reg_a;
+            }
         }
 
         self.adv_cycles(7);
@@ -863,18 +940,22 @@ impl Cpu {
 
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
-        self.write_reg(dst, value);
+        match dst {
+            Register::M => {
+                self.write_reg(dst, value);
+                // self.reg_m = self.reg_hl as u8;
+                self.adv_cycles(7);
+            },
 
+            _ => {
+                self.write_reg(dst, value);
+                self.adv_cycles(5);
+            }
+        }
         if DEBUG {
             println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
-
         self.adv_pc(1);
-        // If the destination is the M register, we should advance the cycle counter by 7.
-        match dst {
-            Register::M => self.adv_cycles(7),
-            _ => self.adv_cycles(5),
-        }
     }
 
     fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
@@ -973,7 +1054,7 @@ impl Cpu {
             Instruction::JPO => self.jpo(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
-            Instruction::MOV_RP(dst, src) => self.mov_rp(dst, src),
+            // Instruction::MOV_RP(dst, src) => self.mov_rp(dst, src),
             Instruction::MVI(reg) => self.mvi(reg),
             Instruction::SUB(reg) => self.sub(reg),
             Instruction::SBB(reg) => self.sbb(reg),
@@ -1048,7 +1129,7 @@ impl Cpu {
             println!("Opcode: {:#X}, PC: {:X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
             println!("Registers: A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
-            println!("Register Pairs: BC: {:X}, DE: {:X}, HL: {:X}", self.reg_bc, self.reg_de, self.reg_hl);
+            // println!("Register Pairs: BC: {:X}, DE: {:X}, HL: {:X}", bc, de, hl);
         };
 
         match self.opcode {
@@ -1187,14 +1268,14 @@ impl Cpu {
             0x6E => self.decode(Instruction::MOV(L, M)),
             0x6F => self.decode(Instruction::MOV(L, A)),
 
-            0x70 => self.decode(Instruction::MOV_RP(HL, B)),
-            0x71 => self.decode(Instruction::MOV_RP(HL, C)),
-            0x72 => self.decode(Instruction::MOV_RP(HL, D)),
-            0x73 => self.decode(Instruction::MOV_RP(HL, E)),
-            0x74 => self.decode(Instruction::MOV_RP(HL, H)),
-            0x75 => self.decode(Instruction::MOV_RP(HL, L)),
+            0x70 => self.decode(Instruction::MOV(M, B)),
+            0x71 => self.decode(Instruction::MOV(M, C)),
+            0x72 => self.decode(Instruction::MOV(M, D)),
+            0x73 => self.decode(Instruction::MOV(M, E)),
+            0x74 => self.decode(Instruction::MOV(M, H)),
+            0x75 => self.decode(Instruction::MOV(M, L)),
             0x76 => self.decode(Instruction::HLT),
-            0x77 => self.decode(Instruction::MOV_RP(HL, A)),
+            0x77 => self.decode(Instruction::MOV(M, A)),
 
             0x78 => self.decode(Instruction::MOV(A, B)),
             0x79 => self.decode(Instruction::MOV(A, C)),

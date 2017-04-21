@@ -20,6 +20,7 @@ pub enum Register {
 pub enum RegisterPair {
     BC, DE, HL,
 }
+
 impl fmt::UpperHex for Register {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = self;

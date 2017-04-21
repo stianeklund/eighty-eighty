@@ -32,6 +32,6 @@ fn main() {
         }
         cpu.execute_instruction();
         inter.display.render_vram();
-        thread::sleep_ms(30);
+        thread::sleep_ms(20);
     }
 }
