@@ -136,6 +136,14 @@ impl Cpu {
             Register::M => self.reg_m = value,
         }
     }
+    fn write_rp(&mut self, reg: RegisterPair, value: u8) {
+        match reg {
+            RegisterPair::BC => self.reg_bc = value as u16,
+            RegisterPair::DE => self.reg_de = value as u16,
+            RegisterPair::HL => self.reg_hl = value as u16,
+
+        }
+    }
 
     // Instruction functions, possible improvement is to group functions
     // by type or separate them by type, e.g mov goes together.
@@ -872,6 +880,19 @@ impl Cpu {
         }
     }
 
+    fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
+        // Store A into HL
+        let value = self.read_reg(src);
+
+        self.write_rp(dst, value);
+        if DEBUG {
+            println!("MOV RP: {:?}, Destination: {:?}", src, dst);
+        }
+        self.adv_pc(1);
+        self.adv_cycles(7);
+    }
+
+
     fn rst(&mut self, value: u8) {
 
         let mut reset = 0u8;
@@ -954,6 +975,7 @@ impl Cpu {
             Instruction::JPO => self.jpo(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
+            Instruction::MOV_RP(dst, src) => self.mov_rp(dst, src),
             Instruction::MVI(reg) => self.mvi(reg),
             Instruction::SUB(reg) => self.sub(reg),
             Instruction::SBB(reg) => self.sbb(reg),
@@ -1167,14 +1189,14 @@ impl Cpu {
             0x6E => self.decode(Instruction::MOV(L, M)),
             0x6F => self.decode(Instruction::MOV(L, A)),
 
-            0x70 => self.decode(Instruction::MOV(M, B)),
-            0x71 => self.decode(Instruction::MOV(M, C)),
-            0x72 => self.decode(Instruction::MOV(M, D)),
-            0x73 => self.decode(Instruction::MOV(M, E)),
-            0x74 => self.decode(Instruction::MOV(M, H)),
-            0x75 => self.decode(Instruction::MOV(M, L)),
+            0x70 => self.decode(Instruction::MOV_RP(HL, B)),
+            0x71 => self.decode(Instruction::MOV_RP(HL, C)),
+            0x72 => self.decode(Instruction::MOV_RP(HL, D)),
+            0x73 => self.decode(Instruction::MOV_RP(HL, E)),
+            0x74 => self.decode(Instruction::MOV_RP(HL, H)),
+            0x75 => self.decode(Instruction::MOV_RP(HL, L)),
             0x76 => self.decode(Instruction::HLT),
-            0x77 => self.decode(Instruction::MOV(M, A)),
+            0x77 => self.decode(Instruction::MOV_RP(HL, A)),
 
             0x78 => self.decode(Instruction::MOV(A, B)),
             0x79 => self.decode(Instruction::MOV(A, C)),
