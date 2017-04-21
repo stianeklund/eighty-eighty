@@ -878,9 +878,10 @@ impl Cpu {
     }
 
     fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
-        // Store A into HL
+        // E.g: Store A into HL
+        // TODO Investigate this..
+        // This causes HL to change value, which isn't correct.
         let value = self.read_reg(src);
-        // if (value < 0x2000 || value > 0xFFFF)
         self.write_rp(dst, value);
         if DEBUG {
             println!("MOV RP: {:?}, Destination: {:?}", src, dst);
