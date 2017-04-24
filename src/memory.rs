@@ -37,6 +37,15 @@ impl Memory {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
 
+    pub fn read_high(&mut self, addr: u16) -> u8 {
+        (self.memory[addr as usize + 2])
+    }
+
+    pub fn read_low(&mut self, addr: u16) -> u8 {
+        // (self.memory[addr as usize + 2] as u16) << 8
+        self.memory[addr as usize + 1]
+    }
+
     pub fn write_word(&mut self, addr: u8, word: u16) {
         self.write_byte(addr, word & 0xFF);
         self.write_byte(addr + 1, (word >> 8) & 0xFF);

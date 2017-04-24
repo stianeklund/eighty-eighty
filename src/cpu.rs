@@ -360,24 +360,31 @@ impl Cpu {
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let value = self.memory.read(self.pc as usize);
-                self.reg_b = value + 2;
-                self.reg_c = value + 1;
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
+                self.reg_b = high;
+                self.reg_c = low;
             },
+
             RegisterPair::DE => {
-                let value = self.memory.read(self.pc as usize);
-                self.reg_d = value + 2;
-                self.reg_e = value + 1;
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
+
+                self.reg_d = high;
+                self.reg_e = low;
 
 
             },
-            RegisterPair::HL => {
-                let value = self.memory.read(self.pc as usize);
-                self.reg_h = value + 2;
-                self.reg_l = value + 1;
-            }
 
+            RegisterPair::HL => {
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
+
+                self.reg_h = high;
+                self.reg_l = low;
+            }
         };
+
         self.adv_cycles(10);
         self.adv_pc(3);
     }
@@ -418,8 +425,8 @@ impl Cpu {
         }
 
         if DEBUG {
-            println!("Subroutine call: {:X}", self.pc);
-            println!("Return address is: {:X}", ret);
+            println!("Subroutine call: {:02X}", self.pc);
+            println!("Return address is: {:02X}", ret);
         }
 
         // self.set_sp(ret);
@@ -664,7 +671,7 @@ impl Cpu {
 
         match reg {
             RegisterPair::BC =>  {
-                // addr = cpu->b << 8 | cpu->c;
+                // addr =self.reg_b << 8 | self.reg_c;
                 let addr = (self.reg_b.wrapping_shl(8) | self.reg_c) as u16;
                 self.reg_a = self.memory.memory[addr as usize];
             },
@@ -709,9 +716,11 @@ impl Cpu {
 
         if reg == Register::M {
             self.adv_cycles(10);
+
         } else {
             self.adv_cycles(5);
         }
+
         self.adv_pc(2);
     }
 
@@ -724,12 +733,14 @@ impl Cpu {
                     self.reg_b += 1;
                 }
             },
+
             RegisterPair::DE => {
                 self.reg_e += 1;
                 if self.reg_d == 0 {
                     self.reg_d += 1;
                 }
             },
+
             RegisterPair::HL => {
                 self.reg_l += 1;
                 if self.reg_h == 0 {
@@ -865,10 +876,15 @@ impl Cpu {
     }
 
     fn xchg(&mut self) {
-        let hl = self.reg_hl;
-        let de = self.reg_de;
-        self.reg_hl = hl;
-        self.reg_de = de;
+        let h = self.reg_h;
+        let l = self.reg_l;
+
+        self.reg_h = self.reg_d;
+        self.reg_l = self.reg_e;
+
+        self.reg_d = h;
+        self.reg_e = l;
+
         self.adv_pc(1);
         self.adv_cycles(5);
     }
@@ -897,10 +913,22 @@ impl Cpu {
     }
 
     fn pop(&mut self, reg: RegisterPair) {
+        let sp = self.sp as usize;
         match reg {
-            RegisterPair::BC => self.reg_bc = self.memory.read_word(self.sp + 1) & 0xFFFF,
-            RegisterPair::DE => self.reg_de = self.memory.read_word(self.sp + 1) & 0xFFFF,
-            RegisterPair::HL => self.reg_hl = self.memory.read_word(self.sp + 1) & 0xFFFF,
+            RegisterPair::BC => {
+                self.reg_b = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_c = self.memory.memory[sp + 0] & 0xFFFF;
+            },
+
+            RegisterPair::DE => {
+                self.reg_d = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_e = self.memory.memory[sp + 0] & 0xFFFF;
+            },
+
+            RegisterPair::HL => {
+                self.reg_h = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_l = self.memory.memory[sp + 0] & 0xFFFF;
+            }
         }
 
         self.sp.wrapping_add(2);
@@ -996,21 +1024,18 @@ impl Cpu {
     }
 
     fn sphl(&mut self) {
-        self.sp = self.reg_hl;
+        self.sp = (self.reg_h as u16) << 8 | self.reg_l as u16;
     }
+
     // Store H & L direct
     fn shld(&mut self) {
         let reg_a = self.reg_a;
-        let reg_hl = self.reg_hl;
-        self.memory.write_word(reg_a, reg_hl);
+        let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
+        self.memory.write_word(reg_a, hl);
 
         self.adv_pc(3);
         self.adv_cycles(13);
     }
-
-
-
-
 
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
@@ -1094,7 +1119,11 @@ impl Cpu {
             Instruction::RNZ => self.rnz(),
             Instruction::RZ => self.rz(),
 
-            Instruction::HLT => self.adv_pc(1),     // TODO
+            Instruction::HLT => {
+                println!("HLT instruction called, resetting instead");
+                self.reset();
+            },
+
             Instruction::RLC => self.rlc(),
             Instruction::RNC => self.rnc(),
             Instruction::RRC => println!("Not implemented: {:?}", instruction),
@@ -1120,16 +1149,21 @@ impl Cpu {
 
     }
 
+    #[allow(exceeding_bitshifts)]
     pub fn execute_instruction(&mut self) {
         self.opcode = self.memory.read(self.pc as usize);
         use self::Register::*;
         use self::RegisterPair::*;
 
         if DEBUG {
-            println!("Opcode: {:#X}, PC: {:X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
-            println!("Registers: A: {:X}, B: {:X}, C: {:X}, D: {:X}, E: {:X}, H: {:X}, L: {:?}, M: {:X}",
+            println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
+            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02}, M: {:02X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
-            // println!("Register Pairs: BC: {:X}, DE: {:X}, HL: {:X}", bc, de, hl);
+            let bc = (self.reg_b as u16) << 8 | self.reg_c as u16;
+            let de = (self.reg_d as u16) << 8 | self.reg_e as u16;
+            let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
+
+            println!("Register Pairs: BC: {:02X}, DE: {:02X}, HL: {:02X}", bc, de, hl);
         };
 
         match self.opcode {
