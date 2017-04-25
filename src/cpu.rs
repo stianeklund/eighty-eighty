@@ -1482,8 +1482,12 @@ impl Cpu {
             self.execute_instruction(instruction);
             self.pc &= 0xFFFF;
             times += 1;
-            println!("Times executed: {}", times);
         }
+    }
+
+    pub fn run(&mut self) {
+        let instruction = self.memory.read(self.pc as usize);
+        self.execute_instruction(instruction);
     }
 
     pub fn reset(&mut self) {

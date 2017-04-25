@@ -13,6 +13,9 @@ pub struct Keypad {
 pub enum State {
     Exit,
     Continue,
+    Break,
+    Step,
+
 }
 
 impl Keypad {
@@ -32,8 +35,19 @@ impl Keypad {
                 Event::KeyDown { keycode: Some(Keycode::X), .. } => {
                     return State::Exit;
                 },
+
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                 return State::Exit;
+                },
+
+                // Lets break to do some debugging
+                Event::KeyDown { keycode: Some(Keycode::B), .. } => {
+                    return State::Break;
+                },
+
+                // For stepping CPU instructions
+                Event::KeyDown { keycode: Some(Keycode::Return), .. } => {
+                return State::Step;
                 },
                 _ => {}
             }

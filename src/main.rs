@@ -30,10 +30,17 @@ fn main() {
     loop {
         match keypad.key_press() {
             keypad::State::Exit => break,
+            keypad::State::Step => {
+                cpu.step(1);
+            },
+            keypad::State::Break => {
+                // TODO We want to pause here.
+            },
             keypad::State::Continue => {}
         }
-        cpu.execute_instruction();
+        // cpu.execute_instruction();
+        // cpu.run();
         inter.display.render_vram();
-        thread::sleep_ms(300);
+        thread::sleep_ms(30);
     }
 }
