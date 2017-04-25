@@ -1049,6 +1049,7 @@ impl Cpu {
                 self.adv_pc(1);
                 self.adv_cycles(4);
             },
+
             Instruction::ACI => self.aci(),
 
             Instruction::ADD(reg) => self.add(reg),
@@ -1150,12 +1151,12 @@ impl Cpu {
 
     }
 
-    #[allow(exceeding_bitshifts)]
-    pub fn execute_instruction(&mut self) {
-        self.opcode = self.memory.read(self.pc as usize);
+    pub fn execute_instruction(&mut self, instruction: u8) {
         use self::Register::*;
         use self::RegisterPair::*;
 
+        // self.opcode = self.memory.read(self.pc as usize);
+        self.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
             println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02}, M: {:02X}",
@@ -1471,6 +1472,17 @@ impl Cpu {
             0xFF => self.decode(Instruction::RST(7)),
 
             _ => println!("Unknown opcode: {:#X}", self.opcode),
+        }
+    }
+
+    // Step one instruction
+    pub fn step(&mut self, mut times: u8) {
+        let instruction = self.memory.read(self.pc as usize);
+        for _ in 0..times {
+            self.execute_instruction(instruction);
+            self.pc &= 0xFFFF;
+            times += 1;
+            println!("Times executed: {}", times);
         }
     }
 

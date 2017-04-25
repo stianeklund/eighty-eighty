@@ -25,6 +25,8 @@ fn main() {
 
     let mut keypad = inter.keypad;
 
+    // TODO Implement break & step keyboard actions
+    // cpu.step(4);
     loop {
         match keypad.key_press() {
             keypad::State::Exit => break,
@@ -32,6 +34,6 @@ fn main() {
         }
         cpu.execute_instruction();
         inter.display.render_vram();
-        thread::sleep_ms(20);
+        thread::sleep_ms(300);
     }
 }
