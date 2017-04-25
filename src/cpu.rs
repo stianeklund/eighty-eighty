@@ -469,18 +469,18 @@ impl Cpu {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        let mut value = self.reg_h.wrapping_shl(8) | self.reg_l;
+        let mut value: u16 = (self.reg_h as u16) << 8 | (self.reg_l as u16) as u16;
 
         match reg {
             RegisterPair::BC => {
                 value;
-                value += self.reg_b.wrapping_shl(8) | self.reg_c;
+                value += (self.reg_b as u16) >> 8 | (self.reg_c as u16);
                 self.half_carry = 0 < (value & 0xFFFF);
             },
 
             RegisterPair::DE => {
                 value;
-                value += self.reg_d.wrapping_shl(8) | self.reg_e;
+                value += (self.reg_d as u16) >> 8 | (self.reg_e as u16);
                 self.half_carry = 0 < (value & 0xFFFF);
             },
 
@@ -488,8 +488,9 @@ impl Cpu {
                 println!("DAD shouldn't run on HL, dad_sp handles this");
             }
         };
-        self.reg_h = value.wrapping_shr(8) & 0xFF;
-        self.reg_l = value.wrapping_shr(0) & 0xFF;
+
+        self.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
+        self.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
 
         self.adv_pc(1);
         self.adv_cycles(10);
