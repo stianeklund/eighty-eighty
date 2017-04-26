@@ -283,7 +283,7 @@ impl Cpu {
 
     // Jump if no carry
     fn jnc(&mut self) {
-        if self.carry == false {
+        if !self.carry {
             self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
@@ -304,8 +304,8 @@ impl Cpu {
     // Jump no zero
     // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
-        if DEBUG { println!("JNZ? :{}", self.zero); }
-        if self.zero {
+
+        if !self.zero {
             self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
@@ -503,76 +503,96 @@ impl Cpu {
         self.adv_pc(1);
         self.adv_cycles(10);
         value = self.sp
-
     }
 
+    // Decrement memory or register
     fn dcr(&mut self, reg: Register) {
+
+        // Example:
+        // If the H register contains 3AH, and the L register contains 7CH
+        // and memory location 3A7CH contains 40H, the instruction:
+        // DCR M will cause memory location 3A7CH to contain 3FH.
+
         match reg {
+
+            // register % 2 = odd (parity false)
+            // register & 1 = even (parity true)
+
+            // The goal here is to read out the low bits and check for parity.
+            // self.parity = !self.reg_m + 1 & 1 == 0;
+
             Register::A => {
-                self.reg_a -= 1;
+                self.reg_a -= 1 & 0xFF;
                 self.half_carry = !self.reg_a & 0x0F == 0x0F;
                 self.zero = self.reg_a & 0xFF == 0;
+                self.parity = !self.reg_a + 1 & 1 == 0;
                 self.sign = self.reg_a & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::B => {
-                self.reg_b.wrapping_sub(1);
+                // TODO Investigate behavior here.. Underflow occurs unless we wrap.
+                self.reg_b = self.reg_b.wrapping_sub(1) & 0xFF;
+
                 self.half_carry = !self.reg_b & 0x0F == 0x0F;
-                // TODO Investigate this behavior...
-                // According to the disassembly it looks like we should return from the subroutine
-                // with the zero flag set the JNZ does not jump..
                 self.zero = self.reg_b & 0xFF == 0;
+                self.parity = !self.reg_b & 1 == 0;
                 self.sign = self.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
 
             },
 
             Register::C => {
-                self.reg_c -= 1;
+                self.reg_c -= 1 & 0xFF;
                 self.half_carry = !self.reg_c & 0x0F == 0x0F;
                 self.zero = self.reg_c & 0xFF == 0;
+                self.parity = !self.reg_c & 1 == 0;
                 self.sign = self.reg_c & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::D => {
-                self.reg_d -= 1;
+                self.reg_d -= 1 & 0xFF;
                 self.half_carry = !self.reg_d & 0x0F == 0x0F;
                 self.zero = self.reg_d & 0xFF == 0;
+                self.parity = !self.reg_b & 1 == 0;
                 self.sign = self.reg_d & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::E => {
-                self.reg_e -= 1;
+                self.reg_e -= 1 & 0xFF;
                 self.half_carry = !self.reg_e & 0x0F == 0x0F;
                 self.zero = self.reg_e & 0xFF == 0;
+                self.parity = !self.reg_e & 1 == 0;
                 self.sign = self.reg_e & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::H => {
-                self.reg_h -= 1;
+                self.reg_h -= 1 & 0xFF;
                 self.half_carry = !self.reg_h & 0x0F == 0x0F;
                 self.zero = self.reg_h & 0xFF == 0;
+                self.parity = !self.reg_h & 1 == 0;
                 self.sign = self.reg_h & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::L => {
-                self.reg_l -= 1;
+                self.reg_l -= 1 & 0xFF;
                 self.half_carry = !self.reg_l & 0x0F == 0x0F;
                 self.zero = self.reg_l & 0xFF == 0;
+                self.parity = !self.reg_l & 1 == 0;
                 self.sign = self.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
 
             },
 
             Register::M => {
-                self.reg_m -= 1;
+                self.reg_m -= 1 & 0xFF;
                 self.half_carry = !self.reg_m & 0x0F == 0x0F;
                 self.zero = self.reg_m & 0xFF == 0;
+                self.parity = !self.reg_m & 1 == 0;
                 self.sign = self.reg_m & 0x80 != 0;
                 self.adv_cycles(6);
             }
@@ -726,7 +746,8 @@ impl Cpu {
     }
 
     fn inx(&mut self, reg: RegisterPair) {
-
+        // TODO Issue where DE register is 1BFF and should increment to 1C00.
+        // Instead due to how this is written an overflow happens, as E can't be larger than FF.
         match reg {
             RegisterPair::BC => {
                 self.reg_c += 1;
@@ -736,15 +757,15 @@ impl Cpu {
             },
 
             RegisterPair::DE => {
-                self.reg_e += 1;
-                if self.reg_d == 0 {
+               self.reg_e += 1;
+                if self.reg_e == 0 {
                     self.reg_d += 1;
                 }
             },
 
             RegisterPair::HL => {
                 self.reg_l += 1;
-                if self.reg_h == 0 {
+                if self.reg_l == 0 {
                     self.reg_h += 1;
                 }
             }
@@ -1159,13 +1180,14 @@ impl Cpu {
         self.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
-            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02}, M: {:02X}",
+            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
             let bc = (self.reg_b as u16) << 8 | self.reg_c as u16;
             let de = (self.reg_d as u16) << 8 | self.reg_e as u16;
             let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
 
-            println!("Register Pairs: BC: {:02X}, DE: {:02X}, HL: {:02X}", bc, de, hl);
+            println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}", bc, de, hl);
+            println!("Flags: Sign: {}, Zero: {}, Parity: {}, Carry: {}, Half Carry: {}", self.sign, self.zero, self.parity, self.carry, self.half_carry);
         };
 
         match self.opcode {
