@@ -307,12 +307,11 @@ impl Cpu {
 
         if !self.zero {
             self.pc = self.memory.read_word(self.pc);
+            self.adv_cycles(15);
         } else {
             self.adv_pc(3);
+            self.adv_cycles(10);
         }
-        // According to Bluishcoder's JS emulator JNZ advances cycles by 15 instead of 10?
-        // Setting this temporarily to be able to keep track of cycles when comparing with that emulator
-        self.adv_cycles(15);
     }
 
     // If sign bit is one (false) indicating a negative result
@@ -746,27 +745,27 @@ impl Cpu {
     }
 
     fn inx(&mut self, reg: RegisterPair) {
-        // TODO Issue where DE register is 1BFF and should increment to 1C00.
-        // Instead due to how this is written an overflow happens, as E can't be larger than FF.
+
         match reg {
             RegisterPair::BC => {
-                self.reg_c += 1;
+                self.reg_c = self.reg_c.wrapping_add(1);
                 if self.reg_c == 0 {
                     self.reg_b += 1;
                 }
             },
 
             RegisterPair::DE => {
-               self.reg_e += 1;
+               self.reg_e = self.reg_e.wrapping_add(1);
                 if self.reg_e == 0 {
                     self.reg_d += 1;
                 }
             },
 
             RegisterPair::HL => {
-                self.reg_l += 1;
+                self.reg_l = self.reg_l.wrapping_add(1);
                 if self.reg_l == 0 {
                     self.reg_h += 1;
+                    // self.reg_l -= 1;
                 }
             }
         };
@@ -977,9 +976,10 @@ impl Cpu {
     }
 
     fn ret(&mut self) {
-        if DEBUG { println!("Returning to previous subroutine: {:X}", self.sp); }
-        self.pc = self.sp;
+        let pc = self.memory.read_word(self.sp) | (self.memory.read_word(self.sp + 1) << 8) as u16;
+        self.sp += 2;
         self.adv_cycles(10);
+        self.adv_pc(1);
     }
 
     // TODO
