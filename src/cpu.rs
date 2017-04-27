@@ -8,7 +8,6 @@ use super::memory;
 
 const DEBUG: bool = true;
 
-
 // Intel 8080 Notes:
 //
 // The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
@@ -905,16 +904,38 @@ impl Cpu {
 
         self.reg_d = h;
         self.reg_e = l;
-
         self.adv_pc(1);
         self.adv_cycles(5);
     }
     // Rotate Accumulator Left
-    fn rlc(&mut self) {
+    fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
+        self.reg_a = (self.reg_a >> 1) | (self.reg_a << 7);
         self.carry = self.reg_a & 0x08 != 0;
-        self.reg_a = self.reg_a & 0x08;
+        // self.reg_a = self.reg_a & 0x08;
+
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+    // Rotate Accumulator Left
+    fn rlc(&mut self) {
+        // The Carry bit is set equal to the high-order bit of the accumulator
+        // If one of the 4 higher bits are 1 we set the carry flag.
+        self.carry = self.reg_a & 0x08 != 0;
+        self.reg_a = self.reg_a << 1;
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+    // TODO Rotate Accumulator Right
+    fn rrc(&mut self) {
+        // The Carry bit is set equal to the low-order bit of the accumulator
+        // If one of the 4 lower bits are 1 we set the carry flag.
+        self.carry = self.reg_a & 0x08 != 0;
+        self.reg_a= ( self.reg_a >> 1 ) | (( self.reg_a & 0x1 ) << 7);
+        self.adv_pc(1);
+        self.adv_cycles(4);
+
     }
 
     // Return if no carry
@@ -927,7 +948,7 @@ impl Cpu {
     }
 
     // TODO
-    fn rpe(&mut self) {
+   fn rpe(&mut self) {
         self.adv_pc(1);
         // TODO Cycles 11 / 5
         // self.adv_cycles(4);
@@ -1059,6 +1080,7 @@ impl Cpu {
         self.adv_cycles(13);
     }
 
+
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
         use self::RegisterPair::*;
@@ -1129,6 +1151,8 @@ impl Cpu {
             Instruction::LXI_SP => self.lxi_sp(),
 
             Instruction::RAL => println!("Not implemented: {:?}", instruction),
+            Instruction::RAR => self.rar(),
+            Instruction::RLC => self.rlc(),
             Instruction::RC => println!("Not implemented: {:?}", instruction),
             Instruction::RST(0) => self.rst(1),
             Instruction::RST(1) => self.rst(2),
@@ -1149,7 +1173,8 @@ impl Cpu {
 
             Instruction::RLC => self.rlc(),
             Instruction::RNC => self.rnc(),
-            Instruction::RRC => println!("Not implemented: {:?}", instruction),
+            Instruction::RRC => self.rrc(),
+            Instruction::RAR => self.rar(),
 
             Instruction::STC => self.stc(),
             Instruction::SHLD => self.shld(),
