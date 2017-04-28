@@ -84,7 +84,7 @@ impl Display {
                     self.renderer.set_draw_color(Color::RGB(251, 241, 199));
                 } else {
                     // Background
-                    self.renderer.set_draw_color(Color::RGB(20, 20, 20));
+                    self.renderer.set_draw_color(Color::RGB(69, 133, 149));
                 }
                 self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 *2, 15, 15)).unwrap();
             }

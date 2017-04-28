@@ -18,9 +18,8 @@ fn main() {
     }
 
     let bin = &args[1];
-    let mut cpu = cpu::Cpu::new();
     let mut inter = interconnect::Interconnect::new();
-    cpu.load_bin(bin);
+    inter.cpu.load_bin(bin);
     inter.display.draw();
 
     let mut keypad = inter.keypad;
@@ -36,8 +35,8 @@ fn main() {
                 // TODO We want to pause here.
             },
             keypad::State::Continue => {}
-        }
-        cpu.run();
+        } 
+        inter.cpu.run();
         inter.display.render_vram();
         thread::sleep_ms(3);
     }

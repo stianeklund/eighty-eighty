@@ -35,6 +35,7 @@ pub struct Cpu {
 
     pc: u16,
     sp: u16,
+    ret_addr: u16, // temporary way to store & grab the subroutine address for return
 
     // 8-bit Registers
     reg_a: u8,
@@ -61,8 +62,6 @@ pub struct Cpu {
     carry: bool,
     half_carry: bool,
 
-    interrupt: u8,
-    interrupt_addr: u16,
     cycles: usize,
 
 }
@@ -76,6 +75,7 @@ impl Cpu {
 
             pc: 0,
             sp: 0,
+            ret_addr: 0,
 
             reg_a: 0,
             reg_b: 0,
@@ -99,8 +99,6 @@ impl Cpu {
             carry: false,
             half_carry: false,
 
-            interrupt: 0,
-            interrupt_addr: 0,
             cycles: 0,
 
         }
@@ -427,7 +425,7 @@ impl Cpu {
             println!("Return address is: {:02X}", ret);
         }
 
-        // self.set_sp(ret);
+        self.ret_addr = ret;
         self.adv_cycles(17);
     }
 
@@ -534,7 +532,8 @@ impl Cpu {
 
                 self.half_carry = !self.reg_b & 0x0F == 0x0F;
                 self.zero = self.reg_b & 0xFF == 0;
-                self.parity = !self.reg_b & 1 == 0;
+                // Overflow happens here 
+                self.parity = !self.reg_b.wrapping_add(1) & 1 == 0;
                 self.sign = self.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
 
@@ -886,6 +885,7 @@ impl Cpu {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
+
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
         self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
@@ -907,17 +907,21 @@ impl Cpu {
         self.adv_pc(1);
         self.adv_cycles(5);
     }
+
     // Rotate Accumulator Left
     fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
+        // If last bit is 1 bit shift one up so that the accumulator is 1
+        let a = self.reg_a >> 1 | self.reg_a << 7;
         self.reg_a = (self.reg_a >> 1) | (self.reg_a << 7);
+        println!("RAR: {:b}", a);
         self.carry = self.reg_a & 0x08 != 0;
-        // self.reg_a = self.reg_a & 0x08;
 
         self.adv_pc(1);
         self.adv_cycles(4);
     }
+
     // Rotate Accumulator Left
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
@@ -927,6 +931,7 @@ impl Cpu {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
+
     // TODO Rotate Accumulator Right
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
@@ -997,10 +1002,11 @@ impl Cpu {
     }
 
     fn ret(&mut self) {
-        let pc = self.memory.read_word(self.sp) | (self.memory.read_word(self.sp + 1) << 8) as u16;
-        self.sp += 2;
+        // let pc = self.memory.read_word(self.sp) | (self.memory.read_word(self.sp + 1) >> 8 & 0xFF) as u16;
+        println!("Returning from subroutine, {:02X}", self.ret_addr);
+        self.sp -= 2;
         self.adv_cycles(10);
-        self.adv_pc(1);
+        self.pc = self.ret_addr;
     }
 
     // TODO
@@ -1560,7 +1566,6 @@ impl Cpu {
         self.half_carry = false;
         self.reg_psw = 0;
 
-        self.interrupt = 0;
     }
 
 
