@@ -409,12 +409,11 @@ impl Cpu {
             // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
                 // Write subroutine addresses to memory
-                
                 // We need to put these addresses into memory so that the
                 // RET instruction can fetch the return address
                 // High & Low bytes
-                self.memory.memory[self.sp as usize - 1 & 0xFFFF] = (ret >> 8) as u8 & 0xFF as u8;
-                self.memory.memory[self.sp as usize - 2 & 0xFFFF] = ret as u8 & 0xFF;
+                self.memory.memory[self.sp as usize & 0xFFFF] = (ret >> 8) as u8;
+                self.memory.memory[self.sp as usize] = ret as u8;
                 // self.memory.write_memory(sub1 as u16 | sub2 as u16);
 
 
@@ -1001,23 +1000,24 @@ impl Cpu {
 
     fn pop_stack(&mut self) -> u16 {
         let sp = self.memory.read_word(self.sp + 1) | self.memory.read_word(self.sp) as u16;
+        if DEBUG { println!("Popping stack. SP value: {:02X}", sp); }
         self.sp += 2;
         sp
 
     }
 
     fn ret(&mut self) {
+        println!("RET instruction, memory value: {:X}", self.memory.read_word(self.sp - 1));
+        // let sp = self.memory.read_word(self.sp + 1) | self.memory.read_word(self.sp) as u16;
+        let sp = self.memory.read_word(self.sp);
 
-        let sp: u16 = (self.memory.memory[self.sp as usize + 2] as u16) << 8 | (self.memory.memory[self.sp as usize + 1] as u16);
         // let sp = self.pop_stack();
         if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
         // self.sp += 2;
 
         self.sp -= 2;
         self.adv_cycles(10);
-        if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
         self.pc = sp;
-        
     }
 
     // TODO
