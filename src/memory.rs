@@ -36,6 +36,11 @@ impl Memory {
         // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
+    pub fn write_memory(&mut self, addr: u16) {
+        // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
+      (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
+    }
+
 
     pub fn read_high(&mut self, addr: u16) -> u8 {
         (self.memory[addr as usize + 2])

@@ -35,7 +35,6 @@ pub struct Cpu {
 
     pc: u16,
     sp: u16,
-    ret_addr: u16, // temporary way to store & grab the subroutine address for return
 
     // 8-bit Registers
     reg_a: u8,
@@ -75,7 +74,6 @@ impl Cpu {
 
             pc: 0,
             sp: 0,
-            ret_addr: 0,
 
             reg_a: 0,
             reg_b: 0,
@@ -403,15 +401,22 @@ impl Cpu {
         // CALL is just like JMP but also pushes a return address to stack.
 
         let ret: u16 = self.pc + 3;
-        let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize);
-        let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize);
+        // let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize & 0xFFFF);
+        // let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize & 0xFFFF);
 
         match self.opcode {
             0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC  => {
             // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
-                sub1 = (ret >> 8 & 0xFF) as u8;
-                sub2 = (ret & 0xFF) as u8;
+                // Write subroutine addresses to memory
+                
+                // We need to put these addresses into memory so that the
+                // RET instruction can fetch the return address
+                // High & Low bytes
+                self.memory.memory[self.sp as usize - 1 & 0xFFFF] = (ret >> 8) as u8 & 0xFF as u8;
+                self.memory.memory[self.sp as usize - 2 & 0xFFFF] = ret as u8 & 0xFF;
+                // self.memory.write_memory(sub1 as u16 | sub2 as u16);
+
 
                 self.sp = self.sp.wrapping_sub(2);
 
@@ -425,7 +430,6 @@ impl Cpu {
             println!("Return address is: {:02X}", ret);
         }
 
-        self.ret_addr = ret;
         self.adv_cycles(17);
     }
 
@@ -926,8 +930,9 @@ impl Cpu {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
+        self.reg_a.rotate_left(1);
         self.carry = self.reg_a & 0x08 != 0;
-        self.reg_a = self.reg_a << 1;
+        // self.reg_a = self.reg_a << 1;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -937,7 +942,7 @@ impl Cpu {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         self.carry = self.reg_a & 0x08 != 0;
-        self.reg_a= ( self.reg_a >> 1 ) | (( self.reg_a & 0x1 ) << 7);
+        self.reg_a = ( self.reg_a >> 1 ) | (( self.reg_a & 0x1 ) << 7);
         self.adv_pc(1);
         self.adv_cycles(4);
 
@@ -1002,11 +1007,17 @@ impl Cpu {
     }
 
     fn ret(&mut self) {
-        // let pc = self.memory.read_word(self.sp) | (self.memory.read_word(self.sp + 1) >> 8 & 0xFF) as u16;
-        println!("Returning from subroutine, {:02X}", self.ret_addr);
+
+        let sp: u16 = (self.memory.memory[self.sp as usize + 2] as u16) << 8 | (self.memory.memory[self.sp as usize + 1] as u16);
+        // let sp = self.pop_stack();
+        if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
+        // self.sp += 2;
+
         self.sp -= 2;
         self.adv_cycles(10);
-        self.pc = self.ret_addr;
+        if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
+        self.pc = sp;
+        
     }
 
     // TODO
@@ -1156,10 +1167,12 @@ impl Cpu {
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
-            Instruction::RAL => println!("Not implemented: {:?}", instruction),
-            Instruction::RAR => self.rar(),
+             Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
             Instruction::RC => println!("Not implemented: {:?}", instruction),
+            Instruction::RNC => self.rnc(),
+            Instruction::RRC => self.rrc(),
+
             Instruction::RST(0) => self.rst(1),
             Instruction::RST(1) => self.rst(2),
             Instruction::RST(2) => self.rst(2),
@@ -1176,11 +1189,6 @@ impl Cpu {
                 println!("HLT instruction called, resetting instead");
                 self.reset();
             },
-
-            Instruction::RLC => self.rlc(),
-            Instruction::RNC => self.rnc(),
-            Instruction::RRC => self.rrc(),
-            Instruction::RAR => self.rar(),
 
             Instruction::STC => self.stc(),
             Instruction::SHLD => self.shld(),
