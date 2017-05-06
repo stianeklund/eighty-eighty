@@ -401,8 +401,6 @@ impl Cpu {
         // CALL is just like JMP but also pushes a return address to stack.
 
         let ret: u16 = self.pc + 3;
-        // let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize & 0xFFFF);
-        // let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize & 0xFFFF);
 
         match self.opcode {
             0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC  => {
@@ -411,14 +409,14 @@ impl Cpu {
                 // Write subroutine addresses to memory
                 // We need to put these addresses into memory so that the
                 // RET instruction can fetch the return address
-                // High & Low bytes
-                self.memory.memory[self.sp as usize & 0xFFFF] = (ret >> 8) as u8;
-                self.memory.memory[self.sp as usize] = ret as u8;
-                // self.memory.write_memory(sub1 as u16 | sub2 as u16);
+
+                // High order
+                self.memory.memory[self.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                // Low order
+                self.memory.memory[self.sp as usize - 1] = ret as u8;
 
 
                 self.sp = self.sp.wrapping_sub(2);
-
                 self.pc = self.memory.read_word(self.pc);
             },
             _ => println!("Unknown call address: {:#X}", self.opcode),
@@ -1007,11 +1005,11 @@ impl Cpu {
     }
 
     fn ret(&mut self) {
-        println!("RET instruction, memory value: {:X}", self.memory.read_word(self.sp - 1));
-        // let sp = self.memory.read_word(self.sp + 1) | self.memory.read_word(self.sp) as u16;
+        if DEBUG { println!("RET instruction, memory value: {:X}", self.memory.read_word(self.sp));}
+
         let sp = self.memory.read_word(self.sp);
 
-        // let sp = self.pop_stack();
+
         if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
         // self.sp += 2;
 
