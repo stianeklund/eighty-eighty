@@ -3,7 +3,7 @@ extern crate sdl2;
 use std::fmt;
 use super::sdl2::Sdl;
 use super::sdl2::pixels::Color;
-use super::sdl2::rect::Rect;
+use super::sdl2::rect::{Rect, Point};
 use super::memory;
 
 pub const WIDTH: usize = 256;
@@ -11,8 +11,8 @@ pub const HEIGHT: usize = 224;
 
 
 pub struct Display {
-    renderer: sdl2::render::Renderer<'static>,
-    raster: Box<([u8; 100000])>,
+    pub renderer: sdl2::render::Renderer<'static>,
+    raster: Box<([u8; 224 * 256])>,
     vblank: bool,
     memory: memory::Memory,
     draw_flag: bool,
@@ -44,7 +44,7 @@ impl Display {
 
         Display {
             renderer: renderer,
-            raster: Box::new([0; 100000]),
+            raster: Box::new([0; 224 * 256]),
             memory: memory,
             vblank: false,
             draw_flag: true,
@@ -56,40 +56,45 @@ impl Display {
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
+        let mut y = (base & 0x1F) * 8 & 0xFF & 0xFF;
+        let mut x = base >> 5;
 
         let mut counter = 0;
         // Iterate over all the memory locations from addr: $2400 - $3FFF (offset) reading it into memory
         // and point to the byte of the current memory location
         for offset in 0..(256 * 244 / 8) {
-            // println!("VRAM value: {:?}", self.memory);
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
-                if (self.memory.read(base as usize + offset as usize) >> shift) & 1 != 1 {
-                    self.raster[offset as usize] = 0x0000;
-
+                if (self.memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
+                    self.raster[counter as usize] = 0x00;
                 } else {
-                    self.raster[offset as usize] = 0xFFFF;
+                    self.raster[counter as usize] = 0xFF;
                 }
             }
-            counter += 1;
         }
+        y -= y;
+        if y < 0 {
+            y = 255;
+            x += x
+        }
+        counter += 1;
+        self.draw(x, y);
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self, x: u16, y: u16) {
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
-                if self.raster[y.wrapping_mul(WIDTH) + x] != 0 {
-
+                if self.raster[y.wrapping_mul(WIDTH) + x] == 1 {
                     // Foreground
                     self.renderer.set_draw_color(Color::RGB(251, 241, 199));
                 } else {
                     // Background
                     self.renderer.set_draw_color(Color::RGB(69, 133, 149));
                 }
-                self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 *2, 15, 15)).unwrap();
+                self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 * 2, 15, 15)).unwrap();
             }
         }
-        self.renderer.present();
         self.draw_flag = true;
+        self.renderer.present();
     }
 }

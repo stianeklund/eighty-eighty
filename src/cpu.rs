@@ -1237,16 +1237,24 @@ impl Cpu {
         // self.opcode = self.memory.read(self.pc as usize);
         self.opcode = instruction;
         if DEBUG {
-            println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}", self.opcode, self.pc, self.sp, self.cycles);
+            println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
+                     self.opcode, self.pc, self.sp, self.cycles);
             println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
                      self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
+
             let bc = (self.reg_b as u16) << 8 | self.reg_c as u16;
             let de = (self.reg_d as u16) << 8 | self.reg_e as u16;
             let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
 
+            let stack = (self.memory.memory[self.sp as usize + 1].wrapping_shl(8)
+                | self.memory.memory[self.sp as usize]);
+
+
             println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}", bc, de, hl);
-            println!("Flags: Sign: {}, Zero: {}, Parity: {}, Carry: {}, Half Carry: {}", self.sign, self.zero, self.parity, self.carry, self.half_carry);
-        };
+            println!("Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
+                     self.sign, self.zero, self.parity, self.carry, self.half_carry);
+            println!("Stack: {:04X}", stack);
+    };
 
         match self.opcode {
 
