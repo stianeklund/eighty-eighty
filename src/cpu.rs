@@ -413,7 +413,7 @@ impl Cpu {
                 // High order
                 self.memory.memory[self.sp as usize] = (ret >> 8 & 0xFF) as u8;
                 // Low order
-                self.memory.memory[self.sp as usize - 1] = ret as u8;
+                self.memory.memory[self.sp.wrapping_sub(1) as usize] = ret as u8;
 
 
                 self.sp = self.sp.wrapping_sub(2);
@@ -441,6 +441,17 @@ impl Cpu {
             self.carry = false;
         }
 
+    }
+    fn cma (&mut self) {
+        self.reg_a ^= 0xFF;
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+    fn cmc (&mut self) {
+        self.half_carry = !self.half_carry;
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
     // TODO
     fn cmp(&mut self, reg: Register) {
@@ -533,7 +544,7 @@ impl Cpu {
 
                 self.half_carry = !self.reg_b & 0x0F == 0x0F;
                 self.zero = self.reg_b & 0xFF == 0;
-                // Overflow happens here 
+                // Overflow happens here
                 self.parity = !self.reg_b.wrapping_add(1) & 1 == 0;
                 self.sign = self.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
@@ -550,7 +561,7 @@ impl Cpu {
             },
 
             Register::D => {
-                self.reg_d -= 1 & 0xFF;
+                self.reg_d.wrapping_sub(1) & 0xFF;
                 self.half_carry = !self.reg_d & 0x0F == 0x0F;
                 self.zero = self.reg_d & 0xFF == 0;
                 self.parity = !self.reg_b & 1 == 0;
@@ -587,7 +598,7 @@ impl Cpu {
             },
 
             Register::M => {
-                self.reg_m -= 1 & 0xFF;
+                self.reg_m.wrapping_sub(1) & 0xFF;
                 self.half_carry = !self.reg_m & 0x0F == 0x0F;
                 self.zero = self.reg_m & 0xFF == 0;
                 self.parity = !self.reg_m & 1 == 0;
@@ -623,6 +634,11 @@ impl Cpu {
         self.adv_pc(1);
     }
 
+    fn dcx_sp(&mut self) {
+        self.sp.wrapping_sub(1);
+        self.adv_cycles(5);
+        self.adv_pc(1);
+    }
     // TODO
     fn daa(&mut self) {
         self.adv_pc(1);
@@ -713,6 +729,7 @@ impl Cpu {
         // Load the HL register with 16 bits found at addr & addr + 1
         // let value = self.memory.read_word(self.pc & self.pc + 1);
 
+        // This can cause an index out of bounds issue.. TODO Investigate
         self.reg_l = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 0;
         self.reg_h = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 1;
 
@@ -864,6 +881,8 @@ impl Cpu {
     // Set Carry (set carry bit to 0)
     fn stc(&mut self) {
         self.carry = false;
+        self.adv_pc(1);
+        self.adv_cycles(4);
     }
 
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
@@ -1122,12 +1141,14 @@ impl Cpu {
             Instruction::CZ => println!("Not implemented: {:?}", instruction),
             Instruction::CM => println!("Not implemented: {:?}", instruction),
             Instruction::CNC => self.cnc(),
-            Instruction::CMC => println!("Not implemented: {:?}", instruction),
+            Instruction::CMA => self.cma(),
+            Instruction::CMC => self.cmc(),
 
             Instruction::CMP(reg) => self.cmp(reg),
             Instruction::CPE => println!("Not implemented: {:?}", instruction),
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
+            Instruction::DCX_SP => self.dcx_sp(),
 
             Instruction::DAA => self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
