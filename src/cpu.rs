@@ -613,19 +613,19 @@ impl Cpu {
         match reg {
             RegisterPair::BC => {
                 let mut bc = self.reg_b.wrapping_shl(8) | self.reg_c;
-                bc -= 1;
+                bc.wrapping_sub(1);
                 self.reg_b = bc.wrapping_shl(8) & 0xFF;
                 self.reg_c = bc.wrapping_shl(0) & 0xFF;
             },
             RegisterPair::DE => {
                 let mut de = self.reg_d.wrapping_shl(8) | self.reg_e;
-                de -= 1;
+                de.wrapping_sub(1);
                 self.reg_d = de.wrapping_shl(8) & 0xFF;
                 self.reg_e = de.wrapping_shl(0) & 0xFF;
             },
             RegisterPair::HL => {
                 let mut hl = self.reg_h.wrapping_shl(8) | self.reg_l;
-                hl -= 1;
+                hl.wrapping_sub(1);
                 self.reg_h = hl.wrapping_shl(8) & 0xFF;
                 self.reg_l = hl.wrapping_shl(0) & 0xFF;
             }
@@ -1079,24 +1079,25 @@ impl Cpu {
 
     fn rst(&mut self, value: u8) {
 
-        let mut reset = 0u8;
+        let mut rst = 0u8;
 
         match value {
-            0 => reset = 0x00,
-            1 => reset = 0x08,
-            2 => reset = 0x10,
-            3 => reset = 0x18,
-            4 => reset = 0x20,
-            5 => reset = 0x28,
-            6 => reset = 0x30,
-            7 => reset = 0x38,
+            0 => rst = 0x00,
+            1 => rst = 0x08,
+            2 => rst = 0x10,
+            3 => rst = 0x18,
+            4 => rst = 0x20,
+            5 => rst = 0x28,
+            6 => rst = 0x30,
+            7 => rst = 0x38,
 
-            _ => println!("RESET address unknown: {:#X}", reset),
+            _ => println!("RST address unknown: {:#X}", rst),
         }
+        if DEBUG { println!("RST called: {:02X}", value); }
 
         self.sp.wrapping_sub(2);
 
-        self.pc = reset as u16;
+        self.pc = rst as u16;
         self.adv_cycles(11);
     }
 
@@ -1186,7 +1187,7 @@ impl Cpu {
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
 
-             Instruction::RAR => self.rar(),
+            Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
             Instruction::RC => println!("Not implemented: {:?}", instruction),
             Instruction::RNC => self.rnc(),
@@ -1601,6 +1602,7 @@ impl Cpu {
         self.half_carry = false;
         self.reg_psw = 0;
 
+        self.adv_pc(1); // Is this correct to do?
     }
 
 
