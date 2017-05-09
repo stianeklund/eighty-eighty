@@ -20,6 +20,7 @@ fn main() {
     let bin = &args[1];
     let mut inter = interconnect::Interconnect::new();
     inter.cpu.load_bin(bin);
+    inter.display.renderer.present();
 
     let mut keypad = inter.keypad;
 
@@ -37,6 +38,6 @@ fn main() {
         }
         inter.cpu.run();
         inter.display.render_vram();
-        thread::sleep_ms(3);
+        // thread::sleep_ms(3);
     }
 }

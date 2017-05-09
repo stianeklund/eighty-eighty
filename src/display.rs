@@ -12,7 +12,7 @@ pub const HEIGHT: usize = 224;
 
 pub struct Display {
     pub renderer: sdl2::render::Renderer<'static>,
-    raster: Box<([u8; 100000])>,
+    raster: Box<([u8; 7168])>,
     vblank: bool,
     memory: memory::Memory,
     draw_flag: bool,
@@ -44,7 +44,7 @@ impl Display {
 
         Display {
             renderer: renderer,
-            raster: Box::new([0; 100000]),
+            raster: Box::new([0; 7168]),
             memory: memory,
             vblank: false,
             draw_flag: true,
@@ -60,9 +60,13 @@ impl Display {
         let mut x = 0;
 
         let mut counter = 0;
-        // Iterate over all the memory locations from addr: $2400 - $3FFF (offset) reading it into memory
-        // and point to the byte of the current memory location
-        for offset in 0..(256 * 244 / 8) {
+        // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
+        // We want to read this into a buffer & point to the byte (8 bits) of the current memomry location.
+        // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scanline.
+        // We simply iterate over the entirity of the size of the video hardware
+        // & iterater over the 8 pixels per byte.
+
+        for offset in 0..(256 * 244 / 8) - 1 {
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (self.memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
@@ -72,25 +76,34 @@ impl Display {
                     self.raster[counter as usize] = 0xFF;
                 }
             }
-            counter += 1;
+            y -= y;
+            if y < 255 {
+                let y = 255;
+                x += x;
+            }
         }
-        self.draw(x, y);
+        counter += 1;
+        // self.draw_pixel(x, y);
     }
 
-    pub fn draw(&mut self, x: u8, y: u8) {
+    pub fn draw_pixel(&mut self, x: u8, y: u8) {
         for y in 0..HEIGHT {
             for x in 0..WIDTH {
-                if self.raster[y.wrapping_mul(WIDTH) + x] != 0 {
+                if self.raster[y * WIDTH + x] != 0 {
                     // Foreground
                     self.renderer.set_draw_color(Color::RGB(251, 241, 199));
                 } else {
                     // Background
                     self.renderer.set_draw_color(Color::RGB(69, 133, 149));
                 }
-                self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 * 2, 15, 15)).unwrap();
             }
         }
-        self.draw_flag = true;
-        self.renderer.present();
+        self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 * 2, 15, 15)).unwrap();
+    }
+
+    pub fn draw(&mut self) {
+        // Foreground
+        // Background
+       // self.renderer.present();
     }
 }
