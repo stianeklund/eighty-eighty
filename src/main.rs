@@ -20,8 +20,7 @@ fn main() {
     let bin = &args[1];
     let mut inter = interconnect::Interconnect::new();
     inter.cpu.load_bin(bin);
-    inter.display.renderer.present();
-
+    inter.display.draw();
     let mut keypad = inter.keypad;
 
     // TODO Implement break & step keyboard actions
