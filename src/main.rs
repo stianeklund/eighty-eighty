@@ -1,7 +1,9 @@
 extern crate sdl2;
+extern crate minifb;
 
 use std::env;
 use std::thread;
+use minifb::Key;
 mod cpu;
 mod opcode;
 mod display;
@@ -20,23 +22,18 @@ fn main() {
     let bin = &args[1];
     let mut inter = interconnect::Interconnect::new();
     inter.cpu.load_bin(bin);
-    inter.display.draw();
-    let mut keypad = inter.keypad;
+    // inter.display.draw();
 
     // TODO Implement break & step keyboard actions
     loop {
-        match keypad.key_press() {
-            keypad::State::Exit => break,
-            keypad::State::Step => {
-                // cpu.step(1);
-            },
-            keypad::State::Break => {
-                // TODO We want to pause here.
-            },
-            keypad::State::Continue => {}
-        }
         inter.cpu.run();
         inter.display.render_vram();
-        // thread::sleep_ms(3);
+        inter.display.update_screen();
+        if inter.display.window.is_key_down(Key::Escape) || inter.display.window.is_key_down(Key::X) {
+            break;
+            } else {
+            continue;
+        }
+        thread::sleep_ms(3);
     }
 }

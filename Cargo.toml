@@ -5,3 +5,4 @@ authors = ["Stian Eklund <stian.eklund@gmail.com>"]
 
 [dependencies]
 sdl2 = "0.29"
+minifb ="*"

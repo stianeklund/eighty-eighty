@@ -1247,8 +1247,8 @@ impl Cpu {
             let de = (self.reg_d as u16) << 8 | self.reg_e as u16;
             let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
 
-            let stack = (self.memory.memory[self.sp as usize + 1].wrapping_shl(8)
-                | self.memory.memory[self.sp as usize]);
+            let stack = self.memory.memory[self.sp as usize + 1].wrapping_shl(8)
+                | self.memory.memory[self.sp as usize];
 
 
             println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}", bc, de, hl);

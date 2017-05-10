@@ -1,21 +1,17 @@
-extern crate sdl2;
 
 use std::fmt;
-use super::sdl2::Sdl;
-use super::sdl2::pixels::Color;
-use super::sdl2::rect::Rect;
+use super::minifb::{Key, Scale, WindowOptions, Window};
 use super::memory;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 224;
 
-
 pub struct Display {
-    pub renderer: sdl2::render::Renderer<'static>,
-    raster: Box<([u8; 100000])>,
+    pub raster: Vec<(u32)>,
     vblank: bool,
     memory: memory::Memory,
     draw_flag: bool,
+    pub window: Window,
 }
 
 impl fmt::Debug for Display {
@@ -26,28 +22,23 @@ impl fmt::Debug for Display {
 }
 
 impl Display {
-    pub fn new(ctx: &sdl2::Sdl) -> Display {
+    pub fn new() -> Display {
 
         let memory = memory::Memory::new();
-        // Initialize SDL2
-        let video = ctx.video().unwrap();
+        let mut window = Window::new("Eighty Eighty", WIDTH, HEIGHT,
+                                     WindowOptions {
+                                         resize: false,
+                                         scale: Scale::X2,
+                                         ..WindowOptions::default()
+                                     }).unwrap();
 
-        // Create window
-        let window = video.window("Eighty Eighty", WIDTH as u32 * 2, HEIGHT as u32 * 2)
-            .position_centered()
-            .build()
-            .expect("Window creation failed");
-        let renderer = window.renderer()
-            .accelerated()
-            .build()
-            .expect("Initialization of window renderer failed");
 
         Display {
-            renderer: renderer,
-            raster: Box::new([0; 100000]),
+            raster: vec![0; WIDTH * HEIGHT],
             memory: memory,
             vblank: false,
             draw_flag: true,
+            window: window,
         }
     }
 
@@ -79,43 +70,18 @@ impl Display {
 
                 } else {
                     self.raster[counter as usize] = 0xFF;
-                    // self.raster[y as usize * 224 + x as usize];
                 }
+            }
 
-                // When x is bigger than 256, reset x & increase y by one.
-            }
-            y = y.wrapping_sub(1);
+            y -= 1;
             if y <= 0 {
-                let mut y = 255;
+                y = 255;
+                x += 1;
             }
-            x = x.wrapping_add(1);
             counter += 1;
         }
-        self.renderer.set_draw_color(Color::RGB(251, 241, 199));
-        self.renderer.fill_rect(Rect::new(x as i32, y as i32, 15, 15)).unwrap();
-        // println!("X:{}, Y:{}", x, y);
-        self.renderer.present();
     }
-
-    pub fn draw_pixel(&mut self, x: u8, y: u8) {
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                if self.raster[y * WIDTH + x] != 0 {
-                    // Foreground
-                    self.renderer.set_draw_color(Color::RGB(251, 241, 199));
-                } else {
-                    // Background
-                    self.renderer.set_draw_color(Color::RGB(69, 133, 149));
-                }
-            }
-        }
-        self.renderer.fill_rect(Rect::new(x as i32 * 2, y as i32 * 2, 15, 15)).unwrap();
-    }
-
-    pub fn draw(&mut self) {
-        // Foreground
-        // Background
-        self.renderer.clear();
-        self.renderer.present();
+    pub fn update_screen(&mut self) {
+        self.window.update_with_buffer(&self.raster.as_slice());
     }
 }
