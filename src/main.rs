@@ -6,29 +6,37 @@ use minifb::Key;
 mod cpu;
 mod opcode;
 mod display;
-mod interconnect;
+// mod interconnect;
 mod memory;
 mod keypad;
 
+use cpu::{ExecutionContext, Registers};
+
 fn main() {
 
-    let args: Vec<String> = env::args().collect();
+   let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("[Rom path]");
         return;
     }
 
     let bin = &args[1];
-    let mut inter = interconnect::Interconnect::new();
+    // let mut inter = interconnect::Interconnect::new();
+    let mut memory = memory::Memory::new();
+    let mut registers = Registers::new();
+    let mut display = display::Display::new();
 
-    inter.cpu.load_bin(bin);
-    // inter.display.draw();
+    memory.load_bin(bin);
+    // inter.memory.load_bin(bin);
+
 
     // TODO Implement break & step keyboard actions
     loop {
-        inter.cpu.run();
-        // inter.display.render_vram();
-        // inter.display.update_screen();
+        ExecutionContext::new(&mut memory, &mut registers).step(1);
+        // inter.cpu.step(1);
+        // inter.cpu.run();
+        display.render_vram();
+        display.update_screen();
         thread::sleep_ms(3);
     }
 }

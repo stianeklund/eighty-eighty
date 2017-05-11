@@ -1,7 +1,7 @@
 
 use std::fmt;
 use super::minifb::{Key, Scale, WindowOptions, Window};
-use super::interconnect;
+// use super::interconnect;
 use std::borrow::BorrowMut;
 use std::iter::Enumerate;
 
@@ -41,8 +41,8 @@ impl Display {
 
     pub fn render_vram(&mut self) {
 
-        let m = ExecutionContext::new();
-        let memory = m.m.memory;
+        let m = Memory::new();
+        let memory = m.memory;
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -80,10 +80,10 @@ impl Display {
     }
     pub fn update_screen(&mut self) {
         
-        let m = ExecutionContext::new();
-        let memory = m.m.memory;
+        let m = Memory::new();
+        let memory = m.memory;
         let mut iter = memory.iter();
-        println!("Current memory value: {:?}", iter);
+        // println!("Current memory value: {:?}", iter);
 
         let sprite_x = self.raster[0] as usize;
         let sprite_y = self.raster[1] as usize;
