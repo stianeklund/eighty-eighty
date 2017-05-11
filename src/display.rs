@@ -39,10 +39,8 @@ impl Display {
     }
 
 
-    pub fn render_vram(&mut self) {
+    pub fn render_vram(&mut self, memory: &mut Memory) {
 
-        let m = Memory::new();
-        let memory = m.memory;
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -50,12 +48,17 @@ impl Display {
         let mut y: u8 = 255;
 
         let mut counter = 0;
+
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
 
         // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scanline.
         // We simply iterate over the entirity of the size of the video hardware
         // & iterater over the 8 pixels per byte.
+
+        let memory = memory.memory;
+        let mut iter = memory.iter();
+        // println!("Current memory value: {:?}", iter);
 
         for offset in 0..(256 * 244 / 8) {
 
@@ -78,12 +81,11 @@ impl Display {
             counter += 1;
         }
     }
-    pub fn update_screen(&mut self) {
-        
-        let m = Memory::new();
-        let memory = m.memory;
+    pub fn update_screen(&mut self, memory: & mut Memory) {
+
+        let memory = memory.memory;
         let mut iter = memory.iter();
-        // println!("Current memory value: {:?}", iter);
+        println!("Current memory value: {:?}", iter);
 
         let sprite_x = self.raster[0] as usize;
         let sprite_y = self.raster[1] as usize;

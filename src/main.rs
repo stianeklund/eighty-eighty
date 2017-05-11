@@ -35,8 +35,8 @@ fn main() {
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // inter.cpu.step(1);
         // inter.cpu.run();
-        display.render_vram();
-        display.update_screen();
+        display.render_vram(&mut memory);
+        // display.update_screen(&mut memory);
         thread::sleep_ms(3);
     }
 }
