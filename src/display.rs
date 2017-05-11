@@ -5,7 +5,7 @@ use super::interconnect;
 use std::borrow::BorrowMut;
 use std::iter::Enumerate;
 
-use cpu::CpuContext;
+use cpu::ExecutionContext;
 use memory::Memory;
 
 pub const WIDTH: usize = 256;
@@ -41,8 +41,8 @@ impl Display {
 
     pub fn render_vram(&mut self) {
 
-        let m = CpuContext::new();
-        let memory = m.memory.memory;
+        let m = ExecutionContext::new();
+        let memory = m.m.memory;
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -80,8 +80,8 @@ impl Display {
     }
     pub fn update_screen(&mut self) {
         
-        let m = CpuContext::new();
-        let memory = m.memory.memory;
+        let m = ExecutionContext::new();
+        let memory = m.m.memory;
         let mut iter = memory.iter();
         println!("Current memory value: {:?}", iter);
 

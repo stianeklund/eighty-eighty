@@ -27,7 +27,7 @@ const DEBUG: bool = true;
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 #[derive(Debug)]
-pub struct Cpu {
+pub struct Registers {
     opcode: u8,
 
     pc: u16,
@@ -61,9 +61,9 @@ pub struct Cpu {
     cycles: usize,
 }
 
-impl Cpu {
-       pub fn new() -> Cpu {
-           Cpu {
+impl Registers {
+       pub fn new() -> Registers {
+           Registers {
                opcode: 0,
 
                 pc: 0,
@@ -99,56 +99,56 @@ impl Cpu {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct CpuContext<'a> {
-    pub memory: &'a mut Memory,
-    pub c: &'a mut Cpu,
+pub struct ExecutionContext<'a> {
+    pub m: &'a mut Memory,
+    pub r: &'a mut Registers,
 }
 
-impl <'a>CpuContext<'a> {
-    pub fn new() -> CpuContext<'a> {
-        let memory = Memory::new();
-        let c = Cpu::new();
+impl <'a>ExecutionContext<'a> {
+        pub fn new() -> ExecutionContext<'a> {
+        let m = Memory::new();
+        let r = Registers::new();
 
-        CpuContext {
-            memory: &mut memory,
-            c: &mut c,
+        ExecutionContext {
+            m: &mut m,
+            r: &mut r,
         }
     }
 
     fn set_sp(&mut self, byte: u16) {
-        self.c.sp = byte & 0xFFFF;
+        self.r.sp = byte & 0xFFFF;
     }
 
     fn read_reg(&self, reg: Register) -> u8 {
         match reg {
-            Register::A => self.c.reg_a,
-            Register::B => self.c.reg_b,
-            Register::C => self.c.reg_c,
-            Register::D => self.c.reg_d,
-            Register::E => self.c.reg_e,
-            Register::H => self.c.reg_h,
-            Register::L => self.c.reg_l,
-            Register::M => self.c.reg_m,
+            Register::A => self.r.reg_a,
+            Register::B => self.r.reg_b,
+            Register::C => self.r.reg_c,
+            Register::D => self.r.reg_d,
+            Register::E => self.r.reg_e,
+            Register::H => self.r.reg_h,
+            Register::L => self.r.reg_l,
+            Register::M => self.r.reg_m,
         }
     }
 
     fn write_reg(&mut self, reg: Register, value: u8) {
         match reg {
-            Register::A => self.c.reg_a = value,
-            Register::B => self.c.reg_b = value,
-            Register::C => self.c.reg_c = value,
-            Register::D => self.c.reg_d = value,
-            Register::E => self.c.reg_e = value,
-            Register::H => self.c.reg_h = value,
-            Register::L => self.c.reg_l = value,
-            Register::M => self.c.reg_m = value,
+            Register::A => self.r.reg_a = value,
+            Register::B => self.r.reg_b = value,
+            Register::C => self.r.reg_c = value,
+            Register::D => self.r.reg_d = value,
+            Register::E => self.r.reg_e = value,
+            Register::H => self.r.reg_h = value,
+            Register::L => self.r.reg_l = value,
+            Register::M => self.r.reg_m = value,
         }
     }
     fn write_rp(&mut self, reg: RegisterPair, value: u8) {
         match reg {
-            RegisterPair::BC => self.c.reg_bc = value as u16,
-            RegisterPair::DE => self.c.reg_de = value as u16,
-            RegisterPair::HL => self.c.reg_hl = value as u16,
+            RegisterPair::BC => self.r.reg_bc = value as u16,
+            RegisterPair::DE => self.r.reg_de = value as u16,
+            RegisterPair::HL => self.r.reg_hl = value as u16,
 
         }
     }
@@ -157,44 +157,44 @@ impl <'a>CpuContext<'a> {
     // by type or separate them by type, e.g mov goes together.
 
     fn adv_pc(&mut self, t: u16) {
-        self.c.pc += t;
+        self.r.pc += t;
     }
     fn adv_cycles(&mut self, t: usize) {
-       self.c.cycles += t;
+       self.r.cycles += t;
     }
 
     // TODO Read page 18 of 8080 Programmers Manual
     fn adc(&mut self, reg: Register) {
-        let mut a = self.c.reg_a;
+        let mut a = self.r.reg_a;
         match reg {
             Register::A => {
-                if self.c.carry == true {
-                    a += self.c.reg_a;
+                if self.r.carry == true {
+                    a += self.r.reg_a;
                 }
             },
-            Register::B => a += self.c.reg_b,
-            Register::C => a += self.c.reg_c,
-            Register::D => a += self.c.reg_d,
-            Register::E => a += self.c.reg_e,
-            Register::H => a += self.c.reg_h,
-            Register::L => a += self.c.reg_l,
-            Register::M => a += self.c.reg_m,
+            Register::B => a += self.r.reg_b,
+            Register::C => a += self.r.reg_c,
+            Register::D => a += self.r.reg_d,
+            Register::E => a += self.r.reg_e,
+            Register::H => a += self.r.reg_h,
+            Register::L => a += self.r.reg_l,
+            Register::M => a += self.r.reg_m,
 
         }
     }
 
     fn add(&mut self, reg: Register) {
-        let mut a = self.c.reg_a;
+        let mut a = self.r.reg_a;
 
         match reg {
-            Register::A => a += self.c.reg_a,
-            Register::B => a += self.c.reg_b,
-            Register::C => a += self.c.reg_c,
-            Register::D => a += self.c.reg_d,
-            Register::E => a += self.c.reg_e,
-            Register::H => a += self.c.reg_h,
-            Register::L => a += self.c.reg_l,
-            Register::M => a += self.c.reg_m,
+            Register::A => a += self.r.reg_a,
+            Register::B => a += self.r.reg_b,
+            Register::C => a += self.r.reg_c,
+            Register::D => a += self.r.reg_d,
+            Register::E => a += self.r.reg_e,
+            Register::H => a += self.r.reg_h,
+            Register::L => a += self.r.reg_l,
+            Register::M => a += self.r.reg_m,
         }
 
         self.adv_pc(1);
@@ -206,47 +206,47 @@ impl <'a>CpuContext<'a> {
         if DEBUG { println!("Call to ANA"); }
         match reg {
             Register::A => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_a) & 0x08 != 0;
-                if DEBUG { println!("Setting half carry flag for ANA: {}", self.c.half_carry); }
-                self.c.reg_a &= self.c.reg_a;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_a) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.r.half_carry); }
+                self.r.reg_a &= self.r.reg_a;
             },
 
             Register::B => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_b) & 0x08 != 0;
-                if DEBUG { println!("Setting half carry flag for ANA: {}", self.c.half_carry); }
-                self.c.reg_a &= self.c.reg_b;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_b) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.r.half_carry); }
+                self.r.reg_a &= self.r.reg_b;
             },
 
             Register::C => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_c) & 0x08 != 0;
-                if DEBUG { println!("Setting half carry flag for ANA: {}", self.c.half_carry); }
-                self.c.reg_a &= self.c.reg_c;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_c) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.r.half_carry); }
+                self.r.reg_a &= self.r.reg_c;
             },
 
             Register::D => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_d) & 0x08 != 0;
-                if DEBUG { println!("Setting half carry flag for ANA: {}", self.c.half_carry); }
-                self.c.reg_a &= self.c.reg_d;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_d) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.r.half_carry); }
+                self.r.reg_a &= self.r.reg_d;
             },
 
             Register::E => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_e) & 0x08 != 0;
-                self.c.reg_a &= self.c.reg_e;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_e) & 0x08 != 0;
+                self.r.reg_a &= self.r.reg_e;
             },
 
             Register::H => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_h) & 0x08 != 0;
-                self.c.reg_a &= self.c.reg_h;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_h) & 0x08 != 0;
+                self.r.reg_a &= self.r.reg_h;
             },
 
             Register::L => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_l) & 0x08 != 0;
-                self.c.reg_a &= self.c.reg_l;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_l) & 0x08 != 0;
+                self.r.reg_a &= self.r.reg_l;
             },
 
             Register::M => {
-                self.c.half_carry = (self.c.reg_a | self.c.reg_m) & 0x08 != 0;
-                self.c.reg_a &= self.c.reg_m;
+                self.r.half_carry = (self.r.reg_a | self.r.reg_m) & 0x08 != 0;
+                self.r.reg_a &= self.r.reg_m;
             }
         }
 
@@ -259,10 +259,10 @@ impl <'a>CpuContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        self.c.half_carry = (self.c.reg_a | self.c.opcode) & 0x08 != 0;
-        self.c.reg_a &= self.c.opcode;
+        self.r.half_carry = (self.r.reg_a | self.r.opcode) & 0x08 != 0;
+        self.r.reg_a &= self.r.opcode;
 
-        self.c.carry = false;
+        self.r.carry = false;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -274,15 +274,15 @@ impl <'a>CpuContext<'a> {
     }
 
     fn jmp(&mut self) {
-        self.c.pc = self.memory.read_word(self.c.pc);
-        println!("Jumping to address: {:X}", self.c.pc);
+        self.r.pc = self.m.read_word(self.r.pc);
+        println!("Jumping to address: {:X}", self.r.pc);
         self.adv_cycles(10);
     }
 
     // Jump if carry
     fn jc(&mut self) {
-        if self.c.carry {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.carry {
+            self.r.pc = self.m.read_word(self.r.pc);
         } else {
             self.adv_pc(3);
         }
@@ -291,8 +291,8 @@ impl <'a>CpuContext<'a> {
 
     // Jump if no carry
     fn jnc(&mut self) {
-        if !self.c.carry {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if !self.r.carry {
+            self.r.pc = self.m.read_word(self.r.pc);
         } else {
             self.adv_pc(3);
         }
@@ -301,8 +301,8 @@ impl <'a>CpuContext<'a> {
 
     // Jump if zero
     fn jz(&mut self) {
-        if self.c.zero {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.zero {
+            self.r.pc = self.m.read_word(self.r.pc);
         } else {
             self.adv_pc(3);
         }
@@ -313,8 +313,8 @@ impl <'a>CpuContext<'a> {
     // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
 
-        if !self.c.zero {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if !self.r.zero {
+            self.r.pc = self.m.read_word(self.r.pc);
             self.adv_cycles(15);
         } else {
             self.adv_pc(3);
@@ -324,39 +324,39 @@ impl <'a>CpuContext<'a> {
 
     // If sign bit is one (false) indicating a negative result
     fn jm(&mut self){
-        if self.c.sign == false {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.sign == false {
+            self.r.pc = self.m.read_word(self.r.pc);
         }
         self.adv_cycles(10);
     }
 
     // Jump if parity true
     fn jp(&mut self){
-        if self.c.parity == true {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.parity == true {
+            self.r.pc = self.m.read_word(self.r.pc);
         }
         self.adv_cycles(10);
     }
 
     // If parity even
     fn jpe(&mut self) {
-        if self.c.parity == true {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.parity == true {
+            self.r.pc = self.m.read_word(self.r.pc);
         }
         self.adv_cycles(10);
     }
 
     // If parity off, e.g false
     fn jpo(&mut self) {
-        if self.c.parity == false {
-            self.c.pc = self.memory.read_word(self.c.pc);
+        if self.r.parity == false {
+            self.r.pc = self.m.read_word(self.r.pc);
         }
         self.adv_cycles(10);
     }
 
 
     fn lxi_sp(&mut self) {
-        self.c.sp = self.memory.read_word(self.c.pc);
+        self.r.sp = self.m.read_word(self.r.pc);
 
         self.adv_pc(3);
         self.adv_cycles(10);
@@ -367,27 +367,27 @@ impl <'a>CpuContext<'a> {
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let low = self.memory.read_low(self.c.pc);
-                let high = self.memory.read_high(self.c.pc);
-                self.c.reg_b = high;
-                self.c.reg_c = low;
+                let low = self.m.read_low(self.r.pc);
+                let high = self.m.read_high(self.r.pc);
+                self.r.reg_b = high;
+                self.r.reg_c = low;
             },
 
             RegisterPair::DE => {
-                let low = self.memory.read_low(self.c.pc);
-                let high = self.memory.read_high(self.c.pc);
+                let low = self.m.read_low(self.r.pc);
+                let high = self.m.read_high(self.r.pc);
 
-                self.c.reg_d = high;
-                self.c.reg_e = low;
+                self.r.reg_d = high;
+                self.r.reg_e = low;
             
             },
 
             RegisterPair::HL => {
-                let low = self.memory.read_low(self.c.pc);
-                let high = self.memory.read_high(self.c.pc);
+                let low = self.m.read_low(self.r.pc);
+                let high = self.m.read_high(self.r.pc);
 
-                self.c.reg_h = high;
-                self.c.reg_l = low;
+                self.r.reg_h = high;
+                self.r.reg_l = low;
             }
         };
 
@@ -396,12 +396,12 @@ impl <'a>CpuContext<'a> {
     }
 
     fn sta(&mut self) {
-        let reg_a = self.c.reg_a;
+        let reg_a = self.r.reg_a;
 
-        let value = self.memory.read_word(self.c.pc);
+        let value = self.m.read_word(self.r.pc);
 
         let addr = value + 2 << 8 | value + 1;
-        self.memory.write_word(reg_a, addr);
+        self.m.write_word(reg_a, addr);
 
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -412,9 +412,9 @@ impl <'a>CpuContext<'a> {
         // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
 
-        let ret: u16 = self.c.pc + 3;
+        let ret: u16 = self.r.pc + 3;
 
-        match self.c.opcode {
+        match self.r.opcode {
             0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC  => {
             // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
@@ -423,19 +423,19 @@ impl <'a>CpuContext<'a> {
                 // RET instruction can fetch the return address
 
                 // High order
-                self.memory.memory[self.c.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                self.m.memory[self.r.sp as usize] = (ret >> 8 & 0xFF) as u8;
                 // Low order
-                self.memory.memory[self.c.sp.wrapping_sub(1) as usize] = ret as u8;
+                self.m.memory[self.r.sp.wrapping_sub(1) as usize] = ret as u8;
 
 
-                self.c.sp = self.c.sp.wrapping_sub(2);
-                self.c.pc = self.memory.read_word(self.c.pc);
+                self.r.sp = self.r.sp.wrapping_sub(2);
+                self.r.pc = self.m.read_word(self.r.pc);
             },
-            _ => println!("Unknown call address: {:#X}", self.c.opcode),
+            _ => println!("Unknown call address: {:#X}", self.r.opcode),
         }
 
         if DEBUG {
-            println!("Subroutine call: {:02X}", self.c.pc);
+            println!("Subroutine call: {:02X}", self.r.pc);
             println!("Return address is: {:02X}", ret);
         }
 
@@ -445,23 +445,23 @@ impl <'a>CpuContext<'a> {
 
     // Call If No Carry
     fn cnc(&mut self) {
-        if self.c.carry == false {
-            self.c.carry = true;
-            println!("CNC: {:X}", self.c.pc);
+        if self.r.carry == false {
+            self.r.carry = true;
+            println!("CNC: {:X}", self.r.pc);
             self.call(08);
         } else {
-            self.c.carry = false;
+            self.r.carry = false;
         }
 
     }
     fn cma (&mut self) {
-        self.c.reg_a ^= 0xFF;
+        self.r.reg_a ^= 0xFF;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
     fn cmc (&mut self) {
-        self.c.half_carry = !self.c.half_carry;
+        self.r.half_carry = !self.r.half_carry;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -474,12 +474,12 @@ impl <'a>CpuContext<'a> {
     // TODO Compare Immidiate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        // let value = self.memory.read_byte(self.pc as u8);
-        let value = self.c.opcode & 0xFF;
+        // let value = self.m.read_byte(self.pc as u8);
+        let value = self.r.opcode & 0xFF;
 
-        self.c.zero = value & 0xFF == 0;
-        self.c.sign = value & 0x80 != 0;
-        self.c.carry = value & 0xFF == 0;
+        self.r.zero = value & 0xFF == 0;
+        self.r.sign = value & 0x80 != 0;
+        self.r.carry = value & 0xFF == 0;
         
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -490,20 +490,20 @@ impl <'a>CpuContext<'a> {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        let mut value: u16 = (self.c.reg_h as u16) << 8 | (self.c.reg_l as u16) as u16;
+        let mut value: u16 = (self.r.reg_h as u16) << 8 | (self.r.reg_l as u16) as u16;
 
         match reg {
             RegisterPair::BC => {
                 value;
-                value += (self.c.reg_b as u16) >> 8 | (self.c.reg_c as u16);
-                self.c.half_carry = 0 < (value & 0xFFFF);
+                value += (self.r.reg_b as u16) >> 8 | (self.r.reg_c as u16);
+                self.r.half_carry = 0 < (value & 0xFFFF);
             },
 
             RegisterPair::DE => {
                 value;
                 
-                value += (self.c.reg_d as u16) >> 8 | (self.c.reg_e as u16);
-                self.c.half_carry = 0 < (value & 0xFFFF);
+                value += (self.r.reg_d as u16) >> 8 | (self.r.reg_e as u16);
+                self.r.half_carry = 0 < (value & 0xFFFF);
             },
 
             RegisterPair::HL => {
@@ -511,8 +511,8 @@ impl <'a>CpuContext<'a> {
             }
         };
 
-        self.c.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
-        self.c.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
+        self.r.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
+        self.r.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
 
         self.adv_pc(1);
         self.adv_cycles(10);
@@ -520,11 +520,11 @@ impl <'a>CpuContext<'a> {
 
     fn dad_sp(&mut self) {
         let mut value:u16;
-        value = (self.c.reg_h.wrapping_shl(8) | self.c.reg_l) as u16;
-        self.c.carry = true;
+        value = (self.r.reg_h.wrapping_shl(8) | self.r.reg_l) as u16;
+        self.r.carry = true;
         self.adv_pc(1);
         self.adv_cycles(10);
-        value = self.c.sp
+        value = self.r.sp
     }
 
     // Decrement memory or register
@@ -544,79 +544,79 @@ impl <'a>CpuContext<'a> {
             // self.parity = !self.reg_m + 1 & 1 == 0;
 
             Register::A => {
-                self.c.reg_a -= 1 & 0xFF;
-                self.c.half_carry = !self.c.reg_a & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_a & 0xFF == 0;
-                self.c.parity = !self.c.reg_a + 1 & 1 == 0;
-                self.c.sign = self.c.reg_a & 0x80 != 0;
+                self.r.reg_a -= 1 & 0xFF;
+                self.r.half_carry = !self.r.reg_a & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_a & 0xFF == 0;
+                self.r.parity = !self.r.reg_a + 1 & 1 == 0;
+                self.r.sign = self.r.reg_a & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::B => {
                 // TODO Investigate behavior here.. Underflow occurs unless we wrap.
-                self.c.reg_b = self.c.reg_b.wrapping_sub(1) & 0xFF;
+                self.r.reg_b = self.r.reg_b.wrapping_sub(1) & 0xFF;
 
-                self.c.half_carry = !self.c.reg_b & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_b & 0xFF == 0;
+                self.r.half_carry = !self.r.reg_b & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_b & 0xFF == 0;
                 // Overflow happens here
-                self.c.parity = !self.c.reg_b.wrapping_add(1) & 1 == 0;
-                self.c.sign = self.c.reg_b & 0x80 != 0;
+                self.r.parity = !self.r.reg_b.wrapping_add(1) & 1 == 0;
+                self.r.sign = self.r.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
 
             },
 
             Register::C => {
-                self.c.reg_c -= 1 & 0xFF;
-                self.c.half_carry = !self.c.reg_c & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_c & 0xFF == 0;
-                self.c.parity = !self.c.reg_c & 1 == 0;
-                self.c.sign = self.c.reg_c & 0x80 != 0;
+                self.r.reg_c -= 1 & 0xFF;
+                self.r.half_carry = !self.r.reg_c & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_c & 0xFF == 0;
+                self.r.parity = !self.r.reg_c & 1 == 0;
+                self.r.sign = self.r.reg_c & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::D => {
-                self.c.reg_d.wrapping_sub(1) & 0xFF;
-                self.c.half_carry = !self.c.reg_d & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_d & 0xFF == 0;
-                self.c.parity = !self.c.reg_b & 1 == 0;
-                self.c.sign = self.c.reg_d & 0x80 != 0;
+                self.r.reg_d.wrapping_sub(1) & 0xFF;
+                self.r.half_carry = !self.r.reg_d & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_d & 0xFF == 0;
+                self.r.parity = !self.r.reg_b & 1 == 0;
+                self.r.sign = self.r.reg_d & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::E => {
-                self.c.reg_e -= 1 & 0xFF;
-                self.c.half_carry = !self.c.reg_e & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_e & 0xFF == 0;
-                self.c.parity = !self.c.reg_e & 1 == 0;
-                self.c.sign = self.c.reg_e & 0x80 != 0;
+                self.r.reg_e -= 1 & 0xFF;
+                self.r.half_carry = !self.r.reg_e & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_e & 0xFF == 0;
+                self.r.parity = !self.r.reg_e & 1 == 0;
+                self.r.sign = self.r.reg_e & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::H => {
-                self.c.reg_h -= 1 & 0xFF;
-                self.c.half_carry = !self.c.reg_h & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_h & 0xFF == 0;
-                self.c.parity = !self.c.reg_h & 1 == 0;
-                self.c.sign = self.c.reg_h & 0x80 != 0;
+                self.r.reg_h -= 1 & 0xFF;
+                self.r.half_carry = !self.r.reg_h & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_h & 0xFF == 0;
+                self.r.parity = !self.r.reg_h & 1 == 0;
+                self.r.sign = self.r.reg_h & 0x80 != 0;
                 self.adv_cycles(5);
             },
 
             Register::L => {
-                self.c.reg_l -= 1 & 0xFF;
-                self.c.half_carry = !self.c.reg_l & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_l & 0xFF == 0;
-                self.c.parity = !self.c.reg_l & 1 == 0;
-                self.c.sign = self.c.reg_l & 0x80 != 0;
+                self.r.reg_l -= 1 & 0xFF;
+                self.r.half_carry = !self.r.reg_l & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_l & 0xFF == 0;
+                self.r.parity = !self.r.reg_l & 1 == 0;
+                self.r.sign = self.r.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
 
             },
 
             Register::M => {
-                self.c.reg_m.wrapping_sub(1) & 0xFF;
-                self.c.half_carry = !self.c.reg_m & 0x0F == 0x0F;
-                self.c.zero = self.c.reg_m & 0xFF == 0;
-                self.c.parity = !self.c.reg_m & 1 == 0;
-                self.c.sign = self.c.reg_m & 0x80 != 0;
+                self.r.reg_m.wrapping_sub(1) & 0xFF;
+                self.r.half_carry = !self.r.reg_m & 0x0F == 0x0F;
+                self.r.zero = self.r.reg_m & 0xFF == 0;
+                self.r.parity = !self.r.reg_m & 1 == 0;
+                self.r.sign = self.r.reg_m & 0x80 != 0;
                 self.adv_cycles(6);
             }
         }
@@ -626,22 +626,22 @@ impl <'a>CpuContext<'a> {
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let mut bc = self.c.reg_b.wrapping_shl(8) | self.c.reg_c;
+                let mut bc = self.r.reg_b.wrapping_shl(8) | self.r.reg_c;
                 bc.wrapping_sub(1);
-                self.c.reg_b = bc.wrapping_shl(8) & 0xFF;
-                self.c.reg_c = bc.wrapping_shl(0) & 0xFF;
+                self.r.reg_b = bc.wrapping_shl(8) & 0xFF;
+                self.r.reg_c = bc.wrapping_shl(0) & 0xFF;
             },
             RegisterPair::DE => {
-                let mut de = self.c.reg_d.wrapping_shl(8) | self.c.reg_e;
+                let mut de = self.r.reg_d.wrapping_shl(8) | self.r.reg_e;
                 de.wrapping_sub(1);
-                self.c.reg_d = de.wrapping_shl(8) & 0xFF;
-                self.c.reg_e = de.wrapping_shl(0) & 0xFF;
+                self.r.reg_d = de.wrapping_shl(8) & 0xFF;
+                self.r.reg_e = de.wrapping_shl(0) & 0xFF;
             },
             RegisterPair::HL => {
-                let mut hl = self.c.reg_h.wrapping_shl(8) | self.c.reg_l;
+                let mut hl = self.r.reg_h.wrapping_shl(8) | self.r.reg_l;
                 hl.wrapping_sub(1);
-                self.c.reg_h = hl.wrapping_shl(8) & 0xFF;
-                self.c.reg_l = hl.wrapping_shl(0) & 0xFF;
+                self.r.reg_h = hl.wrapping_shl(8) & 0xFF;
+                self.r.reg_l = hl.wrapping_shl(0) & 0xFF;
             }
         }
         self.adv_cycles(5);
@@ -649,7 +649,7 @@ impl <'a>CpuContext<'a> {
     }
 
     fn dcx_sp(&mut self) {
-        self.c.sp.wrapping_sub(1);
+        self.r.sp.wrapping_sub(1);
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -669,7 +669,7 @@ impl <'a>CpuContext<'a> {
     // TODO
     fn rnz(&mut self) {
         // Cycles should be 11 if the carry flag is false
-        if self.c.carry == false {
+        if self.r.carry == false {
             self.adv_cycles(6)
         }
         self.adv_cycles(5);
@@ -679,7 +679,7 @@ impl <'a>CpuContext<'a> {
     // TODO
     fn rz(&mut self) {
         // Cycles should be 11 if the carry flag is false
-        if self.c.carry == false {
+        if self.r.carry == false {
             self.adv_cycles(6)
         }
         self.adv_cycles(5);
@@ -687,7 +687,7 @@ impl <'a>CpuContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value = self.c.opcode & 0x08;
+        let value = self.r.opcode & 0x08;
         println!("VALUE: {:?}", value);
         match reg {
             Register::A => self.write_reg(Register::A, value),
@@ -708,7 +708,7 @@ impl <'a>CpuContext<'a> {
     }
 
     fn lda (&mut self) {
-        self.c.reg_a = self.memory.read(self.c.pc as usize);
+        self.r.reg_a = self.m.read(self.r.pc as usize);
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -722,15 +722,15 @@ impl <'a>CpuContext<'a> {
         match reg {
             RegisterPair::BC =>  {
                 // addr =self.reg_b << 8 | self.reg_c;
-                let addr = (self.c.reg_b.wrapping_shl(8) | self.c.reg_c) as u16;
-                self.c.reg_a = self.memory.memory[addr as usize];
+                let addr = (self.r.reg_b.wrapping_shl(8) | self.r.reg_c) as u16;
+                self.r.reg_a = self.m.memory[addr as usize];
             },
 
             RegisterPair::DE =>  {
-                let addr = (self.c.reg_d.wrapping_shl(8) | self.c.reg_e) as u16;
-                self.c.reg_a = self.memory.memory[addr as usize];
+                let addr = (self.r.reg_d.wrapping_shl(8) | self.r.reg_e) as u16;
+                self.r.reg_a = self.m.memory[addr as usize];
                 // println!("Reg_DE: {:b}", self.reg_de);
-                println!("LDA RP Register A value: {:X}", self.c.reg_a);
+                println!("LDA RP Register A value: {:X}", self.r.reg_a);
             },
 
             _ => println!("LDAX on invalid register"),
@@ -742,11 +742,11 @@ impl <'a>CpuContext<'a> {
 
     fn lhld(&mut self) {
         // Load the HL register with 16 bits found at addr & addr + 1
-        // let value = self.memory.read_word(self.pc & self.pc + 1);
+        // let value = self.m.read_word(self.pc & self.pc + 1);
 
         // This can cause an index out of bounds issue.. TODO Investigate
-        self.c.reg_l = self.memory.read(self.c.pc as usize + 2 << 8 | self.c.pc as usize + 1) + 0;
-        self.c.reg_h = self.memory.read(self.c.pc as usize + 2 << 8 | self.c.pc as usize + 1) + 1;
+        self.r.reg_l = self.m.read(self.r.pc as usize + 2 << 8 | self.r.pc as usize + 1) + 0;
+        self.r.reg_h = self.m.read(self.r.pc as usize + 2 << 8 | self.r.pc as usize + 1) + 1;
 
         self.adv_pc(3);
         self.adv_cycles(16);
@@ -755,14 +755,14 @@ impl <'a>CpuContext<'a> {
 
     fn inr(&mut self, reg: Register) {
         match reg {
-            Register::A => self.c.reg_a += 1,
-            Register::B => self.c.reg_b += 1,
-            Register::C => self.c.reg_c += 1,
-            Register::D => self.c.reg_d += 1,
-            Register::E => self.c.reg_e += 1,
-            Register::H => self.c.reg_h += 1,
-            Register::L => self.c.reg_l += 1,
-            Register::M => self.c.reg_m += 1,
+            Register::A => self.r.reg_a += 1,
+            Register::B => self.r.reg_b += 1,
+            Register::C => self.r.reg_c += 1,
+            Register::D => self.r.reg_d += 1,
+            Register::E => self.r.reg_e += 1,
+            Register::H => self.r.reg_h += 1,
+            Register::L => self.r.reg_l += 1,
+            Register::M => self.r.reg_m += 1,
         };
 
         if reg == Register::M {
@@ -779,24 +779,24 @@ impl <'a>CpuContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                self.c.reg_c = self.c.reg_c.wrapping_add(1);
-                if self.c.reg_c == 0 {
-                    self.c.reg_b += 1;
+                self.r.reg_c = self.r.reg_c.wrapping_add(1);
+                if self.r.reg_c == 0 {
+                    self.r.reg_b += 1;
                 }
             },
 
             RegisterPair::DE => {
-               self.c.reg_e = self.c.reg_e.wrapping_add(1);
-                if self.c.reg_e == 0 {
-                    self.c.reg_d += 1;
+               self.r.reg_e = self.r.reg_e.wrapping_add(1);
+                if self.r.reg_e == 0 {
+                    self.r.reg_d += 1;
                 }
             },
 
             RegisterPair::HL => {
-                self.c.reg_l = self.c.reg_l.wrapping_add(1);
-                if self.c.reg_l == 0 {
-                    self.c.reg_h += 1;
-                    // self.c.reg_l -= 1;
+                self.r.reg_l = self.r.reg_l.wrapping_add(1);
+                if self.r.reg_l == 0 {
+                    self.r.reg_h += 1;
+                    // self.r.reg_l -= 1;
                 }
             }
         };
@@ -806,39 +806,39 @@ impl <'a>CpuContext<'a> {
     }
 
     fn inx_sp(&mut self) {
-        self.c.sp += 1;
+        self.r.sp += 1;
 
         self.adv_cycles(5);
         self.adv_pc(1);
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory.read(self.c.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory.read(self.c.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.m.read(self.r.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.m.read(self.r.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
-                sub2 = self.c.reg_c;
-                sub1  = self.c.reg_b;
-                self.c.sp.wrapping_sub(2);
+                sub2 = self.r.reg_c;
+                sub1  = self.r.reg_b;
+                self.r.sp.wrapping_sub(2);
             },
 
             Register::D => {
-                sub2 = self.c.reg_e;
-                sub1 = self.c.reg_d;
-                self.c.sp.wrapping_sub(2);
+                sub2 = self.r.reg_e;
+                sub1 = self.r.reg_d;
+                self.r.sp.wrapping_sub(2);
             },
 
             Register::H => {
-                sub2 = self.c.reg_l;
-                sub2 = self.c.reg_h;
-                self.c.sp.wrapping_sub(2);
+                sub2 = self.r.reg_l;
+                sub2 = self.r.reg_h;
+                self.r.sp.wrapping_sub(2);
             },
 
             _ => println!("Unknown push instruction"),
         }
 
-        self.c.sp.wrapping_sub(2);
+        self.r.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
         self.adv_pc(1);
@@ -850,16 +850,16 @@ impl <'a>CpuContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let bc = self.c.reg_b.wrapping_shl(8) | self.c.reg_c;
-                self.memory.memory[bc as usize] = self.c.reg_a;
+                let bc = self.r.reg_b.wrapping_shl(8) | self.r.reg_c;
+                self.m.memory[bc as usize] = self.r.reg_a;
             },
             RegisterPair::DE => {
-                let de = self.c.reg_d.wrapping_shl(8) | self.c.reg_e;
-                self.memory.memory[de as usize] = self.c.reg_a;
+                let de = self.r.reg_d.wrapping_shl(8) | self.r.reg_e;
+                self.m.memory[de as usize] = self.r.reg_a;
             },
             RegisterPair::HL => {
-                let hl = self.c.reg_h.wrapping_shl(8) | self.c.reg_l;
-                self.memory.memory[hl as usize] = self.c.reg_a;
+                let hl = self.r.reg_h.wrapping_shl(8) | self.r.reg_l;
+                self.m.memory[hl as usize] = self.r.reg_a;
             }
         }
 
@@ -875,14 +875,14 @@ impl <'a>CpuContext<'a> {
 
     fn sub(&mut self, reg: Register) {
         match reg {
-            Register::A => self.c.reg_a - self.c.reg_a,
-            Register::B => self.c.reg_b - self.c.reg_b,
-            Register::C => self.c.reg_c - self.c.reg_c,
-            Register::D => self.c.reg_d - self.c.reg_d,
-            Register::E => self.c.reg_e - self.c.reg_e,
-            Register::H => self.c.reg_h - self.c.reg_h,
-            Register::L => self.c.reg_l - self.c.reg_l,
-            Register::M => self.c.reg_m - self.c.reg_m,
+            Register::A => self.r.reg_a - self.r.reg_a,
+            Register::B => self.r.reg_b - self.r.reg_b,
+            Register::C => self.r.reg_c - self.r.reg_c,
+            Register::D => self.r.reg_d - self.r.reg_d,
+            Register::E => self.r.reg_e - self.r.reg_e,
+            Register::H => self.r.reg_h - self.r.reg_h,
+            Register::L => self.r.reg_l - self.r.reg_l,
+            Register::M => self.r.reg_m - self.r.reg_m,
         };
 
         if reg == Register::M {
@@ -895,7 +895,7 @@ impl <'a>CpuContext<'a> {
 
     // Set Carry (set carry bit to 0)
     fn stc(&mut self) {
-        self.c.carry = false;
+        self.r.carry = false;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -903,14 +903,14 @@ impl <'a>CpuContext<'a> {
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
         match reg {
-            Register::A => self.c.reg_a ^= self.c.reg_a,
-            Register::B => self.c.reg_a ^= self.c.reg_b,
-            Register::C => self.c.reg_a ^= self.c.reg_c,
-            Register::D => self.c.reg_a ^= self.c.reg_d,
-            Register::E => self.c.reg_a ^= self.c.reg_e,
-            Register::H => self.c.reg_a ^= self.c.reg_h,
-            Register::L => self.c.reg_a ^= self.c.reg_l,
-            Register::M => self.c.reg_a ^= self.c.reg_m,
+            Register::A => self.r.reg_a ^= self.r.reg_a,
+            Register::B => self.r.reg_a ^= self.r.reg_b,
+            Register::C => self.r.reg_a ^= self.r.reg_c,
+            Register::D => self.r.reg_a ^= self.r.reg_d,
+            Register::E => self.r.reg_a ^= self.r.reg_e,
+            Register::H => self.r.reg_a ^= self.r.reg_h,
+            Register::L => self.r.reg_a ^= self.r.reg_l,
+            Register::M => self.r.reg_a ^= self.r.reg_m,
         };
 
         if reg == Register::M {
@@ -923,22 +923,22 @@ impl <'a>CpuContext<'a> {
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        self.c.half_carry = (self.c.reg_a | self.c.opcode) & 0x08 != 0;
-        self.c.reg_a ^= self.c.opcode;
-        self.c.carry = false;
+        self.r.half_carry = (self.r.reg_a | self.r.opcode) & 0x08 != 0;
+        self.r.reg_a ^= self.r.opcode;
+        self.r.carry = false;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
 
     fn xchg(&mut self) {
-        let h = self.c.reg_h;
-        let l = self.c.reg_l;
+        let h = self.r.reg_h;
+        let l = self.r.reg_l;
 
-        self.c.reg_h = self.c.reg_d;
-        self.c.reg_l = self.c.reg_e;
+        self.r.reg_h = self.r.reg_d;
+        self.r.reg_l = self.r.reg_e;
 
-        self.c.reg_d = h;
-        self.c.reg_e = l;
+        self.r.reg_d = h;
+        self.r.reg_e = l;
         self.adv_pc(1);
         self.adv_cycles(5);
     }
@@ -948,10 +948,10 @@ impl <'a>CpuContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        let a = self.c.reg_a >> 1 | self.c.reg_a << 7;
-        self.c.reg_a = (self.c.reg_a >> 1) | (self.c.reg_a << 7);
+        let a = self.r.reg_a >> 1 | self.r.reg_a << 7;
+        self.r.reg_a = (self.r.reg_a >> 1) | (self.r.reg_a << 7);
         println!("RAR: {:b}", a);
-        self.c.carry = self.c.reg_a & 0x08 != 0;
+        self.r.carry = self.r.reg_a & 0x08 != 0;
 
         self.adv_pc(1);
         self.adv_cycles(4);
@@ -961,8 +961,8 @@ impl <'a>CpuContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        self.c.reg_a.rotate_left(1);
-        self.c.carry = self.c.reg_a & 0x08 != 0;
+        self.r.reg_a.rotate_left(1);
+        self.r.carry = self.r.reg_a & 0x08 != 0;
         // self.reg_a = self.reg_a << 1;
         self.adv_pc(1);
         self.adv_cycles(4);
@@ -972,8 +972,8 @@ impl <'a>CpuContext<'a> {
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
-        self.c.carry = self.c.reg_a & 0x08 != 0;
-        self.c.reg_a = ( self.c.reg_a >> 1 ) | (( self.c.reg_a & 0x1 ) << 7);
+        self.r.carry = self.r.reg_a & 0x08 != 0;
+        self.r.reg_a = ( self.r.reg_a >> 1 ) | (( self.r.reg_a & 0x1 ) << 7);
         self.adv_pc(1);
         self.adv_cycles(4);
 
@@ -981,7 +981,7 @@ impl <'a>CpuContext<'a> {
 
     // Return if no carry
     fn rnc(&mut self) {
-        if !self.c.carry {
+        if !self.r.carry {
             self.ret();
         } else {
             self.adv_pc(1);
@@ -996,57 +996,57 @@ impl <'a>CpuContext<'a> {
     }
 
     fn pop(&mut self, reg: RegisterPair) {
-        let sp = self.c.sp as usize;
+        let sp = self.r.sp as usize;
         match reg {
             RegisterPair::BC => {
-                self.c.reg_b = self.memory.memory[sp + 1] & 0xFFFF;
-                self.c.reg_c = self.memory.memory[sp + 0] & 0xFFFF;
+                self.r.reg_b = self.m.memory[sp + 1] & 0xFFFF;
+                self.r.reg_c = self.m.memory[sp + 0] & 0xFFFF;
             },
 
             RegisterPair::DE => {
-                self.c.reg_d = self.memory.memory[sp + 1] & 0xFFFF;
-                self.c.reg_e = self.memory.memory[sp + 0] & 0xFFFF;
+                self.r.reg_d = self.m.memory[sp + 1] & 0xFFFF;
+                self.r.reg_e = self.m.memory[sp + 0] & 0xFFFF;
             },
 
             RegisterPair::HL => {
-                self.c.reg_h = self.memory.memory[sp + 1] & 0xFFFF;
-                self.c.reg_l = self.memory.memory[sp + 0] & 0xFFFF;
+                self.r.reg_h = self.m.memory[sp + 1] & 0xFFFF;
+                self.r.reg_l = self.m.memory[sp + 0] & 0xFFFF;
             }
         }
 
-        self.c.sp.wrapping_add(2);
+        self.r.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
     fn pop_psw(&mut self) {
-        self.c.reg_psw = self.memory.read_word(self.c.sp + 1) & 0xFFFF as u16;
-        self.c.sp.wrapping_add(2);
+        self.r.reg_psw = self.m.read_word(self.r.sp + 1) & 0xFFFF as u16;
+        self.r.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_word(self.c.sp + 1) | self.memory.read_word(self.c.sp) as u16;
+        let sp = self.m.read_word(self.r.sp + 1) | self.m.read_word(self.r.sp) as u16;
         if DEBUG { println!("Popping stack. SP value: {:02X}", sp); }
-        self.c.sp += 2;
+        self.r.sp += 2;
         sp
 
     }
 
     fn ret(&mut self) {
-        if DEBUG { println!("RET instruction, memory value: {:X}", self.memory.read_word(self.c.sp));}
+        if DEBUG { println!("RET instruction, memory value: {:X}", self.m.read_word(self.r.sp));}
 
-        let sp = self.memory.read_word(self.c.sp);
+        let sp = self.m.read_word(self.r.sp);
 
 
         if DEBUG { println!("Returning from subroutine: {:04X}", sp); }
         
-        self.c.sp -= 2;
+        self.r.sp -= 2;
         self.adv_cycles(10);
-        self.c.pc = sp;
+        self.r.pc = sp;
     }
 
     // TODO
@@ -1108,21 +1108,21 @@ impl <'a>CpuContext<'a> {
         }
         if DEBUG { println!("RST called: {:02X}", value); }
 
-        self.c.sp.wrapping_sub(2);
+        self.r.sp.wrapping_sub(2);
 
-        self.c.pc = rst as u16;
+        self.r.pc = rst as u16;
         self.adv_cycles(11);
     }
 
     fn sphl(&mut self) {
-        self.c.sp = (self.c.reg_h as u16) << 8 | self.c.reg_l as u16;
+        self.r.sp = (self.r.reg_h as u16) << 8 | self.r.reg_l as u16;
     }
 
     // Store H & L direct
     fn shld(&mut self) {
-        let reg_a = self.c.reg_a;
-        let hl = (self.c.reg_h as u16) << 8 | self.c.reg_l as u16;
-        self.memory.write_word(reg_a, hl);
+        let reg_a = self.r.reg_a;
+        let hl = (self.r.reg_h as u16) << 8 | self.r.reg_l as u16;
+        self.m.write_word(reg_a, hl);
 
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -1153,7 +1153,7 @@ impl <'a>CpuContext<'a> {
             Instruction::CPI => self.cpi(),
             Instruction::CZ => println!("Not implemented: {:?}", instruction),
             Instruction::CM => println!("Not implemented: {:?}", instruction),
-            Instruction::CNC => self.cnc(),
+            Instruction::CNC => self.rnc(),
             Instruction::CMA => self.cma(),
             Instruction::CMC => self.cmc(),
 
@@ -1237,7 +1237,7 @@ impl <'a>CpuContext<'a> {
             Instruction::XCHG => self.xchg(),
             Instruction::XTHL => println!("Not implemented: {:?}", instruction),
 
-            _ => println!("Unknown instruction {:#X}", self.c.opcode),
+            _ => println!("Unknown instruction {:#X}", self.r.opcode),
         }
 
     }
@@ -1246,29 +1246,29 @@ impl <'a>CpuContext<'a> {
         use self::Register::*;
         use self::RegisterPair::*;
 
-        // self.opcode = self.memory.read(self.pc as usize);
-        self.c.opcode = instruction;
+        // self.opcode = self.m.read(self.pc as usize);
+        self.r.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
-                     self.c.opcode, self.c.pc, self.c.sp, self.c.cycles);
+                     self.r.opcode, self.r.pc, self.r.sp, self.r.cycles);
             println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
-                     self.c.reg_a, self.c.reg_b, self.c.reg_c, self.c.reg_d, self.c.reg_e, self.c.reg_h, self.c.reg_l, self.c.reg_m);
+                     self.r.reg_a, self.r.reg_b, self.r.reg_c, self.r.reg_d, self.r.reg_e, self.r.reg_h, self.r.reg_l, self.r.reg_m);
 
-            let bc = (self.c.reg_b as u16) << 8 | self.c.reg_c as u16;
-            let de = (self.c.reg_d as u16) << 8 | self.c.reg_e as u16;
-            let hl = (self.c.reg_h as u16) << 8 | self.c.reg_l as u16;
+            let bc = (self.r.reg_b as u16) << 8 | self.r.reg_c as u16;
+            let de = (self.r.reg_d as u16) << 8 | self.r.reg_e as u16;
+            let hl = (self.r.reg_h as u16) << 8 | self.r.reg_l as u16;
 
-            let stack = self.memory.memory[self.c.sp as usize + 1].wrapping_shl(8)
-                | self.memory.memory[self.c.sp as usize];
+            let stack = self.m.memory[self.r.sp as usize + 1].wrapping_shl(8)
+                | self.m.memory[self.r.sp as usize];
 
 
             println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}", bc, de, hl);
             println!("Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
-                     self.c.sign, self.c.zero, self.c.parity, self.c.carry, self.c.half_carry);
+                     self.r.sign, self.r.zero, self.r.parity, self.r.carry, self.r.half_carry);
             println!("Stack: {:04X}", stack);
     };
 
-        match self.c.opcode {
+        match self.r.opcode {
 
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
@@ -1571,47 +1571,47 @@ impl <'a>CpuContext<'a> {
             0xFE => self.decode(Instruction::CPI),
             0xFF => self.decode(Instruction::RST(7)),
 
-            _ => println!("Unknown opcode: {:#X}", self.c.opcode),
+            _ => println!("Unknown opcode: {:#X}", self.r.opcode),
         }
     }
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-        let instruction = self.memory.read(self.c.pc as usize);
+        let instruction = self.m.read(self.r.pc as usize);
         for _ in 0..times {
             self.execute_instruction(instruction);
-            self.c.pc &= 0xFFFF;
+            self.r.pc &= 0xFFFF;
             times += 1;
         }
     }
 
     pub fn run(&mut self) {
-        let instruction = self.memory.read(self.c.pc as usize);
+        let instruction = self.m.read(self.r.pc as usize);
         self.execute_instruction(instruction);
     }
 
     pub fn reset(&mut self) {
         println!("Resetting emulator");
 
-        self.c.reg_a = 0;
-        self.c.reg_b = 0;
-        self.c.reg_c = 0;
-        self.c.reg_d = 0;
-        self.c.reg_e = 0;
-        self.c.reg_h = 0;
-        self.c.reg_l = 0;
+        self.r.reg_a = 0;
+        self.r.reg_b = 0;
+        self.r.reg_c = 0;
+        self.r.reg_d = 0;
+        self.r.reg_e = 0;
+        self.r.reg_h = 0;
+        self.r.reg_l = 0;
 
-        self.c.reg_bc = 0;
-        self.c.reg_de = 0;
-        self.c.reg_hl = 0;
+        self.r.reg_bc = 0;
+        self.r.reg_de = 0;
+        self.r.reg_hl = 0;
 
         // Reset flag conditions
-        self.c.sign = false;
-        self.c.zero = false;
-        self.c.parity = false;
-        self.c.carry = false;
-        self.c.half_carry = false;
-        self.c.reg_psw = 0;
+        self.r.sign = false;
+        self.r.zero = false;
+        self.r.parity = false;
+        self.r.carry = false;
+        self.r.half_carry = false;
+        self.r.reg_psw = 0;
 
         self.adv_pc(1); // Is this correct to do?
     }
@@ -1625,7 +1625,7 @@ impl <'a>CpuContext<'a> {
         file.read_to_end(&mut buf).expect("Failed to read file");
 
 
-        let ref mut mem = self.memory.memory;
+        let ref mut mem = self.m.memory;
         let buf_len = buf.len();
         for i in 0..buf_len {
             mem[i] = buf[i]; }
