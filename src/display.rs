@@ -1,7 +1,12 @@
 
 use std::fmt;
 use super::minifb::{Key, Scale, WindowOptions, Window};
-use super::memory;
+use super::interconnect;
+use std::borrow::BorrowMut;
+use std::iter::Enumerate;
+
+use cpu::CpuContext;
+use memory::Memory;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 224;
@@ -9,7 +14,6 @@ pub const HEIGHT: usize = 224;
 pub struct Display {
     pub raster: Vec<(u32)>,
     vblank: bool,
-    memory: memory::Memory,
     draw_flag: bool,
     pub window: Window,
 }
@@ -23,19 +27,11 @@ impl fmt::Debug for Display {
 
 impl Display {
     pub fn new() -> Display {
-
-        let memory = memory::Memory::new();
-        let mut window = Window::new("Eighty Eighty", WIDTH, HEIGHT,
-                                     WindowOptions {
-                                         resize: false,
-                                         scale: Scale::X2,
-                                         ..WindowOptions::default()
-                                     }).unwrap();
+    let mut window = Window::new("Eighty Eighty", WIDTH, HEIGHT, WindowOptions { resize: false, scale: Scale::X2, ..WindowOptions::default()}).unwrap();
 
 
         Display {
             raster: vec![0; WIDTH * HEIGHT],
-            memory: memory,
             vblank: false,
             draw_flag: true,
             window: window,
@@ -45,7 +41,8 @@ impl Display {
 
     pub fn render_vram(&mut self) {
 
-
+        let m = CpuContext::new();
+        let memory = m.memory.memory;
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -65,7 +62,7 @@ impl Display {
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
 
-                if (self.memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
+                if (memory[base as usize + offset as usize] >> shift) & 1 != 0 {
                     self.raster[counter as usize] = 0x00;
 
                 } else {
@@ -82,6 +79,29 @@ impl Display {
         }
     }
     pub fn update_screen(&mut self) {
-        self.window.update_with_buffer(&self.raster.as_slice());
+        
+        let m = CpuContext::new();
+        let memory = m.memory.memory;
+        let mut iter = memory.iter();
+        println!("Current memory value: {:?}", iter);
+
+        let sprite_x = self.raster[0] as usize;
+        let sprite_y = self.raster[1] as usize;
+
+        // Pixels can either be on or off
+        let mut flipped = false;
+
+        for j in 0..HEIGHT {
+            let row = memory[(0x2400 as usize + j as usize)];
+            for i in 0..WIDTH {
+                let xi = ((sprite_x + i as usize) % WIDTH) as usize;
+                let yj = ((sprite_y + j as usize) % HEIGHT) as usize;
+
+                if row & 0x80u8.wrapping_shl(i as u32) != 0 {
+                        self.raster[row as usize];
+                    }
+                }
+            self.window.update_with_buffer(&self.raster.as_slice());
+        }
     }
 }

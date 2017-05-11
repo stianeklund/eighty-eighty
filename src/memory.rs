@@ -3,10 +3,10 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::env;
 use std::fmt;
+use std::iter::Enumerate;
 
 pub struct Memory {
-    pub memory: Box<[u8; 65536]>,
-    pub raster: Box<([u8; 10000])>,
+    pub memory: [u8; 65536],
 }
 
 impl fmt::Debug for Memory {
@@ -19,8 +19,7 @@ impl fmt::Debug for Memory {
 impl Memory {
     pub fn new() -> Memory {
         Memory {
-            memory: Box::new([0; 65536]),
-            raster: Box::new([0; 10000]),
+            memory: [0; 65536],
         }
     }
 

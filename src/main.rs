@@ -1,4 +1,3 @@
-extern crate sdl2;
 extern crate minifb;
 
 use std::env;
@@ -21,19 +20,15 @@ fn main() {
 
     let bin = &args[1];
     let mut inter = interconnect::Interconnect::new();
+
     inter.cpu.load_bin(bin);
     // inter.display.draw();
 
     // TODO Implement break & step keyboard actions
     loop {
         inter.cpu.run();
-        inter.display.render_vram();
-        inter.display.update_screen();
-        if inter.display.window.is_key_down(Key::Escape) || inter.display.window.is_key_down(Key::X) {
-            break;
-            } else {
-            continue;
-        }
+        // inter.display.render_vram();
+        // inter.display.update_screen();
         thread::sleep_ms(3);
     }
 }
