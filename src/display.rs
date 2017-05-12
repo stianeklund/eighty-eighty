@@ -25,6 +25,14 @@ impl fmt::Debug for Display {
     }
 }
 
+impl fmt::UpperHex for Display {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:02X}", val)
+    }
+}
+
+
 impl Display {
     pub fn new() -> Display {
     let mut window = Window::new("Eighty Eighty", WIDTH, HEIGHT, WindowOptions { resize: false, scale: Scale::X2, ..WindowOptions::default()}).unwrap();
@@ -47,8 +55,9 @@ impl Display {
         let mut x: u8 = 0;
         let mut y: u8 = 255;
 
-        let mut counter = 0;
+        let mut counter: u8 = 0;
 
+        let mut pixel_pos = ((self.raster[x as usize]).wrapping_add(WIDTH as u32)).wrapping_add(self.raster[y as usize]);
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
 
@@ -56,54 +65,40 @@ impl Display {
         // We simply iterate over the entirity of the size of the video hardware
         // & iterater over the 8 pixels per byte.
 
-        let memory = memory.memory;
-        let mut iter = memory.iter();
-        // println!("Current memory value: {:?}", iter);
+        let memory = &mut memory.memory;
+
 
         for offset in 0..(256 * 244 / 8) {
 
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
-
                 if (memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[counter as usize] = 0x00;
-
+                    self.raster[offset as usize] = 0x00;
                 } else {
-                    self.raster[counter as usize] = 0xFF;
-                }
+                     self.raster[offset as usize] = 0x00FFFFFF;
+                };
             }
-
-            y -= 1;
+            y.wrapping_sub(1);
             if y <= 0 {
                 y = 255;
-                x += 1;
+                x.wrapping_add(1);
+                pixel_pos = ((self.raster[x as usize]).wrapping_add(WIDTH as u32)).wrapping_add(self.raster[y as usize]);
+                println!("Pixel position: {:02X}", pixel_pos);
             }
-            counter += 1;
+            counter.wrapping_add(1);
         }
+        let buffer = vec![pixel_pos];
+        self.window.update_with_buffer(&buffer);
+        // self.update_screen(&buffer);
     }
-    pub fn update_screen(&mut self, memory: & mut Memory) {
-
-        let memory = memory.memory;
-        let mut iter = memory.iter();
-        println!("Current memory value: {:?}", iter);
-
-        let sprite_x = self.raster[0] as usize;
-        let sprite_y = self.raster[1] as usize;
-
-        // Pixels can either be on or off
-        let mut flipped = false;
-
-        for j in 0..HEIGHT {
-            let row = memory[(0x2400 as usize + j as usize)];
-            for i in 0..WIDTH {
-                let xi = ((sprite_x + i as usize) % WIDTH) as usize;
-                let yj = ((sprite_y + j as usize) % HEIGHT) as usize;
-
-                if row & 0x80u8.wrapping_shl(i as u32) != 0 {
-                        self.raster[row as usize];
-                    }
+    pub fn update_screen(&mut self, buffer: &[u32]) {
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
+                if self.raster[y.wrapping_mul(WIDTH).wrapping_add(x)] != 0 {
+                self.window.update_with_buffer(&buffer);
+                // self.raster[y*224 + x];
                 }
-            self.window.update_with_buffer(&self.raster.as_slice());
+            }
         }
     }
 }

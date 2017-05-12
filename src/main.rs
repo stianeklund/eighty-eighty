@@ -36,7 +36,7 @@ fn main() {
         // inter.cpu.step(1);
         // inter.cpu.run();
         display.render_vram(&mut memory);
-        // display.update_screen(&mut memory);
-        thread::sleep_ms(3);
+        // display.window.update_with_buffer(&display.raster);
+        // thread::sleep_ms(3);
     }
 }
