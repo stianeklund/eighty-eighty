@@ -71,9 +71,9 @@ impl Display {
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[offset as usize] = 0x0000000;
+                    self.raster[counter as usize] = 0x0000000;
                 } else {
-                    self.raster[offset as usize] = 0x0FFFFFF;
+                    self.raster[counter as usize] = 0x0FFFFFF;
                 }
                 y = y.wrapping_sub(1);
                 if y < 0 {
@@ -81,7 +81,8 @@ impl Display {
                 }
                 x = x.wrapping_add(1);
             }
-            counter.wrapping_add(1);
+            // println!("X: {}, Y: {}", x, y);
+            counter = counter.wrapping_add(1);
         }
 
         for j in 0..HEIGHT {
@@ -93,7 +94,6 @@ impl Display {
         // at this point.
         self.window.update_with_buffer(&self.raster);
     }
-
     pub fn update_screen(&mut self, x: usize, y: usize) {
 
         for j in 0..HEIGHT {
