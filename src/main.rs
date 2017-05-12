@@ -14,7 +14,7 @@ use cpu::{ExecutionContext, Registers};
 
 fn main() {
 
-   let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("[Rom path]");
         return;

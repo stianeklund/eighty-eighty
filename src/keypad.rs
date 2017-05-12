@@ -9,7 +9,6 @@ pub enum State {
     Continue,
     Break,
     Step,
-
 }
 
 /* impl Keypad {

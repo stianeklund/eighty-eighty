@@ -12,8 +12,8 @@ pub struct Interconnect<'a> {
     // pub keypad: Keypad,
 }
 
-impl <'a>Interconnect<'a> {
-    pub fn new() -> Interconnect<'a>{
+impl<'a> Interconnect<'a> {
+    pub fn new() -> Interconnect<'a> {
         // let ctx = sdl2::init().unwrap();
         let mut memory = Memory::new();
         let mut registers = Registers::new();
@@ -24,7 +24,6 @@ impl <'a>Interconnect<'a> {
             memory: Memory::new(),
             // keypad: Keypad::new(),
             // TODO audio
-
         }
     }
 }

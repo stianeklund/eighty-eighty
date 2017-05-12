@@ -35,7 +35,15 @@ impl fmt::UpperHex for Display {
 
 impl Display {
     pub fn new() -> Display {
-    let mut window = Window::new("Eighty Eighty", WIDTH, HEIGHT, WindowOptions { resize: false, scale: Scale::X2, ..WindowOptions::default()}).unwrap();
+        let mut window = Window::new("Eighty Eighty",
+                                     WIDTH,
+                                     HEIGHT,
+                                     WindowOptions {
+                                         resize: false,
+                                         scale: Scale::X2,
+                                         ..WindowOptions::default()
+                                     })
+                .unwrap();
 
 
         Display {

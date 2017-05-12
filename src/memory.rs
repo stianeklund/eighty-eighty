@@ -23,9 +23,7 @@ impl fmt::UpperHex for Memory {
 
 impl Memory {
     pub fn new() -> Memory {
-        Memory {
-            memory: [0; 65536],
-        }
+        Memory { memory: [0; 65536] }
     }
 
     pub fn read_byte(&mut self, byte: u8) -> u8 {
@@ -42,7 +40,7 @@ impl Memory {
     }
     pub fn write_memory(&mut self, addr: u16) {
         // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
-      (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
+        (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
     }
 
 
@@ -74,7 +72,7 @@ impl Memory {
     // Useful to read values out of memory to assign to 8 bit registers
     pub fn read(&mut self, addr: usize) -> u8 {
         self.memory[addr] as u8
-}
+    }
     pub fn write(&mut self, addr: usize, val: u8) {
         self.memory[addr] = val;
     }
@@ -96,4 +94,3 @@ impl Memory {
         println!("Loaded binary");
     }
 }
-
