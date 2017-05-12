@@ -1,9 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use std::env;
 use std::fmt;
-use std::iter::Enumerate;
 
 pub struct Memory {
     pub memory: [u8; 65536],
@@ -13,6 +11,13 @@ impl fmt::Debug for Memory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = self;
         write!(f, "{:?}", val)
+    }
+}
+
+impl fmt::UpperHex for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:04X}", val)
     }
 }
 

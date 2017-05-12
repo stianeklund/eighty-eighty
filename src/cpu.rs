@@ -1613,20 +1613,4 @@ impl <'a>ExecutionContext<'a> {
 
         self.adv_pc(1); // Is this correct to do?
     }
-
-
-    pub fn load_bin(&mut self, file: &str) {
-        let path = Path::new(file);
-        let mut file = File::open(&path).expect("File open failed");
-        let mut buf = Vec::new();
-
-        file.read_to_end(&mut buf).expect("Failed to read file");
-
-
-        let ref mut mem = self.memory.memory;
-        let buf_len = buf.len();
-        for i in 0..buf_len {
-            mem[i] = buf[i]; }
-        println!("Loaded binary");
-    }
 }
