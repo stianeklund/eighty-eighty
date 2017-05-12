@@ -33,10 +33,7 @@ fn main() {
     // TODO Implement break & step keyboard actions
     loop {
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        // inter.cpu.step(1);
-        // inter.cpu.run();
         display.render_vram(&mut memory);
-        // display.window.update_with_buffer(&display.raster);
         // thread::sleep_ms(3);
     }
 }

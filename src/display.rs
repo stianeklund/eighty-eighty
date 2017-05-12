@@ -57,7 +57,6 @@ impl Display {
 
         let mut counter: u8 = 0;
 
-        let mut pixel_pos = ((self.raster[x as usize]).wrapping_add(WIDTH as u32)).wrapping_add(self.raster[y as usize]);
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
 
@@ -67,37 +66,39 @@ impl Display {
 
         let memory = &mut memory.memory;
 
-
         for offset in 0..(256 * 244 / 8) {
 
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[offset as usize] = 0x00;
+                    self.raster[offset as usize] = 0x0000000;
                 } else {
-                     self.raster[offset as usize] = 0x00FFFFFF;
-                };
-            }
-            y.wrapping_sub(1);
-            if y <= 0 {
-                y = 255;
-                x.wrapping_add(1);
-                pixel_pos = ((self.raster[x as usize]).wrapping_add(WIDTH as u32)).wrapping_add(self.raster[y as usize]);
-                println!("Pixel position: {:02X}", pixel_pos);
+                    self.raster[offset as usize] = 0x0FFFFFF;
+                }
+                y = y.wrapping_sub(1);
+                if y < 0 {
+                    y = 255;
+                }
+                x = x.wrapping_add(1);
             }
             counter.wrapping_add(1);
         }
-        let buffer = vec![pixel_pos];
-        self.window.update_with_buffer(&buffer);
-        // self.update_screen(&buffer);
+
+        for j in 0..HEIGHT {
+            for i in 0..WIDTH {
+                self.raster[y as usize * 224 + x as usize];
+            }
+        }
+        // We essentially are presenting the already iterated frame buffer
+        // at this point.
+        self.window.update_with_buffer(&self.raster);
     }
-    pub fn update_screen(&mut self, buffer: &[u32]) {
-        for y in 0..HEIGHT {
-            for x in 0..WIDTH {
-                if self.raster[y.wrapping_mul(WIDTH).wrapping_add(x)] != 0 {
-                self.window.update_with_buffer(&buffer);
-                // self.raster[y*224 + x];
-                }
+
+    pub fn update_screen(&mut self, x: usize, y: usize) {
+
+        for j in 0..HEIGHT {
+            for i in 0..WIDTH {
+                self.raster[y.wrapping_mul(224).wrapping_add(x)];
             }
         }
     }

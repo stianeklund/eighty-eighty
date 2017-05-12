@@ -1574,7 +1574,7 @@ impl <'a>ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-            
+
         let instruction = self.memory.read(self.registers.pc as usize);
         for _ in 0..times {
             self.execute_instruction(instruction);
