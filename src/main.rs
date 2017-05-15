@@ -6,6 +6,7 @@ use minifb::Key;
 mod cpu;
 mod opcode;
 mod display;
+mod debugger;
 // mod interconnect;
 mod memory;
 mod keypad;
@@ -25,15 +26,15 @@ fn main() {
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
     let mut display = display::Display::new();
+    let mut debugger = debugger::Debugger::new();
 
     memory.load_bin(bin);
-    // inter.memory.load_bin(bin);
-
 
     // TODO Implement break & step keyboard actions
     loop {
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         display.render_vram(&mut memory);
         // thread::sleep_ms(3);
+
     }
 }
