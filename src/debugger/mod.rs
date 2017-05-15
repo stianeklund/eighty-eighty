@@ -11,19 +11,34 @@ pub const HEIGHT: usize = 224;
 
 #[derive(Debug, PartialEq)]
 pub struct DebugFont {
-    bitmap: Vec<u8>,
+    pub bitmap: Vec<u8>,
 }
 
 impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
 
-        // TODO find out if we can use a bitmap file with characters for rendering?
-        // If so do we need to handle BMP header data or can this be omitted?
-        // let mut file = File::open(&path).expect("File not found");
-        // let mut file_data = Vec::<u8>::new();
-        // let result = file.read_to_end(&mut file_data);
+        // TODO: Figure out how many bytes we need to skip to omit the header
+        // on the bitmap asset.
 
+        // The block of bytes at the start of the file is the header.
+        // The first 2 bytes of the BMP file format are the character "B"
+        // then the character "M" in ASCII encoding.
+        // All of the integer values are stored in little-endian (LSB first)
+
+        // In our case we can likely omit the header all together.
+        // Alternatively, we can check whether or not there is a match for
+        // either "B" or "M" (in ASCII) to validate the file then skip the rest.
+
+        // TODO: Improve path handling.
+        let mut path = Path::new("/home/stian/dev/projects/eighty-eighty/assets/font.bmp");
+        let mut file = File::open(&path).expect("File not found");
+        let mut file_data = Vec::<u8>::new();
+        let result = file.read_to_end(&mut file_data);
+
+        // This may not be entirely correct, but for now lets just
+        // read the bitmap data and assign it to the bitmap vec.
+        font.bitmap = file_data;
         font
     }
 

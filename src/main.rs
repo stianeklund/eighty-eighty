@@ -27,6 +27,7 @@ fn main() {
     let mut registers = Registers::new();
     let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
+    let mut bitmap = debugger.font.bitmap;
 
     memory.load_bin(bin);
 
