@@ -42,8 +42,7 @@ impl Display {
                                          resize: false,
                                          scale: Scale::X2,
                                          ..WindowOptions::default()
-                                     })
-                .unwrap();
+                                     }).unwrap();
 
 
         Display {

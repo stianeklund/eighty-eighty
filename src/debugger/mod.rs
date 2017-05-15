@@ -75,6 +75,8 @@ impl Debugger {
                                          ..WindowOptions::default()
                                      }).unwrap();
 
+        window.set_position(1250, 340);
+
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
             font: DebugFont::new(),

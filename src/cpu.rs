@@ -837,8 +837,10 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory
+            .read(self.registers.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory
+            .read(self.registers.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
