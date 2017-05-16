@@ -21,9 +21,6 @@ impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
 
-        // TODO: Figure out how many bytes we need to skip to omit the header
-        // on the bitmap asset.
-
         // The block of bytes at the start of the file is the header.
         // The first 2 bytes of the BMP file format are the character "B"
         // then the character "M" in ASCII encoding.
@@ -39,12 +36,12 @@ impl DebugFont {
         let mut file_data = Vec::<u8>::new();
 
         // Skip BMP header & DIB for now.
-        let file_offset = file.seek(SeekFrom::Start(54));
+        file.seek(SeekFrom::Start(54)).expect("Seek error");
         let result = file.read_to_end(&mut file_data);
 
 
         match result {
-            Ok(result) => println!("Read {:?}: {} bitmap bytes", &path, result),
+            Ok(result) => println!("Read {:?}: Bitmap {} bytes", &path, result),
             Err(e) => panic!("IO Error:: {}", e),
         }
         // This may not be entirely correct, but for now lets just
