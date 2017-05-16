@@ -38,8 +38,8 @@ impl DebugFont {
         let mut file = File::open(&path).expect("File not found");
         let mut file_data = Vec::<u8>::new();
 
-        // TODO Investigate bitmap header size & skip bytes
-        let file_offset = file.seek(SeekFrom::Start(32));
+        // Skip BMP header & DIB for now.
+        let file_offset = file.seek(SeekFrom::Start(54));
         let result = file.read_to_end(&mut file_data);
 
 
@@ -50,7 +50,7 @@ impl DebugFont {
         // This may not be entirely correct, but for now lets just
         // read the bitmap data and assign it to the bitmap vec.
         font.bitmap = file_data;
-        println!("Bitmap: {:?}", font.bitmap);
+        // println!("Bitmap: {:?}", font.bitmap);
         font
     }
 
@@ -138,8 +138,7 @@ impl Debugger {
                                      WindowOptions {
                                          scale: Scale::X2,
                                          ..WindowOptions::default()
-                                     })
-                .unwrap();
+                                     }).unwrap();
 
         window.set_position(1250, 340);
 
