@@ -1,7 +1,11 @@
 use super::minifb::{Key, Scale, WindowOptions, Window};
+use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+
+mod font;
 
 use std::io::prelude;
 use std::io::Read;
+use std::io::Cursor;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
@@ -10,9 +14,8 @@ use display::Display;
 use memory::Memory;
 
 pub const WIDTH: usize = 256;
-pub const HEIGHT: usize = 224;
+pub const HEIGHT: usize = 256;
 
-#[derive(Debug, PartialEq)]
 pub struct DebugFont {
     pub bitmap: Vec<u8>,
 }
@@ -50,78 +53,19 @@ impl DebugFont {
         // println!("Bitmap: {:?}", font.bitmap);
         font
     }
-
-    // The char type represents a single character.
-    pub fn render_text(&mut self, text: &char) {
-
-        // let s = String::from("love: ❤️");
-        // Turn str type into a Vec the char primitive type & create a iterator.
-        let mut chars: Vec<char> = vec![*text];
-
-        // let chars = chars.into_iter();
-
-        for i in 0..chars.len() {
-            self.render_char(10, 10, &chars[i]);
-        }
-    }
-
-    // Render a character
-    pub fn render_char(&mut self, x: usize, y: usize, text: &char) {
-        self.render_text(text);
-
-        let memory = Memory::new();
-        let display = Display::new();
-        let mut raster = display.raster;
-
-        // Sprite sheet info (based off the initial PNG, this may be wrong)
-
-        // info face="Arial" size=32 bold=0 italic=0 charset=""
-        // unicode=1 stretchH=100 smooth=1 aa=1 padding=0,0,0,0 spacing=1,1 outline=0
-        // common lineHeight=32 base=26 scaleW=256 scaleH=256
-        // pages=1 packed=0 alphaChnl=1 redChnl=0 greenChnl=0 blueChnl=0
-        // page id=0 file="font_bitmap_0.png"
-
-        // Example from sprite sheet file:
-        // char id=43 x=187 y=84 width=14 height=12 xoffset=1 yoffset=10 xadvance=16 page=0 chnl=15
-
-        let mut base: u16 = 0x2400;
-        let mut offset: u16 = 0;
-        let mut counter = 0;
-        let mut y: u16 = 256;
-        let mut x: u16 = 0;
-
-        for offset in 0..(256 * 256) {
-
-            // TODO: Find out character height & width; or check bitmap generator.
-            // We need to know this in order to render the correct area of the "sprite sheet"
-
-            for shift in 0..32 {
-                // Lets assume 32 in shift width for now
-                if (memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    raster[counter as usize] = 0x0000000;
-                } else {
-                    raster[counter as usize] = 0x0FFFFFF;
-                }
-                y = y.wrapping_sub(1);
-                if y < 0 {
-                    y = 255;
-                }
-                x = x.wrapping_add(1);
-            }
-        }
-    }
 }
+
 // TODO: Implement a way to display Cpu register values & memory pages.
 //
 // I.e displaying VRAM page values & main memory values.
 // We also want to be able to peek at Cpu register values.
 // Displaying it all in one nice window vs printing a ton of text.
 // Whether or not that is possible with the current infrastructure I don't know
-
 pub struct Debugger {
     pub font: DebugFont,
     pub window: Window,
     pub buffer: Vec<u32>,
+    pub fb: Vec<u32>,
     pub memory_page: Vec<u32>,
 }
 
@@ -135,7 +79,8 @@ impl Debugger {
                                      WindowOptions {
                                          scale: Scale::X2,
                                          ..WindowOptions::default()
-                                     }).unwrap();
+                                     })
+                .unwrap();
 
         window.set_position(1250, 340);
 
@@ -143,7 +88,59 @@ impl Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
             font: DebugFont::new(),
             window: window,
+            fb: vec![0; 65536],
             memory_page: vec![0; 65536],
+        }
+    }
+
+    // Cursor wraps another type & provides it with a Seek implementation
+    // Chunks is a iterator that provides us with a slice
+    // Map provides a closure for this & creates an iterator
+    // which calls that closure on each element.
+    // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
+    // Hopefully we're presented with the bitmap without the header here?
+
+    pub fn update_fb(&mut self) {
+        if self.window.is_open() {
+            //     let fb2: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
+            let mut buffer: Vec<u32> = self.font
+                .bitmap
+                .chunks(4)
+                .map(|n| Cursor::new(n).read_u32::<LittleEndian>().unwrap())
+                .collect();
+            println!("Framebuffer: {:?}", buffer);
+
+            self.window.update_with_buffer(&buffer);
+        }
+    }
+
+    // Render a character
+    pub fn render_char(&mut self) {
+
+        let mut offset: u16 = 0;
+        let mut counter = 0;
+        let mut y: u16 = 256;
+        let mut x: u16 = 0;
+        // This is our line width, for now this is the same
+        // as the raster width.
+        let mut test_bitmap: Vec<u32> = vec![0x00FFFFFF; 63553];
+        const LINE: usize = 256;
+
+        // Our X offset in the bitmap array
+        for offset in 0..(WIDTH.wrapping_mul(HEIGHT as usize)) {
+
+            // TODO: Find out character height & width; or check bitmap generator.
+            // We need to know this in order to render the correct area of the "sprite sheet"
+
+            // Our Y line
+            for y_line in 0..LINE {
+                // for i in &test_bitmap {
+                // We use wrapping here as our array is too small
+                if test_bitmap[offset.wrapping_mul(WIDTH as usize).wrapping_add(y_line)] != 0 {
+                    self.window.update_with_buffer(&test_bitmap);
+                }
+
+            }
         }
     }
 }
