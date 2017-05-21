@@ -1,7 +1,6 @@
 use super::minifb::{Key, Scale, WindowOptions, Window};
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
+use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 
-mod font;
 
 use std::io::prelude;
 use std::io::Read;
@@ -9,9 +8,10 @@ use std::io::Cursor;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
-
 use display::Display;
 use memory::Memory;
+
+mod font;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
@@ -63,6 +63,7 @@ impl DebugFont {
 // Whether or not that is possible with the current infrastructure I don't know
 pub struct Debugger {
     pub font: DebugFont,
+    pub bitmap: font::Bitmap,
     pub window: Window,
     pub buffer: Vec<u32>,
     pub fb: Vec<u32>,
@@ -82,11 +83,10 @@ impl Debugger {
                                      })
                 .unwrap();
 
-        window.set_position(1250, 340);
-
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
             font: DebugFont::new(),
+            bitmap: font::Bitmap::new(),
             window: window,
             fb: vec![0; 65536],
             memory_page: vec![0; 65536],
@@ -101,46 +101,51 @@ impl Debugger {
     // Hopefully we're presented with the bitmap without the header here?
 
     pub fn update_fb(&mut self) {
+
         if self.window.is_open() {
-            //     let fb2: Vec<u32> = vec![0x00FFFFFF; WIDTH * HEIGHT];
-            let mut buffer: Vec<u32> = self.font
+            /*let mut buffer: Vec<u32> = self.font
                 .bitmap
                 .chunks(4)
                 .map(|n| Cursor::new(n).read_u32::<LittleEndian>().unwrap())
                 .collect();
-            println!("Framebuffer: {:?}", buffer);
+            */
 
-            self.window.update_with_buffer(&buffer);
+            self.window.update_with_buffer(&self.bitmap.font);
         }
     }
 
     // Render a character
     pub fn render_char(&mut self) {
 
-        let mut offset: u16 = 0;
-        let mut counter = 0;
+        let mut offset: u32 = 0;
         let mut y: u16 = 256;
         let mut x: u16 = 0;
         // This is our line width, for now this is the same
         // as the raster width.
-        let mut test_bitmap: Vec<u32> = vec![0x00FFFFFF; 63553];
-        const LINE: usize = 256;
+
+        // self.window.update_with_buffer(&buf);
 
         // Our X offset in the bitmap array
-        for offset in 0..(WIDTH.wrapping_mul(HEIGHT as usize)) {
+        for offset in 0..(WIDTH * HEIGHT / 8) {
 
             // TODO: Find out character height & width; or check bitmap generator.
             // We need to know this in order to render the correct area of the "sprite sheet"
 
-            // Our Y line
-            for y_line in 0..LINE {
-                // for i in &test_bitmap {
+            // 8 Pixels per byte
+            for y_line in 0..8 {
                 // We use wrapping here as our array is too small
-                if test_bitmap[offset.wrapping_mul(WIDTH as usize).wrapping_add(y_line)] != 0 {
-                    self.window.update_with_buffer(&test_bitmap);
+                if self.bitmap.font[offset * WIDTH + y as usize] != 0 {
+                    if self.window.is_open() {
+                        self.window.update_with_buffer(&self.bitmap.font);
+                    }
                 }
-
+                y.wrapping_sub(1);
+                if y <= 0 {
+                    y = 255;
+                }
+                 x.wrapping_add(1);
             }
         }
     }
+
 }
