@@ -102,15 +102,17 @@ impl Debugger {
 
     pub fn update_fb(&mut self) {
 
-        if self.window.is_open() {
-            /*let mut buffer: Vec<u32> = self.font
-                .bitmap
+        while self.window.is_open() {
+            let mut buffer: Vec<u32> = self.bitmap
+                .font
                 .chunks(4)
-                .map(|n| Cursor::new(n).read_u32::<LittleEndian>().unwrap())
+                .map(|buf|  {
+                    let pos = ((buf[1] as usize) * WIDTH) + buf[0] as usize;
+                    println!("Position: {:04X}", pos);
+                    Cursor::new(buf).read_u32::<LittleEndian>().unwrap()
+                })
                 .collect();
-            */
-
-            self.window.update_with_buffer(&self.bitmap.font);
+            self.window.update_with_buffer(&buffer);
         }
     }
 
@@ -120,32 +122,28 @@ impl Debugger {
         let mut offset: u32 = 0;
         let mut y: u16 = 256;
         let mut x: u16 = 0;
-        // This is our line width, for now this is the same
-        // as the raster width.
 
-        // self.window.update_with_buffer(&buf);
-
+        let buffer: Vec<u32> = vec![0; 65335];
         // Our X offset in the bitmap array
         for offset in 0..(WIDTH * HEIGHT / 8) {
+            // println!("Offset: {}", offset);
 
             // TODO: Find out character height & width; or check bitmap generator.
             // We need to know this in order to render the correct area of the "sprite sheet"
 
             // 8 Pixels per byte
-            for y_line in 0..8 {
-                // We use wrapping here as our array is too small
+            for y_line in 0..256 {
                 if self.bitmap.font[offset * WIDTH + y as usize] != 0 {
-                    if self.window.is_open() {
-                        self.window.update_with_buffer(&self.bitmap.font);
-                    }
+
+                    self.update_fb();
+                    // self.window.update_with_buffer(&self.bitmap.font);
                 }
-                y.wrapping_sub(1);
+                y = y.wrapping_sub(1);
                 if y <= 0 {
                     y = 255;
                 }
-                 x.wrapping_add(1);
+                x = x.wrapping_add(1);
             }
         }
     }
-
 }

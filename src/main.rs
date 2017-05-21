@@ -51,9 +51,9 @@ fn main() {
         // display.render_vram(&mut memory);
 
         // Update the debug frame buffer
-        debugger.render_char();
-        // debugger.update_fb();
-        // thread::sleep_ms(3);
+        // debugger.render_char();
+        debugger.update_fb();
+        thread::sleep_ms(3);
 
     }
 }
