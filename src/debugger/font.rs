@@ -9,9 +9,9 @@ use std::io::Cursor;
 // Vertical byte orientation
 
 pub struct Bitmap {
-    // font: [u32; 8192]
     pub font: Vec<u8>,
 }
+
 impl Bitmap {
     pub fn new() -> Bitmap {
         Bitmap {
