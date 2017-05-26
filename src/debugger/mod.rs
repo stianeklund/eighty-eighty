@@ -96,48 +96,71 @@ impl Debugger {
     //
     // Map provides a closure for this & creates an iterator
     // which calls that closure on each element.
-    //
+    
     // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
-    // Hopefully we're presented with the bitmap without the header here?
 
     // Create a temporary buffer & convert our bitmap values
+    // .filtermap(0|(pos, bit)| if want_to_draw(pos) { Some(bit) } else { None })
     pub fn update_fb(&mut self) -> Vec<u32> {
             let mut buffer: Vec<u32> = self.font
                 .bitmap
                 .chunks(4)
                 .map(|buf| {
-                    let pos = ((buf[1] as usize) * WIDTH) + buf[0] as usize;
-                    println!("Position: {:04X}, X:{}, Y:{}", pos, buf[1], buf[0]);
-                    Cursor::new(buf).read_u32::<LittleEndian>().unwrap()
-                    })
-                    .collect();
-                    self.window.update_with_buffer(&buffer);
-                    buffer
-                    }
-
-    // Render a character
+                    let buf = Cursor::new(buf).read_u32::<LittleEndian>().unwrap();
+                    buf
+                })
+                .collect::<Vec<u32>>();
+                buffer
+                /* match buffer {
+                    buf => {
+                        self.window.update_with_buffer(
+                    },
+                    _ => println!("No match"),
+                }*/
+    }
+    
     pub fn render_char(&mut self) {
 
         // let mut offset: u32 = 0;
-        let mut y: usize = 256;
-        let mut x: usize = 0;
+        // let mut y: usize = 256;
+        // let mut x: usize = 0;
 
         let mut counter =  0;
-        let mut buffer = self.update_fb();
+        let mut sprite_sheet = self.update_fb();
+        let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+        
+        let rect_width = 50;
+        let rect_height = 30;
+        let rect_x = 2;
+        let rect_y = 3;
+
+            for y in 0..rect_height {
+                 for x in 0..rect_width {
+                let frame_x = rect_x + x * 4;
+                let frame_y = rect_y + y * 4;
+                let buf_pos = frame_y * (WIDTH) + frame_x;
+                // frame_buffer[buf_pos] = 0x00FFFFFF;
+                frame_buffer[buf_pos] = 0x00FFFFFF;
+                println!("buffer pos: {:?}", buf_pos);
+
+            }
+        }
+
+
 
         // Our X offset in the bitmap array
-        for offset in 0..(WIDTH * HEIGHT / 8) {
+        /* for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 8) {
             // println!("Offset: {}", offset);
 
             // TODO: Find out character height & width; or check bitmap generator.
             // We need to know this in order to render the correct area of the "sprite sheet"
             // 8 Pixels per byte
-            for y_line in 0..256 {
+            for y_line in 0..255 {
                 // This panics, WHYYY?
-                if self.font.bitmap[y * WIDTH + x] != 0  {
-                    buffer[counter] = 0xFFFFF;
+                if self.font.bitmap[y * (WIDTH - 1) + x] != 0  {
+                    frame_buffer[counter] = 0x00FFFFF;
                 } else {
-                    buffer[counter] = 0x00000;
+                    frame_buffer[counter] = 0;
                 }
 
                 y = y.wrapping_sub(1);
@@ -147,7 +170,8 @@ impl Debugger {
                 x = x.wrapping_add(1);
             }
                 counter = counter + 1;
-        }
-        self.window.update_with_buffer(&buffer);
+        }*/
+
+        self.window.update_with_buffer(&frame_buffer);
     }
 }

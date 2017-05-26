@@ -11,9 +11,9 @@ use std::cmp::PartialEq;
 
 use std::env;
 use std::thread;
-use minifb::Key;
+use minifb::{Window, WindowOptions, Scale, Key};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
-
+use debugger::{HEIGHT, WIDTH};
 mod cpu;
 mod opcode;
 mod display;
@@ -43,6 +43,7 @@ fn main() {
     // Load binary file
     // memory.load_bin(bin);
 
+
     // TODO Implement break & step keyboard actions
 
     loop {
@@ -52,8 +53,10 @@ fn main() {
 
         // Update the debug frame buffer
         // debugger.render_char();
-        debugger.update_fb();
-        thread::sleep_ms(3);
+        
+        //debugger.update_fb();
+        debugger.render_char();
+        // thread::sleep_ms(300);
 
     }
 }
