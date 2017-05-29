@@ -98,9 +98,7 @@ impl Debugger {
     // which calls that closure on each element.
     
     // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
-
     // Create a temporary buffer & convert our bitmap values
-    // .filtermap(0|(pos, bit)| if want_to_draw(pos) { Some(bit) } else { None })
     pub fn update_fb(&mut self) -> Vec<u32> {
             let mut buffer: Vec<u32> = self.font
                 .bitmap
@@ -110,44 +108,34 @@ impl Debugger {
                     buf
                 })
                 .collect::<Vec<u32>>();
+
                 buffer
-                /* match buffer {
-                    buf => {
-                        self.window.update_with_buffer(
-                    },
-                    _ => println!("No match"),
-                }*/
     }
-    
+                   
     pub fn render_char(&mut self) {
 
-        // let mut offset: u32 = 0;
-        // let mut y: usize = 256;
-        // let mut x: usize = 0;
-
-        let mut counter =  0;
         let mut sprite_sheet = self.update_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
         
         let rect_width = 50;
         let rect_height = 30;
+        
         let rect_x = 2;
         let rect_y = 3;
 
             for y in 0..rect_height {
                  for x in 0..rect_width {
-                let frame_x = rect_x + x * 4;
-                let frame_y = rect_y + y * 4;
-                let buf_pos = frame_y * (WIDTH) + frame_x;
-                // frame_buffer[buf_pos] = 0x00FFFFFF;
-                frame_buffer[buf_pos] = 0x00FFFFFF;
-                println!("buffer pos: {:?}", buf_pos);
 
+                let frame_x = rect_x + x;
+                let frame_y = rect_y + y;
+
+                let buf_pos = frame_y * (WIDTH) + frame_x;
+                frame_buffer[buf_pos] = 0x00FFFFFF;
             }
         }
 
-
-
+        // We probably want a new function here to take our spritesheet
+        // & it's contents then present that to our frame_buffer.
         // Our X offset in the bitmap array
         /* for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 8) {
             // println!("Offset: {}", offset);
@@ -156,7 +144,6 @@ impl Debugger {
             // We need to know this in order to render the correct area of the "sprite sheet"
             // 8 Pixels per byte
             for y_line in 0..255 {
-                // This panics, WHYYY?
                 if self.font.bitmap[y * (WIDTH - 1) + x] != 0  {
                     frame_buffer[counter] = 0x00FFFFF;
                 } else {
