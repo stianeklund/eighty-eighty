@@ -96,7 +96,7 @@ impl Debugger {
     //
     // Map provides a closure for this & creates an iterator
     // which calls that closure on each element.
-    
+
     // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
 
     // Create a temporary buffer & convert our bitmap values
@@ -111,11 +111,11 @@ impl Debugger {
                 .collect::<Vec<u32>>();
                 buffer
     }
-    
+
     pub fn render_char(&mut self) {
-        let mut sprite_sheet = self.update_fb();
+        let sprite_sheet = self.update_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-        
+
         let rect_width = 50;
         let rect_height = 30;
 
@@ -124,16 +124,14 @@ impl Debugger {
 
             for y in 0..rect_height {
                  for x in 0..rect_width {
-                let frame_x = rect_x + x * 4;
-                let frame_y = rect_y + y * 4;
+                let frame_x = rect_x + x;
+                let frame_y = rect_y + y;
 
                 let buf_pos = frame_y * (WIDTH) + frame_x;
                 frame_buffer[buf_pos] = 0x00FFFFFF;
 
             }
         }
-
-
 
         // Our X offset in the bitmap array
         /* for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 8) {

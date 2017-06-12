@@ -140,6 +140,7 @@ impl<'a> ExecutionContext<'a> {
             Register::M => self.registers.reg_m = value,
         }
     }
+
     fn write_rp(&mut self, reg: RegisterPair, value: u8) {
         match reg {
             RegisterPair::BC => self.registers.reg_bc = value as u16,
@@ -149,12 +150,10 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    // Instruction functions, possible improvement is to group functions
-    // by type or separate them by type, e.g mov goes together.
-
     fn adv_pc(&mut self, t: u16) {
         self.registers.pc += t;
     }
+
     fn adv_cycles(&mut self, t: usize) {
         self.registers.cycles += t;
     }
@@ -162,12 +161,14 @@ impl<'a> ExecutionContext<'a> {
     // TODO Read page 18 of 8080 Programmers Manual
     fn adc(&mut self, reg: Register) {
         let mut a = self.registers.reg_a;
+
         match reg {
             Register::A => {
                 if self.registers.carry == true {
                     a += self.registers.reg_a;
                 }
             }
+
             Register::B => a += self.registers.reg_b,
             Register::C => a += self.registers.reg_c,
             Register::D => a += self.registers.reg_d,
@@ -199,9 +200,6 @@ impl<'a> ExecutionContext<'a> {
 
     fn ana(&mut self, reg: Register) {
         // Check if the 4th bit is set on all registers
-        if DEBUG {
-            println!("Call to ANA");
-        }
         match reg {
             Register::A => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) &
@@ -285,8 +283,20 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(7);
     }
 
-    // TODO
     fn aci(&mut self) {
+        // Add Immediate to Accumulator with Carry
+        self.registers.reg_a += self.registers.opcode;
+        self.registers.carry = true;
+        self.adv_pc(2);
+        self.adv_cycles(7);
+    }
+
+    fn adi(&mut self) {
+        // Add Immediate to Accumulator
+
+        // I'm not sure this is correct, investigate this.
+        // self.registers.opcode & 0xF00 >> 8;   
+        self.registers.reg_a += self.registers.opcode;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -472,6 +482,7 @@ impl<'a> ExecutionContext<'a> {
         }
 
     }
+
     fn cma(&mut self) {
         self.registers.reg_a ^= 0xFF;
         self.adv_pc(1);
@@ -976,7 +987,7 @@ impl<'a> ExecutionContext<'a> {
         // If last bit is 1 bit shift one up so that the accumulator is 1
         let a = self.registers.reg_a >> 1 | self.registers.reg_a << 7;
         self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-        println!("RAR: {:b}", a);
+        // println!("RAR: {:b}", a);
         self.registers.carry = self.registers.reg_a & 0x08 != 0;
 
         self.adv_pc(1);
@@ -989,7 +1000,7 @@ impl<'a> ExecutionContext<'a> {
         // If one of the 4 higher bits are 1 we set the carry flag.
         self.registers.reg_a.rotate_left(1);
         self.registers.carry = self.registers.reg_a & 0x08 != 0;
-        // self.registerseg_a = self.registerseg_a << 1;
+
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -1177,10 +1188,8 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Instruction::ACI => self.aci(),
-
             Instruction::ADD(reg) => self.add(reg),
-            Instruction::ADI => println!("Not implemented: {:?}", instruction),
-
+            Instruction::ADI => self.adi(),
             Instruction::ADC(reg) => self.adc(reg),
             Instruction::ANA(reg) => self.ana(reg),
             Instruction::ANI => self.ani(),
