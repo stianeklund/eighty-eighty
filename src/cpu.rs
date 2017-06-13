@@ -469,11 +469,65 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(17);
     }
 
+    fn cm(&mut self) {
+        match self.registers.opcode {
+            0xFC => {
+                // If the sign bit is one (true) indicating a minus result
+                if self.registers.sign == true {
+                    let ret: u16 = self.registers.pc + 3;
+                    // High order
+                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                    // Low order
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+
+                    self.registers.sp = self.registers.sp.wrapping_sub(2);
+                    self.registers.pc = self.memory.read_word(self.registers.pc);
+                    self.adv_cycles(17);
+                } else {
+                    self.adv_cycles(11);
+                    self.adv_pc(3);
+                }
+            }
+            _ => println!("Opcode not handled by CM"),
+        };
+    }
+
+    // Call if Zero
+    fn cz(&mut self) {
+        // This seems stupid because we're now essentially re-implementing CALL.
+        // It'd be better to just have one call function & check the bits
+        // & perform the needed operations instead of having multiple functions?
+
+        match self.registers.opcode {
+            0xCC => {
+                // If the zero flag is set execute the call instruction
+                if self.registers.zero {
+                    let ret: u16 = self.registers.pc + 3;
+                    // High order
+                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                    // Low order
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+
+                    self.registers.sp = self.registers.sp.wrapping_sub(2);
+                    self.registers.pc = self.memory.read_word(self.registers.pc);
+                    self.adv_cycles(17);
+                } else {
+                    self.adv_cycles(11);
+                    self.adv_pc(3);
+                }
+            }
+            _ => println!("Opcode not handled by CZ"),
+        };
+    }
 
     // Call If No Carry
     fn cnc(&mut self) {
+        // Note: This seems wrong, or, this assumes we want to call the same address.
+        // This may be correct for Space Invaders but not for other programs.
+        // See Comment on line 477.
+
         if self.registers.carry == false {
-            self.registers.carry = true;
+            self.registers.carry = true; // Isn't this redundant?
             println!("CNC: {:X}", self.registers.pc);
             self.call(08);
         } else {
@@ -1214,8 +1268,8 @@ impl<'a> ExecutionContext<'a> {
 
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
-            Instruction::CZ => println!("Not implemented: {:?}", instruction),
-            Instruction::CM => println!("Not implemented: {:?}", instruction),
+            Instruction::CZ => self.cz(),
+            Instruction::CM => self.cm(),
             Instruction::CNC => self.cnc(),
             Instruction::CMA => self.cma(),
             Instruction::CMC => self.cmc(),
