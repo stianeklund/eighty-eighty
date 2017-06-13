@@ -527,8 +527,11 @@ impl<'a> ExecutionContext<'a> {
         // See Comment on line 477.
 
         if self.registers.carry == false {
-            self.registers.carry = true; // Isn't this redundant?
-            println!("CNC: {:X}", self.registers.pc);
+            // TODO: Check if carry flag should be set here
+            self.registers.carry = true;
+            if DEBUG {
+                println!("CNC: {:X}", self.registers.pc);
+            }
             self.call(08);
         } else {
             self.registers.carry = false;
@@ -553,7 +556,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
     }
 
-    // TODO Compare Immidiate with Accumulator
+    // Compare Immediate
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
         // let value = self.memory.read_byte(self.pc as u8);
@@ -566,6 +569,41 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(2);
         self.adv_cycles(7);
     }
+
+    // Compare Parity Even
+    fn cpe(&mut self) {
+        // Fetch byte out of memory which we will use to compare & set flags with.
+        let value = self.registers.opcode & 0xFF;
+        let ret: u16 = self.registers.pc + 3;
+
+        // Check if the parity is even / if the parity bit is set
+        if value & 0xFF % 2 == 0 {
+            self.registers.parity = true;
+        }
+
+        // If parity flag is set continue call instruction
+        if self.registers.parity {
+            // High order
+            self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+            // Low order
+            self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+
+            self.registers.sp = self.registers.sp.wrapping_sub(2);
+            self.registers.pc = self.memory.read_word(self.registers.pc);
+
+            self.adv_cycles(17);
+
+        } else {
+            self.adv_cycles(11);
+        }
+
+        if DEBUG {
+            println!("Subroutine call: {:02X}", self.registers.pc);
+            println!("Return address is: {:02X}", ret);
+        }
+        self.adv_pc(3);
+    }
+
 
     fn dad(&mut self, reg: RegisterPair) {
         // Double precision ADD.
@@ -912,10 +950,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory
-            .read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory
-            .read(self.registers.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
@@ -1275,7 +1311,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::CMC => self.cmc(),
 
             Instruction::CMP(reg) => self.cmp(reg),
-            Instruction::CPE => println!("Not implemented: {:?}", instruction),
+            Instruction::CPE => self.cpe(),
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
             Instruction::DCX_SP => self.dcx_sp(),
