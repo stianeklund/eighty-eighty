@@ -1,12 +1,10 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
-use std::env;
 use std::fmt;
 
 pub struct Memory {
-    pub memory: Box<[u8; 65536]>,
-    pub raster: Box<([u8; 10000])>,
+    pub memory: [u8; 65536],
 }
 
 impl fmt::Debug for Memory {
@@ -16,12 +14,16 @@ impl fmt::Debug for Memory {
     }
 }
 
+impl fmt::UpperHex for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let val = self;
+        write!(f, "{:04X}", val)
+    }
+}
+
 impl Memory {
     pub fn new() -> Memory {
-        Memory {
-            memory: Box::new([0; 65536]),
-            raster: Box::new([0; 10000]),
-        }
+        Memory { memory: [0; 65536] }
     }
 
     pub fn read_byte(&mut self, byte: u8) -> u8 {
@@ -38,7 +40,7 @@ impl Memory {
     }
     pub fn write_memory(&mut self, addr: u16) {
         // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
-      (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
+        (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
     }
 
 
@@ -70,7 +72,7 @@ impl Memory {
     // Useful to read values out of memory to assign to 8 bit registers
     pub fn read(&mut self, addr: usize) -> u8 {
         self.memory[addr] as u8
-}
+    }
     pub fn write(&mut self, addr: usize, val: u8) {
         self.memory[addr] = val;
     }
@@ -92,4 +94,3 @@ impl Memory {
         println!("Loaded binary");
     }
 }
-
