@@ -295,7 +295,7 @@ impl<'a> ExecutionContext<'a> {
         // Add Immediate to Accumulator
 
         // I'm not sure this is correct, investigate this.
-        // self.registers.opcode & 0xF00 >> 8;   
+        // self.registers.opcode & 0xF00 >> 8;
         self.registers.reg_a += self.registers.opcode;
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -338,9 +338,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // Jump no zero
-    // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
-
+        // If the Zero bit is 0 the execution continues at the memory address
         if !self.registers.zero {
             self.registers.pc = self.memory.read_word(self.registers.pc);
             self.adv_cycles(15);
@@ -695,6 +694,17 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
     }
 
+    fn rc(&mut self) {
+        // If Carry flag is set, return from subroutine
+        if self.registers.carry {
+            self.adv_cycles(11);
+            self.ret();
+        } else {
+            self.adv_cycles(5);
+            self.adv_pc(1);
+        }
+    }
+
     // TODO
     fn rnz(&mut self) {
         // Cycles should be 11 if the carry flag is false
@@ -771,21 +781,21 @@ impl<'a> ExecutionContext<'a> {
 
     fn lhld(&mut self) {
         // Load the HL register with 16 bits found at addr & addr + 1
-        // let value = self.memory.read_word(self.pc & self.pc + 1);
+        // The byte at the memory address formed by concatenationg HI ADD with LOW ADD replaces
+        // the contents of the L register.
+        // The byte at the next higher memory address replaces the contents of the H register.
+        // L <- (adr); H<-(adr+1)
 
-        // This can cause an index out of bounds issue.. TODO Investigate
-        self.registers.reg_l =
-            self.memory
-                .read(self.registers.pc as usize + 2 << 8 | self.registers.pc as usize + 1) +
-            0;
-        self.registers.reg_h =
-            self.memory
-                .read(self.registers.pc as usize + 2 << 8 | self.registers.pc as usize + 1) +
-            1;
+        self.registers.reg_l = self.memory
+            .read((self.registers.opcode as usize + 2 << 8 |
+                   self.registers.opcode as usize + 1) + 0);
 
-        self.adv_pc(3);
+        self.registers.reg_h = self.memory
+            .read((self.registers.opcode as usize + 2 << 8 |
+                   self.registers.opcode as usize + 1) + 1);
+
         self.adv_cycles(16);
-
+        self.adv_pc(3);
     }
 
     fn inr(&mut self, reg: Register) {
@@ -1245,7 +1255,7 @@ impl<'a> ExecutionContext<'a> {
 
             Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
-            Instruction::RC => println!("Not implemented: {:?}", instruction),
+            Instruction::RC => self.rc(),
             Instruction::RNC => self.rnc(),
             Instruction::RRC => self.rrc(),
 
