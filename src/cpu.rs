@@ -1110,13 +1110,32 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
         self.adv_cycles(10);
     }
+    fn ora(&mut self, reg: Register) {
+        match reg {
+            Register::A => self.registers.reg_a |= self.registers.reg_a,
+            Register::B => self.registers.reg_a |= self.registers.reg_b,
+            Register::C => self.registers.reg_a |= self.registers.reg_c,
+            Register::D => self.registers.reg_a |= self.registers.reg_d,
+            Register::E => self.registers.reg_a |= self.registers.reg_e,
+            Register::H => self.registers.reg_a |= self.registers.reg_h,
+            Register::L => self.registers.reg_a |= self.registers.reg_l,
+            Register::M => self.registers.reg_a |= self.registers.reg_m,
+        };
+
+        if reg == Register::M {
+            self.adv_cycles(7);
+        }
+
+        self.adv_cycles(4);
+        self.adv_pc(1);
+    }
 
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
         match dst {
             Register::M => {
                 self.write_reg(dst, value);
-                // self.registerseg_m = self.registerseg_hl as u8;
+                // self.registers.reg_m = self.registers.reg_hl as u8;
                 self.adv_cycles(7);
             }
 
@@ -1125,25 +1144,13 @@ impl<'a> ExecutionContext<'a> {
                 self.adv_cycles(5);
             }
         }
+
         if DEBUG {
             println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
+
         self.adv_pc(1);
     }
-
-    fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
-        // E.g: Store A into HL
-        // TODO Investigate this..
-        // This causes HL to change value, which isn't correct.
-        let value = self.read_reg(src);
-        self.write_rp(dst, value);
-        if DEBUG {
-            println!("MOV RP: {:?}, Destination: {:?}", src, dst);
-        }
-        self.adv_pc(1);
-        self.adv_cycles(7);
-    }
-
 
     fn rst(&mut self, value: u8) {
 
@@ -1161,14 +1168,15 @@ impl<'a> ExecutionContext<'a> {
 
             _ => println!("RST address unknown: {:#X}", rst),
         }
+
         if DEBUG {
             println!("RST called: {:02X}", value);
         }
 
         self.registers.sp.wrapping_sub(2);
 
-        self.registers.pc = rst as u16;
         self.adv_cycles(11);
+        self.registers.pc = rst as u16;
     }
 
     fn sphl(&mut self) {
@@ -1181,8 +1189,8 @@ impl<'a> ExecutionContext<'a> {
         let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
         self.memory.write_word(reg_a, hl);
 
-        self.adv_pc(3);
         self.adv_cycles(13);
+        self.adv_pc(3);
     }
 
     pub fn decode(&mut self, instruction: Instruction) {
@@ -1224,6 +1232,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP => self.jmp(),
+            Instruction::JP => self.jp(),
             Instruction::JPE => self.jpe(),
             Instruction::JPO => self.jpo(),
 
@@ -1279,16 +1288,15 @@ impl<'a> ExecutionContext<'a> {
             Instruction::STC => self.stc(),
             Instruction::SHLD => self.shld(),
             Instruction::SPHL => self.sphl(),
-            Instruction::ORA(reg) => println!("Not implemented: {:?}", instruction),
+            Instruction::ORA(reg) => self.ora(reg),
 
-            // Jump instructions can probably use just one function.
+            // Jump instructions can probably use just one function?
             Instruction::JNC => self.jnc(),
             Instruction::JNZ => self.jnz(),
             Instruction::JM => self.jm(),
             Instruction::JZ => self.jz(),
-            Instruction::XRA_L => println!("Not implemented: {:?}", instruction),
-            Instruction::XRI => self.xri(),
 
+            Instruction::XRI => self.xri(),
             Instruction::XCHG => self.xchg(),
             Instruction::XTHL => println!("Not implemented: {:?}", instruction),
 
