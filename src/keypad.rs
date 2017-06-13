@@ -1,7 +1,13 @@
+extern crate sdl2;
 
-/* pub struct Keypad {
+use sdl2::event::Event;
+use sdl2::EventPump;
+use sdl2::Sdl;
+use sdl2::keyboard::Keycode;
+
+pub struct Keypad {
     pump: EventPump
-}*/
+}
 
 // TODO Use a generic Emu state instead
 pub enum State {
@@ -9,9 +15,10 @@ pub enum State {
     Continue,
     Break,
     Step,
+
 }
 
-/* impl Keypad {
+impl Keypad {
     pub fn new(ctx: &Sdl) -> Self {
         Keypad {
             pump: ctx.event_pump().unwrap(),
@@ -47,4 +54,4 @@ pub enum State {
         }
         State::Continue
     }
-}*/
+}

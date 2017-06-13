@@ -4,5 +4,4 @@ version = "0.1.0"
 authors = ["Stian Eklund <stian.eklund@gmail.com>"]
 
 [dependencies]
-minifb ="*"
-byteorder = "1.0.0"
+sdl2 = "0.29"

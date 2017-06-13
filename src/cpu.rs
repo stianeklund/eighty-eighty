@@ -4,7 +4,7 @@ use std::path::Path;
 
 use opcode::{Instruction, Register, RegisterPair};
 // use super::interconnect::Interconnect;
-use memory::Memory;
+use super::memory;
 
 const DEBUG: bool = true;
 
@@ -26,8 +26,11 @@ const DEBUG: bool = true;
 
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
+#[allow(dead_code)]
 #[derive(Debug)]
-pub struct Registers {
+pub struct Cpu {
+
+    memory: memory::Memory,
     opcode: u8,
 
     pc: u16,
@@ -59,11 +62,14 @@ pub struct Registers {
     half_carry: bool,
 
     cycles: usize,
+
 }
 
-impl Registers {
-    pub fn new() -> Registers {
-        Registers {
+impl Cpu {
+    pub fn new() -> Cpu {
+        let memory = memory::Memory::new();
+        Cpu {
+            memory: memory,
             opcode: 0,
 
             pc: 0,
@@ -92,106 +98,90 @@ impl Registers {
             half_carry: false,
 
             cycles: 0,
-        }
-    }
-}
 
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct ExecutionContext<'a> {
-    pub memory: &'a mut Memory,
-    pub registers: &'a mut Registers,
-}
-
-impl<'a> ExecutionContext<'a> {
-    pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
-        ExecutionContext {
-            memory: memory,
-            registers: registers,
         }
     }
 
     fn set_sp(&mut self, byte: u16) {
-        self.registers.sp = byte & 0xFFFF;
+        self.sp = byte & 0xFFFF;
     }
 
     fn read_reg(&self, reg: Register) -> u8 {
         match reg {
-            Register::A => self.registers.reg_a,
-            Register::B => self.registers.reg_b,
-            Register::C => self.registers.reg_c,
-            Register::D => self.registers.reg_d,
-            Register::E => self.registers.reg_e,
-            Register::H => self.registers.reg_h,
-            Register::L => self.registers.reg_l,
-            Register::M => self.registers.reg_m,
+            Register::A => self.reg_a,
+            Register::B => self.reg_b,
+            Register::C => self.reg_c,
+            Register::D => self.reg_d,
+            Register::E => self.reg_e,
+            Register::H => self.reg_h,
+            Register::L => self.reg_l,
+            Register::M => self.reg_m,
         }
     }
 
     fn write_reg(&mut self, reg: Register, value: u8) {
         match reg {
-            Register::A => self.registers.reg_a = value,
-            Register::B => self.registers.reg_b = value,
-            Register::C => self.registers.reg_c = value,
-            Register::D => self.registers.reg_d = value,
-            Register::E => self.registers.reg_e = value,
-            Register::H => self.registers.reg_h = value,
-            Register::L => self.registers.reg_l = value,
-            Register::M => self.registers.reg_m = value,
+            Register::A => self.reg_a = value,
+            Register::B => self.reg_b = value,
+            Register::C => self.reg_c = value,
+            Register::D => self.reg_d = value,
+            Register::E => self.reg_e = value,
+            Register::H => self.reg_h = value,
+            Register::L => self.reg_l = value,
+            Register::M => self.reg_m = value,
         }
     }
-
     fn write_rp(&mut self, reg: RegisterPair, value: u8) {
         match reg {
-            RegisterPair::BC => self.registers.reg_bc = value as u16,
-            RegisterPair::DE => self.registers.reg_de = value as u16,
-            RegisterPair::HL => self.registers.reg_hl = value as u16,
+            RegisterPair::BC => self.reg_bc = value as u16,
+            RegisterPair::DE => self.reg_de = value as u16,
+            RegisterPair::HL => self.reg_hl = value as u16,
 
         }
     }
 
-    fn adv_pc(&mut self, t: u16) {
-        self.registers.pc += t;
-    }
+    // Instruction functions, possible improvement is to group functions
+    // by type or separate them by type, e.g mov goes together.
 
+    fn adv_pc(&mut self, t: u16) {
+        self.pc += t;
+    }
     fn adv_cycles(&mut self, t: usize) {
-        self.registers.cycles += t;
+       self.cycles += t;
     }
 
     // TODO Read page 18 of 8080 Programmers Manual
     fn adc(&mut self, reg: Register) {
-        let mut a = self.registers.reg_a;
-
+        let mut a = self.reg_a;
         match reg {
             Register::A => {
-                if self.registers.carry == true {
-                    a += self.registers.reg_a;
+                if self.carry == true {
+                    a += self.reg_a;
                 }
-            }
-
-            Register::B => a += self.registers.reg_b,
-            Register::C => a += self.registers.reg_c,
-            Register::D => a += self.registers.reg_d,
-            Register::E => a += self.registers.reg_e,
-            Register::H => a += self.registers.reg_h,
-            Register::L => a += self.registers.reg_l,
-            Register::M => a += self.registers.reg_m,
+            },
+            Register::B => a += self.reg_b,
+            Register::C => a += self.reg_c,
+            Register::D => a += self.reg_d,
+            Register::E => a += self.reg_e,
+            Register::H => a += self.reg_h,
+            Register::L => a += self.reg_l,
+            Register::M => a += self.reg_m,
 
         }
     }
 
     fn add(&mut self, reg: Register) {
-        let mut a = self.registers.reg_a;
+        let mut a = self.reg_a;
 
         match reg {
-            Register::A => a += self.registers.reg_a,
-            Register::B => a += self.registers.reg_b,
-            Register::C => a += self.registers.reg_c,
-            Register::D => a += self.registers.reg_d,
-            Register::E => a += self.registers.reg_e,
-            Register::H => a += self.registers.reg_h,
-            Register::L => a += self.registers.reg_l,
-            Register::M => a += self.registers.reg_m,
+            Register::A => a += self.reg_a,
+            Register::B => a += self.reg_b,
+            Register::C => a += self.reg_c,
+            Register::D => a += self.reg_d,
+            Register::E => a += self.reg_e,
+            Register::H => a += self.reg_h,
+            Register::L => a += self.reg_l,
+            Register::M => a += self.reg_m,
         }
 
         self.adv_pc(1);
@@ -200,69 +190,50 @@ impl<'a> ExecutionContext<'a> {
 
     fn ana(&mut self, reg: Register) {
         // Check if the 4th bit is set on all registers
+        if DEBUG { println!("Call to ANA"); }
         match reg {
             Register::A => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) &
-                                            0x08 != 0;
-                if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
-                }
-                self.registers.reg_a &= self.registers.reg_a;
-            }
+                self.half_carry = (self.reg_a | self.reg_a) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
+                self.reg_a &= self.reg_a;
+            },
 
             Register::B => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) &
-                                            0x08 != 0;
-                if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
-                }
-                self.registers.reg_a &= self.registers.reg_b;
-            }
+                self.half_carry = (self.reg_a | self.reg_b) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
+                self.reg_a &= self.reg_b;
+            },
 
             Register::C => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) &
-                                            0x08 != 0;
-                if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
-                }
-                self.registers.reg_a &= self.registers.reg_c;
-            }
+                self.half_carry = (self.reg_a | self.reg_c) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
+                self.reg_a &= self.reg_c;
+            },
 
             Register::D => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) &
-                                            0x08 != 0;
-                if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
-                }
-                self.registers.reg_a &= self.registers.reg_d;
-            }
+                self.half_carry = (self.reg_a | self.reg_d) & 0x08 != 0;
+                if DEBUG { println!("Setting half carry flag for ANA: {}", self.half_carry); }
+                self.reg_a &= self.reg_d;
+            },
 
             Register::E => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) &
-                                            0x08 != 0;
-                self.registers.reg_a &= self.registers.reg_e;
-            }
+                self.half_carry = (self.reg_a | self.reg_e) & 0x08 != 0;
+                self.reg_a &= self.reg_e;
+            },
 
             Register::H => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) &
-                                            0x08 != 0;
-                self.registers.reg_a &= self.registers.reg_h;
-            }
+                self.half_carry = (self.reg_a | self.reg_h) & 0x08 != 0;
+                self.reg_a &= self.reg_h;
+            },
 
             Register::L => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) &
-                                            0x08 != 0;
-                self.registers.reg_a &= self.registers.reg_l;
-            }
+                self.half_carry = (self.reg_a | self.reg_l) & 0x08 != 0;
+                self.reg_a &= self.reg_l;
+            },
 
             Register::M => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) &
-                                            0x08 != 0;
-                self.registers.reg_a &= self.registers.reg_m;
+                self.half_carry = (self.reg_a | self.reg_m) & 0x08 != 0;
+                self.reg_a &= self.reg_m;
             }
         }
 
@@ -275,42 +246,30 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        self.registers.half_carry = (self.registers.reg_a | self.registers.opcode) & 0x08 != 0;
-        self.registers.reg_a &= self.registers.opcode;
+        self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
+        self.reg_a &= self.opcode;
 
-        self.registers.carry = false;
+        self.carry = false;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
 
+    // TODO
     fn aci(&mut self) {
-        // Add Immediate to Accumulator with Carry
-        self.registers.reg_a += self.registers.opcode;
-        self.registers.carry = true;
-        self.adv_pc(2);
-        self.adv_cycles(7);
-    }
-
-    fn adi(&mut self) {
-        // Add Immediate to Accumulator
-
-        // I'm not sure this is correct, investigate this.
-        // self.registers.opcode & 0xF00 >> 8;
-        self.registers.reg_a += self.registers.opcode;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
 
     fn jmp(&mut self) {
-        self.registers.pc = self.memory.read_word(self.registers.pc);
-        println!("Jumping to address: {:X}", self.registers.pc);
+        self.pc = self.memory.read_word(self.pc);
+        println!("Jumping to address: {:X}", self.pc);
         self.adv_cycles(10);
     }
 
     // Jump if carry
     fn jc(&mut self) {
-        if self.registers.carry {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+        if self.carry {
+            self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
         }
@@ -319,8 +278,8 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump if no carry
     fn jnc(&mut self) {
-        if !self.registers.carry {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+        if !self.carry {
+            self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
         }
@@ -329,8 +288,8 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump if zero
     fn jz(&mut self) {
-        if self.registers.zero {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+        if self.zero {
+            self.pc = self.memory.read_word(self.pc);
         } else {
             self.adv_pc(3);
         }
@@ -338,10 +297,11 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // Jump no zero
+    // If the Zero bit is 0 the execution continues at the memory address adr
     fn jnz(&mut self) {
-        // If the Zero bit is 0 the execution continues at the memory address
-        if !self.registers.zero {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+
+        if !self.zero {
+            self.pc = self.memory.read_word(self.pc);
             self.adv_cycles(15);
         } else {
             self.adv_pc(3);
@@ -350,40 +310,40 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // If sign bit is one (false) indicating a negative result
-    fn jm(&mut self) {
-        if self.registers.sign == false {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+    fn jm(&mut self){
+        if self.sign == false {
+            self.pc = self.memory.read_word(self.pc);
         }
         self.adv_cycles(10);
     }
 
     // Jump if parity true
-    fn jp(&mut self) {
-        if self.registers.parity == true {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+    fn jp(&mut self){
+        if self.parity == true {
+            self.pc = self.memory.read_word(self.pc);
         }
         self.adv_cycles(10);
     }
 
     // If parity even
     fn jpe(&mut self) {
-        if self.registers.parity == true {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+        if self.parity == true {
+            self.pc = self.memory.read_word(self.pc);
         }
         self.adv_cycles(10);
     }
 
     // If parity off, e.g false
     fn jpo(&mut self) {
-        if self.registers.parity == false {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+        if self.parity == false {
+            self.pc = self.memory.read_word(self.pc);
         }
         self.adv_cycles(10);
     }
 
 
     fn lxi_sp(&mut self) {
-        self.registers.sp = self.memory.read_word(self.registers.pc);
+        self.sp = self.memory.read_word(self.pc);
 
         self.adv_pc(3);
         self.adv_cycles(10);
@@ -394,27 +354,28 @@ impl<'a> ExecutionContext<'a> {
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let low = self.memory.read_low(self.registers.pc);
-                let high = self.memory.read_high(self.registers.pc);
-                self.registers.reg_b = high;
-                self.registers.reg_c = low;
-            }
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
+                self.reg_b = high;
+                self.reg_c = low;
+            },
 
             RegisterPair::DE => {
-                let low = self.memory.read_low(self.registers.pc);
-                let high = self.memory.read_high(self.registers.pc);
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
 
-                self.registers.reg_d = high;
-                self.registers.reg_e = low;
+                self.reg_d = high;
+                self.reg_e = low;
 
-            }
+
+            },
 
             RegisterPair::HL => {
-                let low = self.memory.read_low(self.registers.pc);
-                let high = self.memory.read_high(self.registers.pc);
+                let low = self.memory.read_low(self.pc);
+                let high = self.memory.read_high(self.pc);
 
-                self.registers.reg_h = high;
-                self.registers.reg_l = low;
+                self.reg_h = high;
+                self.reg_l = low;
             }
         };
 
@@ -423,9 +384,9 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn sta(&mut self) {
-        let reg_a = self.registers.reg_a;
+        let reg_a = self.reg_a;
 
-        let value = self.memory.read_word(self.registers.pc);
+        let value = self.memory.read_word(self.pc);
 
         let addr = value + 2 << 8 | value + 1;
         self.memory.write_word(reg_a, addr);
@@ -439,111 +400,56 @@ impl<'a> ExecutionContext<'a> {
         // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
 
-        let ret: u16 = self.registers.pc + 3;
+        let ret: u16 = self.pc + 3;
 
-        match self.registers.opcode {
-            0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC => {
-                // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
+        match self.opcode {
+            0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC  => {
+            // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
 
                 // Write subroutine addresses to memory
                 // We need to put these addresses into memory so that the
                 // RET instruction can fetch the return address
 
                 // High order
-                self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                self.memory.memory[self.sp as usize] = (ret >> 8 & 0xFF) as u8;
                 // Low order
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+                self.memory.memory[self.sp.wrapping_sub(1) as usize] = ret as u8;
 
 
-                self.registers.sp = self.registers.sp.wrapping_sub(2);
-                self.registers.pc = self.memory.read_word(self.registers.pc);
-            }
-            _ => println!("Unknown call address: {:#X}", self.registers.opcode),
+                self.sp = self.sp.wrapping_sub(2);
+                self.pc = self.memory.read_word(self.pc);
+            },
+            _ => println!("Unknown call address: {:#X}", self.opcode),
         }
 
         if DEBUG {
-            println!("Subroutine call: {:02X}", self.registers.pc);
+            println!("Subroutine call: {:02X}", self.pc);
             println!("Return address is: {:02X}", ret);
         }
 
         self.adv_cycles(17);
     }
 
-    fn cm(&mut self) {
-        match self.registers.opcode {
-            0xFC => {
-                // If the sign bit is one (true) indicating a minus result
-                if self.registers.sign == true {
-                    let ret: u16 = self.registers.pc + 3;
-                    // High order
-                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
-                    // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
-
-                    self.registers.sp = self.registers.sp.wrapping_sub(2);
-                    self.registers.pc = self.memory.read_word(self.registers.pc);
-                    self.adv_cycles(17);
-                } else {
-                    self.adv_cycles(11);
-                    self.adv_pc(3);
-                }
-            }
-            _ => println!("Opcode not handled by CM"),
-        };
-    }
-
-    // Call if Zero
-    fn cz(&mut self) {
-        // This seems stupid because we're now essentially re-implementing CALL.
-        // It'd be better to just have one call function & check the bits
-        // & perform the needed operations instead of having multiple functions?
-
-        match self.registers.opcode {
-            0xCC => {
-                // If the zero flag is set execute the call instruction
-                if self.registers.zero {
-                    let ret: u16 = self.registers.pc + 3;
-                    // High order
-                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
-                    // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
-
-                    self.registers.sp = self.registers.sp.wrapping_sub(2);
-                    self.registers.pc = self.memory.read_word(self.registers.pc);
-                    self.adv_cycles(17);
-                } else {
-                    self.adv_cycles(11);
-                    self.adv_pc(3);
-                }
-            }
-            _ => println!("Opcode not handled by CZ"),
-        };
-    }
 
     // Call If No Carry
     fn cnc(&mut self) {
-        // Note: This seems wrong, or, this assumes we want to call the same address.
-        // This may be correct for Space Invaders but not for other programs.
-        // See Comment on line 477.
-
-        if self.registers.carry == false {
-            self.registers.carry = true; // Isn't this redundant?
-            println!("CNC: {:X}", self.registers.pc);
+        if self.carry == false {
+            self.carry = true;
+            println!("CNC: {:X}", self.pc);
             self.call(08);
         } else {
-            self.registers.carry = false;
+            self.carry = false;
         }
 
     }
-
-    fn cma(&mut self) {
-        self.registers.reg_a ^= 0xFF;
+    fn cma (&mut self) {
+        self.reg_a ^= 0xFF;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
-    fn cmc(&mut self) {
-        self.registers.half_carry = !self.registers.half_carry;
+    fn cmc (&mut self) {
+        self.half_carry = !self.half_carry;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -557,12 +463,11 @@ impl<'a> ExecutionContext<'a> {
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
         // let value = self.memory.read_byte(self.pc as u8);
-        let value = self.registers.opcode & 0xFF;
+        let value = self.opcode & 0xFF;
 
-        self.registers.zero = value & 0xFF == 0;
-        self.registers.sign = value & 0x80 != 0;
-        self.registers.carry = value & 0xFF == 0;
-
+        self.zero = value & 0xFF == 0;
+        self.sign = value & 0x80 != 0;
+        self.carry = value & 0xFF == 0;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -572,42 +477,40 @@ impl<'a> ExecutionContext<'a> {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        let mut value: u16 = (self.registers.reg_h as u16) << 8 |
-                             (self.registers.reg_l as u16) as u16;
+        let mut value: u16 = (self.reg_h as u16) << 8 | (self.reg_l as u16) as u16;
 
         match reg {
             RegisterPair::BC => {
                 value;
-                value += (self.registers.reg_b as u16) >> 8 | (self.registers.reg_c as u16);
-                self.registers.half_carry = 0 < (value & 0xFFFF);
-            }
+                value += (self.reg_b as u16) >> 8 | (self.reg_c as u16);
+                self.half_carry = 0 < (value & 0xFFFF);
+            },
 
             RegisterPair::DE => {
                 value;
-
-                value += (self.registers.reg_d as u16) >> 8 | (self.registers.reg_e as u16);
-                self.registers.half_carry = 0 < (value & 0xFFFF);
-            }
+                value += (self.reg_d as u16) >> 8 | (self.reg_e as u16);
+                self.half_carry = 0 < (value & 0xFFFF);
+            },
 
             RegisterPair::HL => {
                 println!("DAD shouldn't run on HL, dad_sp handles this");
             }
         };
 
-        self.registers.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
-        self.registers.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
+        self.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
+        self.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
 
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
     fn dad_sp(&mut self) {
-        let mut value: u16;
-        value = (self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l) as u16;
-        self.registers.carry = true;
+        let mut value:u16;
+        value = (self.reg_h.wrapping_shl(8) | self.reg_l) as u16;
+        self.carry = true;
         self.adv_pc(1);
         self.adv_cycles(10);
-        value = self.registers.sp
+        value = self.sp
     }
 
     // Decrement memory or register
@@ -624,81 +527,82 @@ impl<'a> ExecutionContext<'a> {
             // register & 1 = even (parity true)
 
             // The goal here is to read out the low bits and check for parity.
-            // self.parity = !self.registerseg_m + 1 & 1 == 0;
+            // self.parity = !self.reg_m + 1 & 1 == 0;
+
             Register::A => {
-                self.registers.reg_a -= 1 & 0xFF;
-                self.registers.half_carry = !self.registers.reg_a & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_a & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_a + 1 & 1 == 0;
-                self.registers.sign = self.registers.reg_a & 0x80 != 0;
+                self.reg_a -= 1 & 0xFF;
+                self.half_carry = !self.reg_a & 0x0F == 0x0F;
+                self.zero = self.reg_a & 0xFF == 0;
+                self.parity = !self.reg_a + 1 & 1 == 0;
+                self.sign = self.reg_a & 0x80 != 0;
                 self.adv_cycles(5);
-            }
+            },
 
             Register::B => {
                 // TODO Investigate behavior here.. Underflow occurs unless we wrap.
-                self.registers.reg_b = self.registers.reg_b.wrapping_sub(1) & 0xFF;
+                self.reg_b = self.reg_b.wrapping_sub(1) & 0xFF;
 
-                self.registers.half_carry = !self.registers.reg_b & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_b & 0xFF == 0;
+                self.half_carry = !self.reg_b & 0x0F == 0x0F;
+                self.zero = self.reg_b & 0xFF == 0;
                 // Overflow happens here
-                self.registers.parity = !self.registers.reg_b.wrapping_add(1) & 1 == 0;
-                self.registers.sign = self.registers.reg_b & 0x80 != 0;
+                self.parity = !self.reg_b.wrapping_add(1) & 1 == 0;
+                self.sign = self.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
 
-            }
+            },
 
             Register::C => {
-                self.registers.reg_c -= 1 & 0xFF;
-                self.registers.half_carry = !self.registers.reg_c & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_c & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_c & 1 == 0;
-                self.registers.sign = self.registers.reg_c & 0x80 != 0;
+                self.reg_c -= 1 & 0xFF;
+                self.half_carry = !self.reg_c & 0x0F == 0x0F;
+                self.zero = self.reg_c & 0xFF == 0;
+                self.parity = !self.reg_c & 1 == 0;
+                self.sign = self.reg_c & 0x80 != 0;
                 self.adv_cycles(5);
-            }
+            },
 
             Register::D => {
-                self.registers.reg_d.wrapping_sub(1) & 0xFF;
-                self.registers.half_carry = !self.registers.reg_d & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_d & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_b & 1 == 0;
-                self.registers.sign = self.registers.reg_d & 0x80 != 0;
+                self.reg_d.wrapping_sub(1) & 0xFF;
+                self.half_carry = !self.reg_d & 0x0F == 0x0F;
+                self.zero = self.reg_d & 0xFF == 0;
+                self.parity = !self.reg_b & 1 == 0;
+                self.sign = self.reg_d & 0x80 != 0;
                 self.adv_cycles(5);
-            }
+            },
 
             Register::E => {
-                self.registers.reg_e -= 1 & 0xFF;
-                self.registers.half_carry = !self.registers.reg_e & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_e & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_e & 1 == 0;
-                self.registers.sign = self.registers.reg_e & 0x80 != 0;
+                self.reg_e -= 1 & 0xFF;
+                self.half_carry = !self.reg_e & 0x0F == 0x0F;
+                self.zero = self.reg_e & 0xFF == 0;
+                self.parity = !self.reg_e & 1 == 0;
+                self.sign = self.reg_e & 0x80 != 0;
                 self.adv_cycles(5);
-            }
+            },
 
             Register::H => {
-                self.registers.reg_h -= 1 & 0xFF;
-                self.registers.half_carry = !self.registers.reg_h & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_h & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_h & 1 == 0;
-                self.registers.sign = self.registers.reg_h & 0x80 != 0;
+                self.reg_h -= 1 & 0xFF;
+                self.half_carry = !self.reg_h & 0x0F == 0x0F;
+                self.zero = self.reg_h & 0xFF == 0;
+                self.parity = !self.reg_h & 1 == 0;
+                self.sign = self.reg_h & 0x80 != 0;
                 self.adv_cycles(5);
-            }
+            },
 
             Register::L => {
-                self.registers.reg_l -= 1 & 0xFF;
-                self.registers.half_carry = !self.registers.reg_l & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_l & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_l & 1 == 0;
-                self.registers.sign = self.registers.reg_l & 0x80 != 0;
+                self.reg_l -= 1 & 0xFF;
+                self.half_carry = !self.reg_l & 0x0F == 0x0F;
+                self.zero = self.reg_l & 0xFF == 0;
+                self.parity = !self.reg_l & 1 == 0;
+                self.sign = self.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
 
-            }
+            },
 
             Register::M => {
-                self.registers.reg_m.wrapping_sub(1) & 0xFF;
-                self.registers.half_carry = !self.registers.reg_m & 0x0F == 0x0F;
-                self.registers.zero = self.registers.reg_m & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_m & 1 == 0;
-                self.registers.sign = self.registers.reg_m & 0x80 != 0;
+                self.reg_m.wrapping_sub(1) & 0xFF;
+                self.half_carry = !self.reg_m & 0x0F == 0x0F;
+                self.zero = self.reg_m & 0xFF == 0;
+                self.parity = !self.reg_m & 1 == 0;
+                self.sign = self.reg_m & 0x80 != 0;
                 self.adv_cycles(6);
             }
         }
@@ -708,22 +612,22 @@ impl<'a> ExecutionContext<'a> {
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let mut bc = self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c;
+                let mut bc = self.reg_b.wrapping_shl(8) | self.reg_c;
                 bc.wrapping_sub(1);
-                self.registers.reg_b = bc.wrapping_shl(8) & 0xFF;
-                self.registers.reg_c = bc.wrapping_shl(0) & 0xFF;
-            }
+                self.reg_b = bc.wrapping_shl(8) & 0xFF;
+                self.reg_c = bc.wrapping_shl(0) & 0xFF;
+            },
             RegisterPair::DE => {
-                let mut de = self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e;
+                let mut de = self.reg_d.wrapping_shl(8) | self.reg_e;
                 de.wrapping_sub(1);
-                self.registers.reg_d = de.wrapping_shl(8) & 0xFF;
-                self.registers.reg_e = de.wrapping_shl(0) & 0xFF;
-            }
+                self.reg_d = de.wrapping_shl(8) & 0xFF;
+                self.reg_e = de.wrapping_shl(0) & 0xFF;
+            },
             RegisterPair::HL => {
-                let mut hl = self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l;
+                let mut hl = self.reg_h.wrapping_shl(8) | self.reg_l;
                 hl.wrapping_sub(1);
-                self.registers.reg_h = hl.wrapping_shl(8) & 0xFF;
-                self.registers.reg_l = hl.wrapping_shl(0) & 0xFF;
+                self.reg_h = hl.wrapping_shl(8) & 0xFF;
+                self.reg_l = hl.wrapping_shl(0) & 0xFF;
             }
         }
         self.adv_cycles(5);
@@ -731,11 +635,10 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn dcx_sp(&mut self) {
-        self.registers.sp.wrapping_sub(1);
+        self.sp.wrapping_sub(1);
         self.adv_cycles(5);
         self.adv_pc(1);
     }
-
     // TODO
     fn daa(&mut self) {
         self.adv_pc(1);
@@ -748,21 +651,10 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
     }
 
-    fn rc(&mut self) {
-        // If Carry flag is set, return from subroutine
-        if self.registers.carry {
-            self.adv_cycles(11);
-            self.ret();
-        } else {
-            self.adv_cycles(5);
-            self.adv_pc(1);
-        }
-    }
-
     // TODO
     fn rnz(&mut self) {
         // Cycles should be 11 if the carry flag is false
-        if self.registers.carry == false {
+        if self.carry == false {
             self.adv_cycles(6)
         }
         self.adv_cycles(5);
@@ -772,7 +664,7 @@ impl<'a> ExecutionContext<'a> {
     // TODO
     fn rz(&mut self) {
         // Cycles should be 11 if the carry flag is false
-        if self.registers.carry == false {
+        if self.carry == false {
             self.adv_cycles(6)
         }
         self.adv_cycles(5);
@@ -780,7 +672,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value = self.registers.opcode & 0x08;
+        let value = self.opcode & 0x08;
         println!("VALUE: {:?}", value);
         match reg {
             Register::A => self.write_reg(Register::A, value),
@@ -800,8 +692,8 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(2);
     }
 
-    fn lda(&mut self) {
-        self.registers.reg_a = self.memory.read(self.registers.pc as usize);
+    fn lda (&mut self) {
+        self.reg_a = self.memory.read(self.pc as usize);
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -813,18 +705,18 @@ impl<'a> ExecutionContext<'a> {
         // The contents of either the register pair or the memory location are not altered.
 
         match reg {
-            RegisterPair::BC => {
-                // addr =self.registerseg_b << 8 | self.registerseg_c;
-                let addr = (self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c) as u16;
-                self.registers.reg_a = self.memory.memory[addr as usize];
-            }
+            RegisterPair::BC =>  {
+                // addr =self.reg_b << 8 | self.reg_c;
+                let addr = (self.reg_b.wrapping_shl(8) | self.reg_c) as u16;
+                self.reg_a = self.memory.memory[addr as usize];
+            },
 
-            RegisterPair::DE => {
-                let addr = (self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e) as u16;
-                self.registers.reg_a = self.memory.memory[addr as usize];
-                // println!("Reg_DE: {:b}", self.registerseg_de);
-                println!("LDA RP Register A value: {:X}", self.registers.reg_a);
-            }
+            RegisterPair::DE =>  {
+                let addr = (self.reg_d.wrapping_shl(8) | self.reg_e) as u16;
+                self.reg_a = self.memory.memory[addr as usize];
+                // println!("Reg_DE: {:b}", self.reg_de);
+                println!("LDA RP Register A value: {:X}", self.reg_a);
+            },
 
             _ => println!("LDAX on invalid register"),
         };
@@ -835,33 +727,27 @@ impl<'a> ExecutionContext<'a> {
 
     fn lhld(&mut self) {
         // Load the HL register with 16 bits found at addr & addr + 1
-        // The byte at the memory address formed by concatenationg HI ADD with LOW ADD replaces
-        // the contents of the L register.
-        // The byte at the next higher memory address replaces the contents of the H register.
-        // L <- (adr); H<-(adr+1)
+        // let value = self.memory.read_word(self.pc & self.pc + 1);
 
-        self.registers.reg_l = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 |
-                   self.registers.opcode as usize + 1) + 0);
+        // This can cause an index out of bounds issue.. TODO Investigate
+        self.reg_l = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 0;
+        self.reg_h = self.memory.read(self.pc as usize + 2 << 8 | self.pc as usize + 1) + 1;
 
-        self.registers.reg_h = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 |
-                   self.registers.opcode as usize + 1) + 1);
-
-        self.adv_cycles(16);
         self.adv_pc(3);
+        self.adv_cycles(16);
+
     }
 
     fn inr(&mut self, reg: Register) {
         match reg {
-            Register::A => self.registers.reg_a += 1,
-            Register::B => self.registers.reg_b += 1,
-            Register::C => self.registers.reg_c += 1,
-            Register::D => self.registers.reg_d += 1,
-            Register::E => self.registers.reg_e += 1,
-            Register::H => self.registers.reg_h += 1,
-            Register::L => self.registers.reg_l += 1,
-            Register::M => self.registers.reg_m += 1,
+            Register::A => self.reg_a += 1,
+            Register::B => self.reg_b += 1,
+            Register::C => self.reg_c += 1,
+            Register::D => self.reg_d += 1,
+            Register::E => self.reg_e += 1,
+            Register::H => self.reg_h += 1,
+            Register::L => self.reg_l += 1,
+            Register::M => self.reg_m += 1,
         };
 
         if reg == Register::M {
@@ -878,24 +764,24 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_c = self.registers.reg_c.wrapping_add(1);
-                if self.registers.reg_c == 0 {
-                    self.registers.reg_b += 1;
+                self.reg_c = self.reg_c.wrapping_add(1);
+                if self.reg_c == 0 {
+                    self.reg_b += 1;
                 }
-            }
+            },
 
             RegisterPair::DE => {
-                self.registers.reg_e = self.registers.reg_e.wrapping_add(1);
-                if self.registers.reg_e == 0 {
-                    self.registers.reg_d += 1;
+               self.reg_e = self.reg_e.wrapping_add(1);
+                if self.reg_e == 0 {
+                    self.reg_d += 1;
                 }
-            }
+            },
 
             RegisterPair::HL => {
-                self.registers.reg_l = self.registers.reg_l.wrapping_add(1);
-                if self.registers.reg_l == 0 {
-                    self.registers.reg_h += 1;
-                    // self.registers.reg_l -= 1;
+                self.reg_l = self.reg_l.wrapping_add(1);
+                if self.reg_l == 0 {
+                    self.reg_h += 1;
+                    // self.reg_l -= 1;
                 }
             }
         };
@@ -905,41 +791,39 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn inx_sp(&mut self) {
-        self.registers.sp += 1;
+        self.sp += 1;
 
         self.adv_cycles(5);
         self.adv_pc(1);
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory
-            .read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory
-            .read(self.registers.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory.read(self.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory.read(self.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
-                sub2 = self.registers.reg_c;
-                sub1 = self.registers.reg_b;
-                self.registers.sp.wrapping_sub(2);
-            }
+                sub2 = self.reg_c;
+                sub1  = self.reg_b;
+                self.sp.wrapping_sub(2);
+            },
 
             Register::D => {
-                sub2 = self.registers.reg_e;
-                sub1 = self.registers.reg_d;
-                self.registers.sp.wrapping_sub(2);
-            }
+                sub2 = self.reg_e;
+                sub1 = self.reg_d;
+                self.sp.wrapping_sub(2);
+            },
 
             Register::H => {
-                sub2 = self.registers.reg_l;
-                sub2 = self.registers.reg_h;
-                self.registers.sp.wrapping_sub(2);
-            }
+                sub2 = self.reg_l;
+                sub2 = self.reg_h;
+                self.sp.wrapping_sub(2);
+            },
 
             _ => println!("Unknown push instruction"),
         }
 
-        self.registers.sp.wrapping_sub(2);
+        self.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
         self.adv_pc(1);
@@ -951,16 +835,16 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let bc = self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c;
-                self.memory.memory[bc as usize] = self.registers.reg_a;
-            }
+                let bc = self.reg_b.wrapping_shl(8) | self.reg_c;
+                self.memory.memory[bc as usize] = self.reg_a;
+            },
             RegisterPair::DE => {
-                let de = self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e;
-                self.memory.memory[de as usize] = self.registers.reg_a;
-            }
+                let de = self.reg_d.wrapping_shl(8) | self.reg_e;
+                self.memory.memory[de as usize] = self.reg_a;
+            },
             RegisterPair::HL => {
-                let hl = self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l;
-                self.memory.memory[hl as usize] = self.registers.reg_a;
+                let hl = self.reg_h.wrapping_shl(8) | self.reg_l;
+                self.memory.memory[hl as usize] = self.reg_a;
             }
         }
 
@@ -976,14 +860,14 @@ impl<'a> ExecutionContext<'a> {
 
     fn sub(&mut self, reg: Register) {
         match reg {
-            Register::A => self.registers.reg_a - self.registers.reg_a,
-            Register::B => self.registers.reg_b - self.registers.reg_b,
-            Register::C => self.registers.reg_c - self.registers.reg_c,
-            Register::D => self.registers.reg_d - self.registers.reg_d,
-            Register::E => self.registers.reg_e - self.registers.reg_e,
-            Register::H => self.registers.reg_h - self.registers.reg_h,
-            Register::L => self.registers.reg_l - self.registers.reg_l,
-            Register::M => self.registers.reg_m - self.registers.reg_m,
+            Register::A => self.reg_a - self.reg_a,
+            Register::B => self.reg_b - self.reg_b,
+            Register::C => self.reg_c - self.reg_c,
+            Register::D => self.reg_d - self.reg_d,
+            Register::E => self.reg_e - self.reg_e,
+            Register::H => self.reg_h - self.reg_h,
+            Register::L => self.reg_l - self.reg_l,
+            Register::M => self.reg_m - self.reg_m,
         };
 
         if reg == Register::M {
@@ -996,7 +880,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Set Carry (set carry bit to 0)
     fn stc(&mut self) {
-        self.registers.carry = false;
+        self.carry = false;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -1004,14 +888,14 @@ impl<'a> ExecutionContext<'a> {
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
         match reg {
-            Register::A => self.registers.reg_a ^= self.registers.reg_a,
-            Register::B => self.registers.reg_a ^= self.registers.reg_b,
-            Register::C => self.registers.reg_a ^= self.registers.reg_c,
-            Register::D => self.registers.reg_a ^= self.registers.reg_d,
-            Register::E => self.registers.reg_a ^= self.registers.reg_e,
-            Register::H => self.registers.reg_a ^= self.registers.reg_h,
-            Register::L => self.registers.reg_a ^= self.registers.reg_l,
-            Register::M => self.registers.reg_a ^= self.registers.reg_m,
+            Register::A => self.reg_a ^= self.reg_a,
+            Register::B => self.reg_a ^= self.reg_b,
+            Register::C => self.reg_a ^= self.reg_c,
+            Register::D => self.reg_a ^= self.reg_d,
+            Register::E => self.reg_a ^= self.reg_e,
+            Register::H => self.reg_a ^= self.reg_h,
+            Register::L => self.reg_a ^= self.reg_l,
+            Register::M => self.reg_a ^= self.reg_m,
         };
 
         if reg == Register::M {
@@ -1024,22 +908,22 @@ impl<'a> ExecutionContext<'a> {
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        self.registers.half_carry = (self.registers.reg_a | self.registers.opcode) & 0x08 != 0;
-        self.registers.reg_a ^= self.registers.opcode;
-        self.registers.carry = false;
+        self.half_carry = (self.reg_a | self.opcode) & 0x08 != 0;
+        self.reg_a ^= self.opcode;
+        self.carry = false;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
 
     fn xchg(&mut self) {
-        let h = self.registers.reg_h;
-        let l = self.registers.reg_l;
+        let h = self.reg_h;
+        let l = self.reg_l;
 
-        self.registers.reg_h = self.registers.reg_d;
-        self.registers.reg_l = self.registers.reg_e;
+        self.reg_h = self.reg_d;
+        self.reg_l = self.reg_e;
 
-        self.registers.reg_d = h;
-        self.registers.reg_e = l;
+        self.reg_d = h;
+        self.reg_e = l;
         self.adv_pc(1);
         self.adv_cycles(5);
     }
@@ -1049,10 +933,10 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        let a = self.registers.reg_a >> 1 | self.registers.reg_a << 7;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-        // println!("RAR: {:b}", a);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        let a = self.reg_a >> 1 | self.reg_a << 7;
+        self.reg_a = (self.reg_a >> 1) | (self.reg_a << 7);
+        println!("RAR: {:b}", a);
+        self.carry = self.reg_a & 0x08 != 0;
 
         self.adv_pc(1);
         self.adv_cycles(4);
@@ -1062,9 +946,9 @@ impl<'a> ExecutionContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        self.registers.reg_a.rotate_left(1);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
-
+        self.reg_a.rotate_left(1);
+        self.carry = self.reg_a & 0x08 != 0;
+        // self.reg_a = self.reg_a << 1;
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -1073,8 +957,8 @@ impl<'a> ExecutionContext<'a> {
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
+        self.carry = self.reg_a & 0x08 != 0;
+        self.reg_a = ( self.reg_a >> 1 ) | (( self.reg_a & 0x1 ) << 7);
         self.adv_pc(1);
         self.adv_cycles(4);
 
@@ -1082,7 +966,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Return if no carry
     fn rnc(&mut self) {
-        if !self.registers.carry {
+        if !self.carry {
             self.ret();
         } else {
             self.adv_pc(1);
@@ -1090,98 +974,73 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // TODO
-    fn rpe(&mut self) {
+   fn rpe(&mut self) {
         self.adv_pc(1);
         // TODO Cycles 11 / 5
         // self.adv_cycles(4);
     }
 
     fn pop(&mut self, reg: RegisterPair) {
-        let sp = self.registers.sp as usize;
+        let sp = self.sp as usize;
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_b = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_c = self.memory.memory[sp + 0] & 0xFFFF;
-            }
+                self.reg_b = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_c = self.memory.memory[sp + 0] & 0xFFFF;
+            },
 
             RegisterPair::DE => {
-                self.registers.reg_d = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_e = self.memory.memory[sp + 0] & 0xFFFF;
-            }
+                self.reg_d = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_e = self.memory.memory[sp + 0] & 0xFFFF;
+            },
 
             RegisterPair::HL => {
-                self.registers.reg_h = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_l = self.memory.memory[sp + 0] & 0xFFFF;
+                self.reg_h = self.memory.memory[sp + 1] & 0xFFFF;
+                self.reg_l = self.memory.memory[sp + 0] & 0xFFFF;
             }
         }
 
-        self.registers.sp.wrapping_add(2);
+        self.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
     fn pop_psw(&mut self) {
-        self.registers.reg_psw = self.memory.read_word(self.registers.sp + 1) & 0xFFFF as u16;
-        self.registers.sp.wrapping_add(2);
+        self.reg_psw = self.memory.read_word(self.sp + 1) & 0xFFFF as u16;
+        self.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
+
+
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_word(self.registers.sp + 1) |
-                 self.memory.read_word(self.registers.sp) as u16;
-        if DEBUG {
-            println!("Popping stack. SP value: {:02X}", sp);
-        }
-        self.registers.sp += 2;
+        let sp = self.memory.read_word(self.sp + 1) | self.memory.read_word(self.sp) as u16;
+        if DEBUG { println!("Popping stack. SP value: {:02X}", sp); }
+        self.sp += 2;
         sp
 
     }
 
     fn ret(&mut self) {
-        if DEBUG {
-            println!("RET instruction, memory value: {:X}",
-                     self.memory.read_word(self.registers.sp));
-        }
+        if DEBUG { println!("RET instruction, memory value: {:X}", self.memory.read_word(self.sp));}
 
-        let sp = self.memory.read_word(self.registers.sp);
+        let sp = self.memory.read_word(self.sp);
 
 
-        if DEBUG {
-            println!("Returning from subroutine: {:04X}", sp);
-        }
+        if DEBUG { println!("Returning from subroutine: {:02X}", sp); }
+        // self.sp += 2;
 
-        self.registers.sp -= 2;
+        self.sp -= 2;
         self.adv_cycles(10);
-        self.registers.pc = sp;
+        self.pc = sp;
     }
 
     // TODO
     fn out(&mut self) {
-        println!("Not implemented");
         self.adv_pc(3);
         self.adv_cycles(10);
-    }
-    fn ora(&mut self, reg: Register) {
-        match reg {
-            Register::A => self.registers.reg_a |= self.registers.reg_a,
-            Register::B => self.registers.reg_a |= self.registers.reg_b,
-            Register::C => self.registers.reg_a |= self.registers.reg_c,
-            Register::D => self.registers.reg_a |= self.registers.reg_d,
-            Register::E => self.registers.reg_a |= self.registers.reg_e,
-            Register::H => self.registers.reg_a |= self.registers.reg_h,
-            Register::L => self.registers.reg_a |= self.registers.reg_l,
-            Register::M => self.registers.reg_a |= self.registers.reg_m,
-        };
-
-        if reg == Register::M {
-            self.adv_cycles(7);
-        }
-
-        self.adv_cycles(4);
-        self.adv_pc(1);
     }
 
     fn mov(&mut self, dst: Register, src: Register) {
@@ -1189,22 +1048,34 @@ impl<'a> ExecutionContext<'a> {
         match dst {
             Register::M => {
                 self.write_reg(dst, value);
-                // self.registers.reg_m = self.registers.reg_hl as u8;
+                // self.reg_m = self.reg_hl as u8;
                 self.adv_cycles(7);
-            }
+            },
 
             _ => {
                 self.write_reg(dst, value);
                 self.adv_cycles(5);
             }
         }
-
         if DEBUG {
             println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
-
         self.adv_pc(1);
     }
+
+    fn mov_rp(&mut self, dst: RegisterPair, src: Register) {
+        // E.g: Store A into HL
+        // TODO Investigate this..
+        // This causes HL to change value, which isn't correct.
+        let value = self.read_reg(src);
+        self.write_rp(dst, value);
+        if DEBUG {
+            println!("MOV RP: {:?}, Destination: {:?}", src, dst);
+        }
+        self.adv_pc(1);
+        self.adv_cycles(7);
+    }
+
 
     fn rst(&mut self, value: u8) {
 
@@ -1222,30 +1093,28 @@ impl<'a> ExecutionContext<'a> {
 
             _ => println!("RST address unknown: {:#X}", rst),
         }
+        if DEBUG { println!("RST called: {:02X}", value); }
 
-        if DEBUG {
-            println!("RST called: {:02X}", value);
-        }
+        self.sp.wrapping_sub(2);
 
-        self.registers.sp.wrapping_sub(2);
-
+        self.pc = rst as u16;
         self.adv_cycles(11);
-        self.registers.pc = rst as u16;
     }
 
     fn sphl(&mut self) {
-        self.registers.sp = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+        self.sp = (self.reg_h as u16) << 8 | self.reg_l as u16;
     }
 
     // Store H & L direct
     fn shld(&mut self) {
-        let reg_a = self.registers.reg_a;
-        let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+        let reg_a = self.reg_a;
+        let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
         self.memory.write_word(reg_a, hl);
 
-        self.adv_cycles(13);
         self.adv_pc(3);
+        self.adv_cycles(13);
     }
+
 
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
@@ -1257,19 +1126,21 @@ impl<'a> ExecutionContext<'a> {
             Instruction::NOP => {
                 self.adv_pc(1);
                 self.adv_cycles(4);
-            }
+            },
 
             Instruction::ACI => self.aci(),
+
             Instruction::ADD(reg) => self.add(reg),
-            Instruction::ADI => self.adi(),
+            Instruction::ADI => println!("Not implemented: {:?}", instruction),
+
             Instruction::ADC(reg) => self.adc(reg),
             Instruction::ANA(reg) => self.ana(reg),
             Instruction::ANI => self.ani(),
 
             Instruction::CALL(addr) => self.call(addr),
             Instruction::CPI => self.cpi(),
-            Instruction::CZ => self.cz(),
-            Instruction::CM => self.cm(),
+            Instruction::CZ => println!("Not implemented: {:?}", instruction),
+            Instruction::CM => println!("Not implemented: {:?}", instruction),
             Instruction::CNC => self.cnc(),
             Instruction::CMA => self.cma(),
             Instruction::CMC => self.cmc(),
@@ -1286,11 +1157,11 @@ impl<'a> ExecutionContext<'a> {
             Instruction::EI => self.ei(),
             Instruction::JC => self.jc(),
             Instruction::JMP => self.jmp(),
-            Instruction::JP => self.jp(),
             Instruction::JPE => self.jpe(),
             Instruction::JPO => self.jpo(),
 
             Instruction::MOV(dst, src) => self.mov(dst, src),
+            // Instruction::MOV_RP(dst, src) => self.mov_rp(dst, src),
             Instruction::MVI(reg) => self.mvi(reg),
             Instruction::SUB(reg) => self.sub(reg),
             Instruction::SBB(reg) => self.sbb(reg),
@@ -1301,7 +1172,7 @@ impl<'a> ExecutionContext<'a> {
 
             Instruction::POP(reg) => self.pop(reg),
             Instruction::POP_PSW(reg) => self.pop_psw(),
-            Instruction::PUSH(reg) => self.push(reg),
+            Instruction::PUSH(reg)=> self.push(reg),
 
             Instruction::IN => println!("Not implemented: {:?}", instruction),
             Instruction::INR(reg) => self.inr(reg),
@@ -1318,7 +1189,7 @@ impl<'a> ExecutionContext<'a> {
 
             Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
-            Instruction::RC => self.rc(),
+            Instruction::RC => println!("Not implemented: {:?}", instruction),
             Instruction::RNC => self.rnc(),
             Instruction::RRC => self.rrc(),
 
@@ -1337,24 +1208,25 @@ impl<'a> ExecutionContext<'a> {
             Instruction::HLT => {
                 println!("HLT instruction called, resetting instead");
                 self.reset();
-            }
+            },
 
             Instruction::STC => self.stc(),
             Instruction::SHLD => self.shld(),
             Instruction::SPHL => self.sphl(),
-            Instruction::ORA(reg) => self.ora(reg),
+            Instruction::ORA(reg) => println!("Not implemented: {:?}", instruction),
 
-            // Jump instructions can probably use just one function?
+            // Jump instructions can probably use just one function.
             Instruction::JNC => self.jnc(),
             Instruction::JNZ => self.jnz(),
             Instruction::JM => self.jm(),
             Instruction::JZ => self.jz(),
-
+            Instruction::XRA_L => println!("Not implemented: {:?}", instruction),
             Instruction::XRI => self.xri(),
+
             Instruction::XCHG => self.xchg(),
             Instruction::XTHL => println!("Not implemented: {:?}", instruction),
 
-            _ => println!("Unknown instruction {:#X}", self.registers.opcode),
+            _ => println!("Unknown instruction {:#X}", self.opcode),
         }
 
     }
@@ -1364,47 +1236,28 @@ impl<'a> ExecutionContext<'a> {
         use self::RegisterPair::*;
 
         // self.opcode = self.memory.read(self.pc as usize);
-        self.registers.opcode = instruction;
+        self.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
-                     self.registers.opcode,
-                     self.registers.pc,
-                     self.registers.sp,
-                     self.registers.cycles);
-            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}",
-                     self.registers.reg_a,
-                     self.registers.reg_b,
-                     self.registers.reg_c,
-                     self.registers.reg_d);
-            println!("E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
-                     self.registers.reg_e,
-                     self.registers.reg_h,
-                     self.registers.reg_l,
-                     self.registers.reg_m);
+                     self.opcode, self.pc, self.sp, self.cycles);
+            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
+                     self.reg_a, self.reg_b, self.reg_c, self.reg_d, self.reg_e, self.reg_h, self.reg_l, self.reg_m);
+
+            let bc = (self.reg_b as u16) << 8 | self.reg_c as u16;
+            let de = (self.reg_d as u16) << 8 | self.reg_e as u16;
+            let hl = (self.reg_h as u16) << 8 | self.reg_l as u16;
+
+            let stack = (self.memory.memory[self.sp as usize + 1].wrapping_shl(8)
+                | self.memory.memory[self.sp as usize]);
 
 
-            let bc = (self.registers.reg_b as u16) << 8 | self.registers.reg_c as u16;
-            let de = (self.registers.reg_d as u16) << 8 | self.registers.reg_e as u16;
-            let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
-
-            let stack = self.memory.memory[self.registers.sp as usize + 1].wrapping_shl(8) |
-                        self.memory.memory[self.registers.sp as usize];
-
-
-            println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
-                     bc,
-                     de,
-                     hl);
+            println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}", bc, de, hl);
             println!("Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
-                     self.registers.sign,
-                     self.registers.zero,
-                     self.registers.parity,
-                     self.registers.carry,
-                     self.registers.half_carry);
+                     self.sign, self.zero, self.parity, self.carry, self.half_carry);
             println!("Stack: {:04X}", stack);
-        };
+    };
 
-        match self.registers.opcode {
+        match self.opcode {
 
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
@@ -1424,6 +1277,7 @@ impl<'a> ExecutionContext<'a> {
             0x0E => self.decode(Instruction::MVI(C)),
             0x0F => self.decode(Instruction::RRC),
 
+
             0x10 => self.decode(Instruction::NOP),
             0x11 => self.decode(Instruction::LXI(DE)),
             0x12 => self.decode(Instruction::STAX(DE)),
@@ -1442,6 +1296,7 @@ impl<'a> ExecutionContext<'a> {
             0x1E => self.decode(Instruction::MVI(E)),
             0x1F => self.decode(Instruction::RAR),
 
+
             0x20 => self.decode(Instruction::NOP),
             0x21 => self.decode(Instruction::LXI(HL)),
             0x22 => self.decode(Instruction::SHLD),
@@ -1459,6 +1314,11 @@ impl<'a> ExecutionContext<'a> {
             0x2D => self.decode(Instruction::DCR(L)),
             0x2E => self.decode(Instruction::MVI(L)),
             0x2F => self.decode(Instruction::CMA),
+
+
+            // SP specific instructions are separated from the Register & RegisterPair enum's
+            // Depending on how many instructions call the stack pointer it might be good to keep this out
+            // the generic instruction functions.
 
             0x30 => self.decode(Instruction::NOP),
             0x31 => self.decode(Instruction::LXI_SP),
@@ -1700,49 +1560,64 @@ impl<'a> ExecutionContext<'a> {
             0xFE => self.decode(Instruction::CPI),
             0xFF => self.decode(Instruction::RST(7)),
 
-            _ => println!("Unknown opcode: {:#X}", self.registers.opcode),
+            _ => println!("Unknown opcode: {:#X}", self.opcode),
         }
     }
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-
-        let instruction = self.memory.read(self.registers.pc as usize);
+        let instruction = self.memory.read(self.pc as usize);
         for _ in 0..times {
             self.execute_instruction(instruction);
-            self.registers.pc &= 0xFFFF;
+            self.pc &= 0xFFFF;
             times += 1;
         }
     }
 
     pub fn run(&mut self) {
-        let instruction = self.memory.read(self.registers.pc as usize);
+        let instruction = self.memory.read(self.pc as usize);
         self.execute_instruction(instruction);
     }
 
     pub fn reset(&mut self) {
         println!("Resetting emulator");
 
-        self.registers.reg_a = 0;
-        self.registers.reg_b = 0;
-        self.registers.reg_c = 0;
-        self.registers.reg_d = 0;
-        self.registers.reg_e = 0;
-        self.registers.reg_h = 0;
-        self.registers.reg_l = 0;
+        self.reg_a = 0;
+        self.reg_b = 0;
+        self.reg_c = 0;
+        self.reg_d = 0;
+        self.reg_e = 0;
+        self.reg_h = 0;
+        self.reg_l = 0;
 
-        self.registers.reg_bc = 0;
-        self.registers.reg_de = 0;
-        self.registers.reg_hl = 0;
+        self.reg_bc = 0;
+        self.reg_de = 0;
+        self.reg_hl = 0;
 
         // Reset flag conditions
-        self.registers.sign = false;
-        self.registers.zero = false;
-        self.registers.parity = false;
-        self.registers.carry = false;
-        self.registers.half_carry = false;
-        self.registers.reg_psw = 0;
+        self.sign = false;
+        self.zero = false;
+        self.parity = false;
+        self.carry = false;
+        self.half_carry = false;
+        self.reg_psw = 0;
 
         self.adv_pc(1); // Is this correct to do?
+    }
+
+
+    pub fn load_bin(&mut self, file: &str) {
+        let path = Path::new(file);
+        let mut file = File::open(&path).expect("File open failed");
+        let mut buf = Vec::new();
+
+        file.read_to_end(&mut buf).expect("Failed to read file");
+
+
+        let ref mut mem = self.memory.memory;
+        let buf_len = buf.len();
+        for i in 0..buf_len {
+            mem[i] = buf[i]; }
+        println!("Loaded binary");
     }
 }

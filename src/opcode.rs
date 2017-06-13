@@ -13,34 +13,25 @@ impl fmt::UpperHex for Opcode {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum Register {
-    A,
-    B,
-    C,
-    D,
-    E,
-    H,
-    L,
-    M,
+    A, B, C, D, E, H, L, M
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum RegisterPair {
-    BC,
-    DE,
-    HL,
+    BC, DE, HL,
 }
 
 impl fmt::UpperHex for Register {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = self;
         write!(f, "{:X}", val)
-    }
+  }
 }
 
 impl fmt::UpperHex for RegisterPair {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let val = self;
-        write!(f, "{:X}", val)
+    let val = self;
+    write!(f, "{:X}", val)
     }
 }
 

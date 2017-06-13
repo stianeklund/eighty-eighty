@@ -1,29 +1,28 @@
-use super::minifb::{Key, Scale, WindowOptions, Window};
+use super::sdl2;
 
-use super::cpu::{ExecutionContext, Registers};
+use super::cpu::Cpu;
 use super::display::Display;
-// use super::keypad::Keypad;
 use super::memory::Memory;
+use super::keypad::Keypad;
 
-pub struct Interconnect<'a> {
-    pub cpu: ExecutionContext<'a>,
+pub struct Interconnect {
+    pub cpu: Cpu,
     pub display: Display,
-    pub memory: Memory,
-    // pub keypad: Keypad,
+    pub memory: Box<Memory>,
+    pub keypad: Keypad,
 }
 
-impl<'a> Interconnect<'a> {
-    pub fn new() -> Interconnect<'a> {
-        // let ctx = sdl2::init().unwrap();
-        let mut memory = Memory::new();
-        let mut registers = Registers::new();
+impl Interconnect {
+    pub fn new() -> Interconnect {
+        let ctx = sdl2::init().unwrap();
 
         Interconnect {
-            cpu: ExecutionContext::new(&mut memory, &mut registers),
-            display: Display::new(),
-            memory: Memory::new(),
-            // keypad: Keypad::new(),
+            cpu: Cpu::new(),
+            display: Display::new(&ctx),
+            memory: Box::new(Memory::new()),
+            keypad: Keypad::new(&ctx),
             // TODO audio
+
         }
     }
 }
