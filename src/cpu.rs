@@ -560,12 +560,43 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
-    // TODO
-    fn cmp(&mut self, reg: Register) {
-        self.adv_pc(1);
-        self.adv_cycles(4);
-    }
 
+    fn cmp(&mut self, reg: Register) {
+    // Compare Register or Memory With Accumulator
+
+    // The specified byte is compared to the contents of the accumulator
+    // The comparison is performed by internally subtracting
+    // the contents of REG from the accumulator (leaving both unchanged)
+    // and setting the conditional flags according to the result
+
+    // The Zero flag should be set if the quantities are equal
+    // and reset if they're not equal
+
+    // Since a subtraction operation is performed the carry bit should be set
+    // if there is no carry out of bit 7, indicating that the contents of REG
+    // are greater than the contents of the accumulator
+    // Otherwise it should reset
+    // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
+
+        match reg {
+            Register::A => {
+            },
+            Register::B  => {
+            },
+            Register::C => {
+            },
+            Register::D => {
+            },
+            Register::E => {
+            },
+            Register::H => {
+            },
+            Register::L => {
+            },
+            Register::M => {
+            }
+        };
+    }
     // Compare Immediate
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
@@ -674,7 +705,7 @@ impl<'a> ExecutionContext<'a> {
             // The goal here is to read out the low bits and check for parity.
             // self.parity = !self.registerseg_m + 1 & 1 == 0;
             Register::A => {
-                self.registers.reg_a -= 1 & 0xFF;
+                self.registers.reg_a = self.registers.reg_a.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_a & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_a & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_a + 1 & 1 == 0;
@@ -696,7 +727,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::C => {
-                self.registers.reg_c -= 1 & 0xFF;
+                self.registers.reg_c = self.registers.reg_c.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_c & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_c & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_c & 1 == 0;
@@ -705,7 +736,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::D => {
-                self.registers.reg_d.wrapping_sub(1) & 0xFF;
+                self.registers.reg_d = self.registers.reg_d.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_d & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_d & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_b & 1 == 0;
@@ -714,7 +745,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::E => {
-                self.registers.reg_e -= 1 & 0xFF;
+                self.registers.reg_e = self.registers.reg_e.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_e & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_e & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_e & 1 == 0;
@@ -723,7 +754,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::H => {
-                self.registers.reg_h -= 1 & 0xFF;
+                self.registers.reg_h = self.registers.reg_h.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_h & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_h & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_h & 1 == 0;
@@ -732,7 +763,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::L => {
-                self.registers.reg_l -= 1 & 0xFF;
+                self.registers.reg_l = self.registers.reg_l.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_l & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_l & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_l & 1 == 0;
@@ -742,7 +773,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::M => {
-                self.registers.reg_m.wrapping_sub(1) & 0xFF;
+                self.registers.reg_m = self.registers.reg_m.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_m & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_m & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_m & 1 == 0;
@@ -935,7 +966,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::DE => {
                 self.registers.reg_e = self.registers.reg_e.wrapping_add(1);
                 if self.registers.reg_e == 0 {
-                    self.registers.reg_d += 1;
+                    self.registers.reg_d = self.registers.reg_d.wrapping_add(1);
                 }
             }
 
@@ -1102,7 +1133,6 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
                 self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
-
                 self.memory.memory[self.registers.sp as usize + 0] = reg_l;
                 self.memory.memory[self.registers.sp as usize + 1] = reg_h;
             }
@@ -1343,11 +1373,13 @@ impl<'a> ExecutionContext<'a> {
             Instruction::CMC => self.cmc(),
 
             Instruction::CMP(reg) => self.cmp(reg),
+            Instruction::CP => println!("Not implemented: {:?}", instruction),
             Instruction::CPE => self.cpe(),
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
             Instruction::DCX_SP => self.dcx_sp(),
-
+ 
+            Instruction::DI => println!("Not implemented: {:?}", instruction),
             Instruction::DAA => self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
             Instruction::DAD_SP => self.dad_sp(),
@@ -1376,6 +1408,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
             Instruction::OUT => self.out(),
+
             Instruction::STA => self.sta(),
             Instruction::STAX(reg) => self.stax(reg),
             Instruction::LDA => self.lda(),
@@ -1383,12 +1416,13 @@ impl<'a> ExecutionContext<'a> {
             Instruction::LHLD => self.lhld(),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
-
+            Instruction::RAL => println!("Not implemented: {:?}", instruction),
             Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
             Instruction::RC => self.rc(),
             Instruction::RNC => self.rnc(),
             Instruction::RRC => self.rrc(),
+            Instruction::RIM => println!("Not implemented: {:?}", instruction),
 
             Instruction::RST(0) => self.rst(1),
             Instruction::RST(1) => self.rst(2),
@@ -1407,10 +1441,14 @@ impl<'a> ExecutionContext<'a> {
                 self.reset();
             }
 
+            Instruction::SIM => println!("Not implemented: {:?}", instruction),
+
             Instruction::STC => self.stc(),
             Instruction::SHLD => self.shld(),
             Instruction::SPHL => self.sphl(),
+
             Instruction::ORA(reg) => self.ora(reg),
+            Instruction::ORI => println!("Not implemented: {:?}", instruction),
 
             // Jump instructions can probably use just one function?
             Instruction::JNC => self.jnc(),
