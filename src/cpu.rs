@@ -381,6 +381,16 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
+    // Jump to address in H:L
+    fn pchl(&mut self) {
+        let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+        self.registers.pc = hl;
+        if DEBUG {
+            println!("Jumping to address: {:X}", self.registers.pc);
+        };
+        self.adv_cycles(5);
+        self.adv_pc(1);
+    }
 
     fn lxi_sp(&mut self) {
         self.registers.sp = self.memory.read_word(self.registers.pc);
@@ -950,8 +960,10 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory
+            .read(self.registers.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory
+            .read(self.registers.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
@@ -1080,6 +1092,26 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(5);
     }
 
+    fn xthl(&mut self) {
+        // Swap H:L with top word on stack
+
+        match self.registers.opcode {
+            0xE3 => {
+                let mut reg_l = self.registers.reg_l;
+                let mut reg_h = self.registers.reg_h;
+
+                self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
+                self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
+
+                self.memory.memory[self.registers.sp as usize + 0] = reg_l;
+                self.memory.memory[self.registers.sp as usize + 1] = reg_h;
+            }
+            _ => println!("Opcode not covered by XTHL"),
+        };
+        self.adv_cycles(18);
+        self.adv_pc(1);
+    }
+
     // Rotate Accumulator Left
     fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
@@ -1189,7 +1221,7 @@ impl<'a> ExecutionContext<'a> {
             println!("Returning from subroutine: {:04X}", sp);
         }
 
-        self.registers.sp -= 2;
+        self.registers.sp.wrapping_sub(2);
         self.adv_cycles(10);
         self.registers.pc = sp;
     }
@@ -1388,7 +1420,8 @@ impl<'a> ExecutionContext<'a> {
 
             Instruction::XRI => self.xri(),
             Instruction::XCHG => self.xchg(),
-            Instruction::XTHL => println!("Not implemented: {:?}", instruction),
+            Instruction::XTHL => self.xthl(),
+            Instruction::PCHL => self.pchl(),
 
             _ => println!("Unknown instruction {:#X}", self.registers.opcode),
         }
