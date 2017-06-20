@@ -562,39 +562,31 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn cmp(&mut self, reg: Register) {
-    // Compare Register or Memory With Accumulator
+        // Compare Register or Memory With Accumulator
 
-    // The specified byte is compared to the contents of the accumulator
-    // The comparison is performed by internally subtracting
-    // the contents of REG from the accumulator (leaving both unchanged)
-    // and setting the conditional flags according to the result
+        // The specified byte is compared to the contents of the accumulator
+        // The comparison is performed by internally subtracting
+        // the contents of REG from the accumulator (leaving both unchanged)
+        // and setting the conditional flags according to the result
 
-    // The Zero flag should be set if the quantities are equal
-    // and reset if they're not equal
+        // The Zero flag should be set if the quantities are equal
+        // and reset if they're not equal
 
-    // Since a subtraction operation is performed the carry bit should be set
-    // if there is no carry out of bit 7, indicating that the contents of REG
-    // are greater than the contents of the accumulator
-    // Otherwise it should reset
-    // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
+        // Since a subtraction operation is performed the carry bit should be set
+        // if there is no carry out of bit 7, indicating that the contents of REG
+        // are greater than the contents of the accumulator
+        // Otherwise it should reset
+        // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
 
         match reg {
-            Register::A => {
-            },
-            Register::B  => {
-            },
-            Register::C => {
-            },
-            Register::D => {
-            },
-            Register::E => {
-            },
-            Register::H => {
-            },
-            Register::L => {
-            },
-            Register::M => {
-            }
+            Register::A => {}
+            Register::B => {}
+            Register::C => {}
+            Register::D => {}
+            Register::E => {}
+            Register::H => {}
+            Register::L => {}
+            Register::M => {}
         };
     }
     // Compare Immediate
@@ -1143,11 +1135,40 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // Rotate Accumulator Left
+    fn ral(&mut self) {
+        let RAL_DEBUG: bool = false;
+
+        // The contents of the accumulator are rotated one bit position to the left.
+        // The high-order bit of the accumulator replaces the carry bit
+        // while the carry bit replaces the high-order bit of the accumulator
+        // Conditional flags affected: Carry
+
+        // Example (Accumulator) carry is set:
+        // 1 0 1 (1 0) 1 0 1
+        // After RAL instruction:
+        // 0 1 1 (0 1) 0 1 0
+
+        if RAL_DEBUG {
+            // Set Accumulator value for debugging purposes
+            self.registers.reg_a = 0b10110101;
+            println!("RAL, Accumulator: {:b}", self.registers.reg_a);
+        }
+        // self.registers.reg_a = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40);
+
+        if (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 0 {
+            self.registers.half_carry = true;
+        }
+        println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+    // Rotate Accumulator Left
     fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        let a = self.registers.reg_a >> 1 | self.registers.reg_a << 7;
+        // let a = self.registers.reg_a >> 1 | self.registers.reg_a << 7;
         self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
         // println!("RAR: {:b}", a);
         self.registers.carry = self.registers.reg_a & 0x08 != 0;
@@ -1378,7 +1399,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
             Instruction::DCX_SP => self.dcx_sp(),
- 
+
             Instruction::DI => println!("Not implemented: {:?}", instruction),
             Instruction::DAA => self.daa(),
             Instruction::DAD(reg) => self.dad(reg),
@@ -1416,7 +1437,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::LHLD => self.lhld(),
             Instruction::LXI(reg) => self.lxi(reg),
             Instruction::LXI_SP => self.lxi_sp(),
-            Instruction::RAL => println!("Not implemented: {:?}", instruction),
+            Instruction::RAL => self.ral(),
             Instruction::RAR => self.rar(),
             Instruction::RLC => self.rlc(),
             Instruction::RC => self.rc(),
