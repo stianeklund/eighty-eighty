@@ -563,6 +563,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn cmp(&mut self, reg: Register) {
         // Compare Register or Memory With Accumulator
+        const CMP_DEBUG: bool = true;
 
         // The specified byte is compared to the contents of the accumulator
         // The comparison is performed by internally subtracting
@@ -576,23 +577,55 @@ impl<'a> ExecutionContext<'a> {
         // if there is no carry out of bit 7, indicating that the contents of REG
         // are greater than the contents of the accumulator
         // Otherwise it should reset
+
         // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
+        // E.g:
+        // Accumulator:
+        // 0 0 0 0 1 0 1 0
+        // E Register:
+        // 1 1 1 1 1 0 1 1
+        // Result:
+        // 0 0 0 0 0 1 0 1
+
+        let mut value;
 
         match reg {
-            Register::A => {}
-            Register::B => {}
-            Register::C => {}
-            Register::D => {}
-            Register::E => {}
-            Register::H => {}
-            Register::L => {}
-            Register::M => {}
+            Register::A => {
+                // Debug values
+                if CMP_DEBUG {
+                    let a = 0b00001010;
+                    let reg_e = 0b00000101;
+                    let value = a - reg_e;
+                    println!("CMP Value: {:b}", value);
+                    // value = self.registers.reg_a - self.registers.reg_a;
+                }
+            }
+            Register::B => {
+                value = self.registers.reg_a - self.registers.reg_b;
+            }
+            Register::C => {
+                value = self.registers.reg_a - self.registers.reg_c;
+            }
+            Register::D => {
+                value = self.registers.reg_a - self.registers.reg_d;
+            }
+            Register::E => {
+                value = self.registers.reg_a - self.registers.reg_e;
+            }
+            Register::H => {
+                value = self.registers.reg_a - self.registers.reg_h;
+            }
+            Register::L => {
+                value = self.registers.reg_a - self.registers.reg_l;
+            }
+            Register::M => {
+                value = self.registers.reg_a - self.registers.reg_l;
+            }
         };
     }
     // Compare Immediate
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        // let value = self.memory.read_byte(self.pc as u8);
         let value = self.registers.opcode & 0xFF;
 
         self.registers.zero = value & 0xFF == 0;
@@ -1279,6 +1312,8 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
     fn ora(&mut self, reg: Register) {
+        // TODO CPU Flags / Condition bits
+        println!("CPU Flags not implemented!");
         match reg {
             Register::A => self.registers.reg_a |= self.registers.reg_a,
             Register::B => self.registers.reg_a |= self.registers.reg_b,
