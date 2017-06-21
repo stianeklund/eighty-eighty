@@ -1134,9 +1134,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
-    // Rotate Accumulator Left
+    // Rotate Accumulator Left Through Carry
     fn ral(&mut self) {
-        let RAL_DEBUG: bool = false;
+        let RAL_DEBUG: bool = true;
 
         // The contents of the accumulator are rotated one bit position to the left.
         // The high-order bit of the accumulator replaces the carry bit
@@ -1150,27 +1150,23 @@ impl<'a> ExecutionContext<'a> {
 
         if RAL_DEBUG {
             // Set Accumulator value for debugging purposes
-            self.registers.reg_a = 0b10110101;
+            // self.registers.reg_a = 0b10110101;
             println!("RAL, Accumulator: {:b}", self.registers.reg_a);
         }
-        // self.registers.reg_a = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40);
-
-        if (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 0 {
-            self.registers.half_carry = true;
+        self.registers.reg_a = self.registers.reg_a << 1;
+        self.registers.carry = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 1;
+        if RAL_DEBUG {
+            println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
         }
-        println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
         self.adv_pc(1);
         self.adv_cycles(4);
     }
-
-    // Rotate Accumulator Left
+    // Rotate Accumulator Right Through Carry
     fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        // let a = self.registers.reg_a >> 1 | self.registers.reg_a << 7;
         self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-        // println!("RAR: {:b}", a);
         self.registers.carry = self.registers.reg_a & 0x08 != 0;
 
         self.adv_pc(1);
@@ -1188,7 +1184,6 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
     }
 
-    // TODO Rotate Accumulator Right
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
