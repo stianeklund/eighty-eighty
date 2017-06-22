@@ -560,7 +560,6 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
-
     fn cmp(&mut self, reg: Register) {
         // Compare Register or Memory With Accumulator
         const CMP_DEBUG: bool = true;
@@ -578,6 +577,11 @@ impl<'a> ExecutionContext<'a> {
         // are greater than the contents of the accumulator
         // Otherwise it should reset
 
+        // Flag Register bits:
+        // 7  6  5  4  3  2  1  0
+        // S  Z  0  A  0  P  1  C
+        // Sign | Zero | Not used | AC | Not used | Parity | Always 1 | Carry
+
         // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
         // E.g:
         // Accumulator:
@@ -587,16 +591,19 @@ impl<'a> ExecutionContext<'a> {
         // Result:
         // 0 0 0 0 0 1 0 1
 
-        let mut value;
-
+        let mut value = 0;
         match reg {
             Register::A => {
                 // Debug values
                 if CMP_DEBUG {
                     let a = 0b00001010;
-                    let reg_e = 0b00000101;
-                    let value = a - reg_e;
-                    println!("CMP Value: {:b}", value);
+                    let e = 0b00000101;
+                    let result = a - e;
+                    let bit1 = a & 0x08 >> 1;
+                    let bit2 = e & 0x08 >> 2;
+                    let bit3 = result & 0x08 >> 3;
+                    println!("Bit 1: {:b}, Bit 2: {:b}, Bit 3: {:b}", bit1, bit2, bit3);
+                    // = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
                     // value = self.registers.reg_a - self.registers.reg_a;
                 }
             }
