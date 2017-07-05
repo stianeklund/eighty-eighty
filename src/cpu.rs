@@ -349,7 +349,7 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    // If sign bit is one (false) indicating a negative result
+    // If sign bit is one (false) indicating a negative eesult
     fn jm(&mut self) {
         if self.registers.sign == false {
             self.registers.pc = self.memory.read_word(self.registers.pc);
@@ -562,13 +562,11 @@ impl<'a> ExecutionContext<'a> {
     }
     fn cmp(&mut self, reg: Register) {
         // Compare Register or Memory With Accumulator
-        const CMP_DEBUG: bool = true;
 
         // The specified byte is compared to the contents of the accumulator
         // The comparison is performed by internally subtracting
         // the contents of REG from the accumulator (leaving both unchanged)
         // and setting the conditional flags according to the result
-
         // The Zero flag should be set if the quantities are equal
         // and reset if they're not equal
 
@@ -585,48 +583,109 @@ impl<'a> ExecutionContext<'a> {
         // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
         // E.g:
         // Accumulator:
-        // 0 0 0 0 1 0 1 0
-        // E Register:
+        // 0 0 0 0 1 0 1
+        // B Register:
         // 1 1 1 1 1 0 1 1
         // Result:
         // 0 0 0 0 0 1 0 1
-
-        let mut value = 0;
+        let mut result = self.registers.reg_a;
         match reg {
             Register::A => {
-                // Debug values
-                if CMP_DEBUG {
-                    let a = 0b00001010;
-                    let e = 0b00000101;
-                    let result = a - e;
-                    let bit1 = a & 0x08 >> 1;
-                    let bit2 = e & 0x08 >> 2;
-                    let bit3 = result & 0x08 >> 3;
-                    println!("Bit 1: {:b}, Bit 2: {:b}, Bit 3: {:b}", bit1, bit2, bit3);
-                    // = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-                    // value = self.registers.reg_a - self.registers.reg_a;
+                if result < self.registers.reg_a {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_a {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_a {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
                 }
             }
             Register::B => {
-                value = self.registers.reg_a - self.registers.reg_b;
+                if result < self.registers.reg_b {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_b {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_b {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
+
             }
             Register::C => {
-                value = self.registers.reg_a - self.registers.reg_c;
+                if result < self.registers.reg_c {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_c {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_c {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
             Register::D => {
-                value = self.registers.reg_a - self.registers.reg_d;
+                if result < self.registers.reg_d {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_d {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_d {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
             Register::E => {
-                value = self.registers.reg_a - self.registers.reg_e;
+                if result < self.registers.reg_e {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_e {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_e {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
             Register::H => {
-                value = self.registers.reg_a - self.registers.reg_h;
+                if result < self.registers.reg_h {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_h {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_h {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
             Register::L => {
-                value = self.registers.reg_a - self.registers.reg_l;
+                if result < self.registers.reg_l {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_l {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_l {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
             Register::M => {
-                value = self.registers.reg_a - self.registers.reg_l;
+                if result < self.registers.reg_m {
+                    self.registers.carry = true;
+                }
+                if result == self.registers.reg_m {
+                    self.registers.zero = true;
+                }
+                if result > self.registers.reg_m {
+                    self.registers.carry = true;
+                    self.registers.zero = true;
+                }
             }
         };
     }
@@ -735,7 +794,7 @@ impl<'a> ExecutionContext<'a> {
             // register & 1 = even (parity true)
 
             // The goal here is to read out the low bits and check for parity.
-            // self.parity = !self.registerseg_m + 1 & 1 == 0;
+            // self.parity = !self.registers.reg_m + 1 & 1 == 0;
             Register::A => {
                 self.registers.reg_a = self.registers.reg_a.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_a & 0x0F == 0x0F;
@@ -952,12 +1011,12 @@ impl<'a> ExecutionContext<'a> {
         // L <- (adr); H<-(adr+1)
 
         self.registers.reg_l = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 |
-                   self.registers.opcode as usize + 1) + 0);
+            .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
+                  0);
 
         self.registers.reg_h = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 |
-                   self.registers.opcode as usize + 1) + 1);
+            .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
+                  1);
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1023,10 +1082,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory
-            .read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory
-            .read(self.registers.sp.wrapping_sub(1) as usize);
+        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
 
         match reg {
             Register::B => {
@@ -1086,15 +1143,33 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn sub(&mut self, reg: Register) {
+        // TODO Set flags
+        let mut immediate = self.registers.reg_a;
         match reg {
-            Register::A => self.registers.reg_a - self.registers.reg_a,
-            Register::B => self.registers.reg_b - self.registers.reg_b,
-            Register::C => self.registers.reg_c - self.registers.reg_c,
-            Register::D => self.registers.reg_d - self.registers.reg_d,
-            Register::E => self.registers.reg_e - self.registers.reg_e,
-            Register::H => self.registers.reg_h - self.registers.reg_h,
-            Register::L => self.registers.reg_l - self.registers.reg_l,
-            Register::M => self.registers.reg_m - self.registers.reg_m,
+            Register::A => {
+                immediate -= self.registers.reg_b;
+            }
+            Register::B => {
+                immediate -= self.registers.reg_b;
+            }
+            Register::C => {
+                immediate -= self.registers.reg_c;
+            }
+            Register::D => {
+                immediate -= self.registers.reg_d;
+            }
+            Register::E => {
+                immediate -= self.registers.reg_e;
+            }
+            Register::H => {
+                immediate -= self.registers.reg_h;
+            }
+            Register::L => {
+                immediate -= self.registers.reg_l;
+            }
+            Register::M => {
+                immediate -= self.registers.reg_m;
+            }
         };
 
         if reg == Register::M {
@@ -1796,7 +1871,8 @@ impl<'a> ExecutionContext<'a> {
             0xC0 => self.decode(Instruction::RNZ),
             0xC1 => self.decode(Instruction::POP(BC)),
             0xC2 => self.decode(Instruction::JNZ),
-            0xC3 => self.decode(Instruction::JMP),
+            // 0xC3 => self.decode(Instruction::JMP),
+            0xC3 => self.decode(Instruction::CMP(A)),
             0xC4 => self.decode(Instruction::CNZ),
             0xC5 => self.decode(Instruction::PUSH(B)),
             0xC6 => self.decode(Instruction::ADI),

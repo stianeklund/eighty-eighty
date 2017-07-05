@@ -37,7 +37,7 @@ fn main() {
     // let mut inter = interconnect::Interconnect::new();
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
-    let mut display = display::Display::new();
+    // let mut display = display::Display::new();
     // let mut debugger = debugger::Debugger::new();
 
     // Load binary file
@@ -49,13 +49,13 @@ fn main() {
     loop {
         // CPU Execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        display.render_vram(&mut memory);
+        // display.render_vram(&mut memory);
 
         // Update the debug frame buffer
         // debugger.render_char();
         //debugger.update_fb();
 
-        // thread::sleep_ms(300);
+        thread::sleep_ms(300);
 
     }
 }
