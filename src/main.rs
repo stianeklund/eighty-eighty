@@ -38,7 +38,7 @@ fn main() {
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
     // let mut display = display::Display::new();
-    // let mut debugger = debugger::Debugger::new();
+    let mut debugger = debugger::Debugger::new();
 
     // Load binary file
     memory.load_bin(bin);
@@ -52,10 +52,9 @@ fn main() {
         // display.render_vram(&mut memory);
 
         // Update the debug frame buffer
-        // debugger.render_char();
-        //debugger.update_fb();
+        debugger.render_char();
+        // debugger.update_fb();
 
-        thread::sleep_ms(300);
 
     }
 }

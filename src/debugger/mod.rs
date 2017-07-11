@@ -24,22 +24,13 @@ impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
 
-        // The block of bytes at the start of the file is the header.
-        // The first 2 bytes of the BMP file format are the character "B"
-        // then the character "M" in ASCII encoding.
-        // All of the integer values are stored in little-endian (LSB first)
-
-        // In our case we can likely omit the header all together.
-        // Alternatively, we can check whether or not there is a match for
-        // either "B" or "M" (in ASCII) to validate the file then skip the rest.
-
         // TODO: Improve path handling.
-        let path = Path::new("/home/stian/dev/projects/eighty-eighty/assets/font.tga");
+        let path = Path::new("/home/stian/dev/projects/eighty-eighty/assets/ExportedFont.tga");
         let mut file = File::open(&path).expect("File not found");
         let mut file_data = Vec::<u8>::new();
 
         // Skip BMP header & DIB for now.
-        // file.seek(SeekFrom::Start(1)).expect("Seek error");
+        // file.seek(SeekFrom::Start(0)).expect("IO seek error");
         let result = file.read_to_end(&mut file_data);
 
 
@@ -50,13 +41,12 @@ impl DebugFont {
         // This may not be entirely correct, but for now lets just
         // read the bitmap data and assign it to the bitmap vec.
         font.bitmap = file_data;
-        // println!("Targa bitmap: {:?}", font.bitmap);
         font
     }
 }
 
 // TODO: Implement a way to display Cpu register values & memory pages.
-//
+
 // I.e displaying VRAM page values & main memory values.
 // We also want to be able to peek at Cpu register values.
 // Displaying it all in one nice window vs printing a ton of text.
@@ -72,13 +62,11 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new() -> Debugger {
-        let mut window = Window::new("Debugger",
-                                     WIDTH,
-                                     HEIGHT,
-                                     WindowOptions {
-                                         scale: Scale::X2,
-                                         ..WindowOptions::default()
-                                     })
+        let mut window =
+            Window::new("Debugger",
+                        WIDTH,
+                        HEIGHT,
+                        WindowOptions { scale: Scale::X2, ..WindowOptions::default() })
                 .unwrap();
 
         Debugger {
@@ -93,70 +81,64 @@ impl Debugger {
 
     // Cursor wraps another type & provides it with a Seek implementation
     // Chunks is a iterator that provides us with a slice
-    //
     // Map provides a closure for this & creates an iterator
     // which calls that closure on each element.
-
     // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
 
     // Create a temporary buffer & convert our bitmap values
     pub fn update_fb(&mut self) -> Vec<u32> {
-            let mut buffer: Vec<u32> = self.font
-                .bitmap
-                .chunks(4)
-                .map(|buf| {
-                    let buf = Cursor::new(buf).read_u32::<LittleEndian>().unwrap();
-                    buf
-                })
-                .collect::<Vec<u32>>();
-                buffer
+        let mut buffer: Vec<u32> = self.font
+            .bitmap
+            .chunks(4)
+            .map(|buf| {
+                let buf = Cursor::new(buf)
+                    .read_u32::<LittleEndian>()
+                    .expect("Buffer creation failed");
+                buf
+            })
+            .collect::<Vec<u32>>();
+        buffer
     }
 
     pub fn render_char(&mut self) {
-        let sprite_sheet = self.update_fb();
+        // let mut sprite_sheet = self.update_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-        let rect_width = 50;
-        let rect_height = 30;
+        // let rect_width = 50;
+        // let rect_height = 30;
+        // let rect_x = 2;
+        // let rect_y = 3;
 
-        let rect_x = 2;
-        let rect_y = 3;
+        // for y in 0..rect_height {
+        // for x in 0..rect_width {
+        // let frame_x = rect_x + x;
+        // let frame_y = rect_y + y;
+        //
+        // let buf_pos = frame_y * (WIDTH) + frame_x;
+        // frame_buffer[buf_pos] = 0x00FFFFFF;
+        //
+        // }
+        // }
 
-            for y in 0..rect_height {
-                 for x in 0..rect_width {
-                let frame_x = rect_x + x;
-                let frame_y = rect_y + y;
+        let mut counter = 0;
+        let mut y = 255;
+        let mut x = 0;
 
-                let buf_pos = frame_y * (WIDTH) + frame_x;
-                frame_buffer[buf_pos] = 0x00FFFFFF;
-
-            }
-        }
-
-        // Our X offset in the bitmap array
-        /* for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 8) {
-            // println!("Offset: {}", offset);
-
-            // TODO: Find out character height & width; or check bitmap generator.
-            // We need to know this in order to render the correct area of the "sprite sheet"
-            // 8 Pixels per byte
-            for y_line in 0..255 {
-                // This panics, WHYYY?
-                if self.font.bitmap[y * (WIDTH - 1) + x] != 0  {
-                    frame_buffer[counter] = 0x00FFFFF;
+        for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 2 {
+            for y_line in 0..32 {
+                if self.font.bitmap[y * (WIDTH) + x] != 0 {
+                    frame_buffer[counter] = 0x00FFFFFF;
                 } else {
                     frame_buffer[counter] = 0;
                 }
-
-                y = y.wrapping_sub(1);
-                if y <= 0 {
+                y -= 1;
+                if y_line <= 0 {
                     y = 255;
                 }
-                x = x.wrapping_add(1);
             }
-                counter = counter + 1;
-        }*/
-
+            counter += 1;
+            x += 3;
+        }
         self.window.update_with_buffer(&frame_buffer);
     }
 }

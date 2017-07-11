@@ -202,8 +202,8 @@ impl<'a> ExecutionContext<'a> {
         // Check if the 4th bit is set on all registers
         match reg {
             Register::A => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) & 0x08 !=
+                                            0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -212,8 +212,8 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::B => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) & 0x08 !=
+                                            0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -222,8 +222,8 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::C => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) & 0x08 !=
+                                            0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -232,8 +232,8 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::D => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) & 0x08 !=
+                                            0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -242,26 +242,26 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::E => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) & 0x08 !=
+                                            0;
                 self.registers.reg_a &= self.registers.reg_e;
             }
 
             Register::H => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) & 0x08 !=
+                                            0;
                 self.registers.reg_a &= self.registers.reg_h;
             }
 
             Register::L => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) & 0x08 !=
+                                            0;
                 self.registers.reg_a &= self.registers.reg_l;
             }
 
             Register::M => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) &
-                                            0x08 != 0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) & 0x08 !=
+                                            0;
                 self.registers.reg_a &= self.registers.reg_m;
             }
         }
@@ -792,7 +792,7 @@ impl<'a> ExecutionContext<'a> {
 
             // register % 2 = odd (parity false)
             // register & 1 = even (parity true)
-
+            //
             // The goal here is to read out the low bits and check for parity.
             // self.parity = !self.registers.reg_m + 1 & 1 == 0;
             Register::A => {
@@ -1024,14 +1024,14 @@ impl<'a> ExecutionContext<'a> {
 
     fn inr(&mut self, reg: Register) {
         match reg {
-            Register::A => self.registers.reg_a += 1,
-            Register::B => self.registers.reg_b += 1,
-            Register::C => self.registers.reg_c += 1,
-            Register::D => self.registers.reg_d += 1,
-            Register::E => self.registers.reg_e += 1,
-            Register::H => self.registers.reg_h += 1,
-            Register::L => self.registers.reg_l += 1,
-            Register::M => self.registers.reg_m += 1,
+            Register::A => self.registers.reg_a.wrapping_add(1),
+            Register::B => self.registers.reg_b.wrapping_add(1),
+            Register::C => self.registers.reg_c.wrapping_add(1),
+            Register::D => self.registers.reg_d.wrapping_add(1),
+            Register::E => self.registers.reg_e.wrapping_add(1),
+            Register::H => self.registers.reg_h.wrapping_add(1),
+            Register::L => self.registers.reg_l.wrapping_add(1),
+            Register::M => self.registers.reg_m.wrapping_add(1),
         };
 
         if reg == Register::M {
@@ -1076,7 +1076,6 @@ impl<'a> ExecutionContext<'a> {
 
     fn inx_sp(&mut self) {
         self.registers.sp += 1;
-
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -1871,8 +1870,8 @@ impl<'a> ExecutionContext<'a> {
             0xC0 => self.decode(Instruction::RNZ),
             0xC1 => self.decode(Instruction::POP(BC)),
             0xC2 => self.decode(Instruction::JNZ),
-            // 0xC3 => self.decode(Instruction::JMP),
-            0xC3 => self.decode(Instruction::CMP(A)),
+            0xC3 => self.decode(Instruction::JMP),
+            // 0xC3 => self.decode(Instruction::CMP(A)),
             0xC4 => self.decode(Instruction::CNZ),
             0xC5 => self.decode(Instruction::PUSH(B)),
             0xC6 => self.decode(Instruction::ADI),
