@@ -52,7 +52,7 @@ fn main() {
         // display.render_vram(&mut memory);
 
         // Update the debug frame buffer
-        debugger.render_char();
+        debugger.render_fb();
         // debugger.update_fb();
 
 

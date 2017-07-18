@@ -87,7 +87,7 @@ impl Debugger {
     // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
 
     // Create a temporary buffer & convert our bitmap values
-    pub fn update_fb(&mut self) -> Vec<u32> {
+    pub fn create_fb(&mut self) -> Vec<u32> {
         let mut buffer: Vec<u32> = self.font
             .bitmap
             .chunks(3)
@@ -101,8 +101,8 @@ impl Debugger {
         buffer
     }
 
-    pub fn render_char(&mut self) {
-        let mut sprite_sheet = self.update_fb();
+    pub fn render_fb(&mut self) {
+        let mut sprite_sheet = self.create_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
         for x in 0..WIDTH {
