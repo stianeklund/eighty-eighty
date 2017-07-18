@@ -29,6 +29,7 @@ impl DebugFont {
         let mut file = File::open(&path).expect("File not found");
         let mut file_data = Vec::<u8>::new();
 
+        // TODO Skip TARGA header
         // Skip BMP header & DIB for now.
         // file.seek(SeekFrom::Start(0)).expect("IO seek error");
         let result = file.read_to_end(&mut file_data);
@@ -89,26 +90,20 @@ impl Debugger {
     pub fn update_fb(&mut self) -> Vec<u32> {
         let mut buffer: Vec<u32> = self.font
             .bitmap
-            .chunks(4)
+            .chunks(3)
             .map(|buf| {
                 let buf = Cursor::new(buf)
-                    .read_u32::<LittleEndian>()
+                    .read_u24::<LittleEndian>()
                     .expect("Buffer creation failed");
                 buf
             })
-            .collect::<Vec<u32>>();
+            .collect();
         buffer
     }
 
     pub fn render_char(&mut self) {
         // let mut sprite_sheet = self.update_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-
-        // let rect_width = 50;
-        // let rect_height = 30;
-        // let rect_x = 2;
-        // let rect_y = 3;
-
         // for y in 0..rect_height {
         // for x in 0..rect_width {
         // let frame_x = rect_x + x;
@@ -121,12 +116,12 @@ impl Debugger {
         // }
 
         let mut counter = 0;
-        let mut y = 255;
-        let mut x = 0;
+        let mut y: usize = 255;
+        let mut x: usize = 0;
 
         for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 2 {
-            for y_line in 0..32 {
-                if self.font.bitmap[y * (WIDTH) + x] != 0 {
+            for y_line in 0..33 {
+                if self.font.bitmap[y * WIDTH + x] != 0 {
                     frame_buffer[counter] = 0x00FFFFFF;
                 } else {
                     frame_buffer[counter] = 0;
