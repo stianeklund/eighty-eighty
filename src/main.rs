@@ -52,8 +52,10 @@ fn main() {
         // display.render_vram(&mut memory);
 
         // Update the debug frame buffer
-        debugger.render_fb();
-        // debugger.update_fb();
+        // debugger.render_fb(30, 30);
+
+        // Draw the letter E in position 10, 10:
+        debugger.draw_sprite(10, 10, 140);
 
 
     }

@@ -115,4 +115,33 @@ impl Debugger {
         }
         self.window.update_with_buffer(&frame_buffer);
     }
+
+    pub fn draw_sprite(&mut self, x: usize, y: usize, sprite_value: usize) {
+        let mut sprite_sheet = self.create_fb();
+        let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+        let sprite_w = 32;
+        let sprite_h = 32;
+
+        let index_x = sprite_w * (sprite_value % 32);
+        let index_y = sprite_h * (sprite_value / 32);
+        let tile_w = index_x + sprite_w;
+        let tile_h = index_y + sprite_h;
+
+        let mut offset = 0;
+        let mut line = 0;
+
+        for i in index_y..tile_h {
+            for j in index_x..tile_w {
+                // Subtract 255 from the y index to flip the coordinates.
+                // TODO Improve this. Create lookup function for printing
+                frame_buffer[x + line + WIDTH * (y + offset)] = sprite_sheet[j +
+                                                                             ((255 - i) * HEIGHT)];
+                line += 1;
+            }
+            line = 0;
+            offset += 1;
+        }
+        self.window.update_with_buffer(&frame_buffer);
+    }
 }
