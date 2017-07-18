@@ -27,16 +27,16 @@ impl DebugFont {
         // TODO: Improve path handling.
         let path = Path::new("/home/stian/dev/projects/eighty-eighty/assets/ExportedFont.tga");
         let mut file = File::open(&path).expect("File not found");
-        let mut file_data = Vec::<u8>::new();
 
-        // TODO Skip TARGA header
-        // Skip BMP header & DIB for now.
-        // file.seek(SeekFrom::Start(0)).expect("IO seek error");
-        let result = file.read_to_end(&mut file_data);
-
+        // This is the exact number of bytes of image data we want to read
+        // By doing this we exclude the pesky footer data.
+        // The header is 18 bytes long, and therefor we skip it entirely.
+        let mut file_data = vec![0; WIDTH * HEIGHT * 3];
+        file.seek(SeekFrom::Start(18)).expect("IO Seek error");
+        let result = file.read_exact(&mut file_data);
 
         match result {
-            Ok(result) => println!("Read {:?}: Bitmap {} bytes", &path, result),
+            Ok(result) => println!("Read {:?}: Bitmap {:?} bytes", &path, result),
             Err(e) => panic!("IO Error:: {}", e),
         }
         // This may not be entirely correct, but for now lets just
@@ -47,11 +47,11 @@ impl DebugFont {
 }
 
 // TODO: Implement a way to display Cpu register values & memory pages.
-
 // I.e displaying VRAM page values & main memory values.
 // We also want to be able to peek at Cpu register values.
 // Displaying it all in one nice window vs printing a ton of text.
 // Whether or not that is possible with the current infrastructure I don't know
+
 pub struct Debugger {
     pub font: DebugFont,
     pub bitmap: font::Bitmap,
@@ -94,7 +94,7 @@ impl Debugger {
             .map(|buf| {
                 let buf = Cursor::new(buf)
                     .read_u24::<LittleEndian>()
-                    .expect("Buffer creation failed");
+                    .unwrap();
                 buf
             })
             .collect();
@@ -102,37 +102,16 @@ impl Debugger {
     }
 
     pub fn render_char(&mut self) {
-        // let mut sprite_sheet = self.update_fb();
+        let mut sprite_sheet = self.update_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
-        // for y in 0..rect_height {
-        // for x in 0..rect_width {
-        // let frame_x = rect_x + x;
-        // let frame_y = rect_y + y;
-        //
-        // let buf_pos = frame_y * (WIDTH) + frame_x;
-        // frame_buffer[buf_pos] = 0x00FFFFFF;
-        //
-        // }
-        // }
 
-        let mut counter = 0;
-        let mut y: usize = 255;
-        let mut x: usize = 0;
-
-        for offset in 0..(WIDTH - 1) * (HEIGHT - 1) / 2 {
-            for y_line in 0..33 {
-                if self.font.bitmap[y * WIDTH + x] != 0 {
-                    frame_buffer[counter] = 0x00FFFFFF;
-                } else {
-                    frame_buffer[counter] = 0;
-                }
-                y -= 1;
-                if y_line <= 0 {
-                    y = 255;
-                }
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                let image_y = 255 - y;
+                let offset = (WIDTH * image_y) + x;
+                let frame_offset = (WIDTH * y) + x;
+                frame_buffer[frame_offset] = sprite_sheet[offset];
             }
-            counter += 1;
-            x += 3;
         }
         self.window.update_with_buffer(&frame_buffer);
     }
