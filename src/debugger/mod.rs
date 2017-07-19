@@ -116,10 +116,11 @@ impl Debugger {
         self.window.update_with_buffer(&frame_buffer);
     }
 
-    pub fn draw_sprite(&mut self, x: usize, y: usize, sprite_value: usize) {
+    pub fn draw_sprite(&mut self, x: usize, y: usize, character: char) {
         let mut sprite_sheet = self.create_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
+        let sprite_value = self.lookup_char(character);
         let sprite_w = 32;
         let sprite_h = 32;
 
@@ -143,5 +144,75 @@ impl Debugger {
             offset += 1;
         }
         self.window.update_with_buffer(&frame_buffer);
+    }
+    // Looks up charcter from char & provides us with a corresponding value
+    fn lookup_char(&self, character: char) -> usize {
+        match character {
+            '!' => 0,
+            '"' => 1,
+            '#' => 2,
+            '$' => 3,
+            '%' => 4,
+            '&' => 5,
+            '\'' => 6,
+            '(' => 7,
+            ')' => 40,
+            '*' => 41,
+            '+' => 42,
+            ',' => 43,
+            '-' => 44,
+            '.' => 45,
+            '/' => 46,
+            '0' => 47,
+            '1' => 64,
+            '2' => 65,
+            '3' => 66,
+            '4' => 67,
+            '5' => 68,
+            '6' => 69,
+            '7' => 70,
+            '8' => 71,
+            '9' => 96,
+            ':' => 97,
+            ';' => 98,
+            '<' => 99,
+            '=' => 100,
+            '>' => 101,
+            '?' => 102,
+            '@' => 103,
+            'A' => 128,
+            'B' => 129,
+            'C' => 130,
+            'D' => 131,
+            'E' => 132,
+            'F' => 133,
+            'G' => 134,
+            'H' => 135,
+            'I' => 160,
+            'J' => 161,
+            'K' => 162,
+            'L' => 163,
+            'M' => 164,
+            'N' => 165,
+            'O' => 166,
+            'P' => 167,
+            'Q' => 192,
+            'R' => 193,
+            'S' => 194,
+            'T' => 195,
+            'U' => 196,
+            'V' => 197,
+            'W' => 198,
+            'X' => 199,
+            'Y' => 224,
+            'Z' => 225,
+            '[' => 226,
+            '\\' => 227,
+            ']' => 228,
+            '^' => 229,
+            '_' => 230,
+            '`' => 231,
+            _ => 65,
+        }
     }
 }

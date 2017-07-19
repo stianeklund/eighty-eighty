@@ -54,8 +54,12 @@ fn main() {
         // Update the debug frame buffer
         // debugger.render_fb(30, 30);
 
-        // Draw the letter E in position 10, 10:
-        debugger.draw_sprite(10, 10, 140);
+        debugger.draw_sprite(10,40,'H');
+        debugger.draw_sprite(20,40,'E');
+        debugger.draw_sprite(30,40,'L');
+        debugger.draw_sprite(40,40,'L');
+        debugger.draw_sprite(50,40,'O');
+
 
 
     }
