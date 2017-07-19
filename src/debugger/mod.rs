@@ -76,7 +76,7 @@ impl Debugger {
             font: DebugFont::new(),
             bitmap: font::Bitmap::new(),
             window: window,
-            fb: vec![0; 65536],
+            fb: vec![0; WIDTH * HEIGHT],
             memory_page: vec![0; 65536],
         }
     }
@@ -101,21 +101,21 @@ impl Debugger {
 
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
-        let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+        // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
                 let image_y = 255 - y;
                 let offset = (WIDTH * image_y) + x;
                 let frame_offset = (WIDTH * y) + x;
-                frame_buffer[frame_offset] = sprite_sheet[offset];
+                self.fb[frame_offset] = sprite_sheet[offset];
             }
         }
     }
 
     pub fn draw_sprite(&mut self, x: usize, y: usize, character: char) {
         let mut sprite_sheet = self.create_fb();
-        let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+        // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
         // Lookup charcter in `lookup_char()` and return an integer value.
         let sprite_value = self.lookup_char(character);
@@ -134,14 +134,13 @@ impl Debugger {
         for i in index_y..tile_h {
             for j in index_x..tile_w {
                 // Subtract 255 from the y index to flip the coordinates.
-                frame_buffer[x + line + WIDTH * (y + offset)] = sprite_sheet[j +
-                                                                             ((255 - i) * HEIGHT)];
+                self.fb[x + line + WIDTH * (y + offset)] = sprite_sheet[j + ((255 - i) * HEIGHT)];
                 line += 1;
             }
             line = 0;
             offset += 1;
+            self.window.update_with_buffer(&self.fb);
         }
-        self.window.update_with_buffer(&frame_buffer);
     }
 
     pub fn draw_text(&mut self, text: &str) {
@@ -156,71 +155,71 @@ impl Debugger {
     // Looks up charcter from char & provides us with a corresponding value
     fn lookup_char(&self, character: char) -> usize {
         match character {
-            '!' => 0,
-            '"' => 1,
-            '#' => 2,
-            '$' => 3,
-            '%' => 4,
-            '&' => 5,
-            '\'' => 6,
-            '(' => 7,
-            ')' => 40,
-            '*' => 41,
-            '+' => 42,
-            ',' => 43,
-            '-' => 44,
-            '.' => 45,
-            '/' => 46,
-            '0' => 47,
-            '1' => 64,
-            '2' => 65,
-            '3' => 66,
-            '4' => 67,
-            '5' => 68,
-            '6' => 69,
-            '7' => 70,
-            '8' => 71,
-            '9' => 96,
-            ':' => 97,
-            ';' => 98,
-            '<' => 99,
-            '=' => 100,
-            '>' => 101,
-            '?' => 102,
-            '@' => 103,
-            'A' => 128,
-            'B' => 129,
-            'C' => 130,
-            'D' => 131,
-            'E' => 132,
-            'F' => 133,
-            'G' => 134,
-            'H' => 135,
-            'I' => 160,
-            'J' => 161,
-            'K' => 162,
-            'L' => 163,
-            'M' => 164,
-            'N' => 165,
-            'O' => 166,
-            'P' => 167,
-            'Q' => 192,
-            'R' => 193,
-            'S' => 194,
-            'T' => 195,
-            'U' => 196,
-            'V' => 197,
-            'W' => 198,
-            'X' => 199,
-            'Y' => 224,
-            'Z' => 225,
-            '[' => 226,
-            '\\' => 227,
-            ']' => 228,
-            '^' => 229,
-            '_' => 230,
-            '`' => 231,
-            _ => 250,
+            ' ' => 0,
+            '!' => 1,
+            '"' => 2,
+            '#' => 3,
+            '$' => 4,
+            '%' => 5,
+            '&' => 6,
+            '\'' => 7,
+            '(' => 40,
+            ')' => 41,
+            '*' => 42,
+            '+' => 43,
+            ',' => 44,
+            '-' => 45,
+            '.' => 46,
+            '/' => 47,
+            '0' => 64,
+            '1' => 65,
+            '2' => 66,
+            '3' => 67,
+            '4' => 68,
+            '5' => 69,
+            '6' => 70,
+            '7' => 71,
+            '8' => 96,
+            '9' => 97,
+            ':' => 98,
+            ';' => 99,
+            '<' => 100,
+            '=' => 101,
+            '>' => 102,
+            '?' => 103,
+            '@' => 128,
+            'A' => 129,
+            'B' => 130,
+            'C' => 131,
+            'D' => 133,
+            'E' => 134,
+            'F' => 158,
+            'G' => 159,
+            'H' => 160,
+            'I' => 161,
+            'J' => 162,
+            'K' => 163,
+            'L' => 164,
+            'M' => 165,
+            'N' => 166,
+            'O' => 168,
+            'P' => 192,
+            'Q' => 193,
+            'R' => 194,
+            'S' => 195,
+            'T' => 196,
+            'U' => 197,
+            'V' => 198,
+            'W' => 199,
+            'X' => 224,
+            'Y' => 225,
+            'Z' => 226,
+            '[' => 227,
+            '\\' => 228,
+            ']' => 229,
+            '^' => 230,
+            '_' => 231,
+            _ => 0,
         }
     }
 }

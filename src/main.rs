@@ -39,7 +39,8 @@ fn main() {
     let mut registers = Registers::new();
     // let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
-    debugger.draw_text("HELLO");
+    // debugger.draw_text("");
+    debugger.draw_sprite(10,10,'_');
 
     // Load binary file
     memory.load_bin(bin);
