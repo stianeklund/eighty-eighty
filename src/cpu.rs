@@ -748,7 +748,8 @@ impl<'a> ExecutionContext<'a> {
         match reg {
             RegisterPair::BC => {
                 value;
-                value += (self.registers.reg_b as u16) >> 8 | (self.registers.reg_c as u16);
+                value = value.wrapping_add((self.registers.reg_b as u16) >> 8 |
+                                           (self.registers.reg_c as u16));
                 self.registers.half_carry = 0 < (value & 0xFFFF);
             }
 

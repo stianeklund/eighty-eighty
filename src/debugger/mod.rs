@@ -143,12 +143,11 @@ impl Debugger {
         }
     }
 
-    pub fn draw_text(&mut self, text: &str) {
+    pub fn draw_text(&mut self, text: &str, mut x: usize, mut y: usize) {
 
-        let mut x = 0;
-        for ch in text.chars() {
-            self.draw_sprite(x, 10, ch);
-            // Increment the x position by 10 to prevent overlapping
+        for ch in text.to_uppercase().chars() {
+            self.draw_sprite(x, y, ch);
+            // TODO Look into X & Y padding values
             x += 10;
         }
     }
@@ -191,10 +190,10 @@ impl Debugger {
             'A' => 129,
             'B' => 130,
             'C' => 131,
-            'D' => 133,
-            'E' => 134,
-            'F' => 158,
-            'G' => 159,
+            'D' => 132,
+            'E' => 133,
+            'F' => 134,
+            'G' => 135,
             'H' => 160,
             'I' => 161,
             'J' => 162,
@@ -202,7 +201,7 @@ impl Debugger {
             'L' => 164,
             'M' => 165,
             'N' => 166,
-            'O' => 168,
+            'O' => 167,
             'P' => 192,
             'Q' => 193,
             'R' => 194,
