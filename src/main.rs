@@ -45,22 +45,11 @@ fn main() {
 
 
     // TODO Implement break & step keyboard actions
-
     loop {
         // CPU Execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
+        debugger.draw_text("HELLO");
         // display.render_vram(&mut memory);
-
-        // Update the debug frame buffer
-        // debugger.render_fb(30, 30);
-
-        debugger.draw_sprite(10,40,'H');
-        debugger.draw_sprite(20,40,'E');
-        debugger.draw_sprite(30,40,'L');
-        debugger.draw_sprite(40,40,'L');
-        debugger.draw_sprite(50,40,'O');
-
-
 
     }
 }

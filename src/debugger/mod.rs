@@ -10,6 +10,7 @@ use std::io::{Seek, SeekFrom};
 use std::path::Path;
 use display::Display;
 use memory::Memory;
+use std::thread;
 
 mod font;
 
@@ -81,11 +82,8 @@ impl Debugger {
     }
 
     // Cursor wraps another type & provides it with a Seek implementation
-    // Chunks is a iterator that provides us with a slice
-    // Map provides a closure for this & creates an iterator
     // which calls that closure on each element.
-    // We need a chunk size of 4 because 8 * 4 = 32 and we need a u32 to present
-
+    // We need a chunk size of 3 because 8 * 3 = 24 and we need a 24bit integer to present
     // Create a temporary buffer & convert our bitmap values
     pub fn create_fb(&mut self) -> Vec<u32> {
         let mut buffer: Vec<u32> = self.font
@@ -113,14 +111,15 @@ impl Debugger {
                 frame_buffer[frame_offset] = sprite_sheet[offset];
             }
         }
-        self.window.update_with_buffer(&frame_buffer);
     }
 
     pub fn draw_sprite(&mut self, x: usize, y: usize, character: char) {
         let mut sprite_sheet = self.create_fb();
         let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
+        // Lookup charcter in `lookup_char()` and return an integer value.
         let sprite_value = self.lookup_char(character);
+
         let sprite_w = 32;
         let sprite_h = 32;
 
@@ -135,15 +134,25 @@ impl Debugger {
         for i in index_y..tile_h {
             for j in index_x..tile_w {
                 // Subtract 255 from the y index to flip the coordinates.
-                // TODO Improve this. Create lookup function for printing
                 frame_buffer[x + line + WIDTH * (y + offset)] = sprite_sheet[j +
                                                                              ((255 - i) * HEIGHT)];
                 line += 1;
             }
             line = 0;
             offset += 1;
+            self.window.update_with_buffer(&frame_buffer);
         }
-        self.window.update_with_buffer(&frame_buffer);
+    }
+
+    pub fn draw_text(&mut self, text: &str) {
+        let collection: Vec<char> = text.chars().collect();
+
+        let mut x = 10;
+        for ch in text.chars() {
+            thread::sleep_ms(2);
+            self.draw_sprite(x, 10, ch);
+            x += 10;
+        }
     }
     // Looks up charcter from char & provides us with a corresponding value
     fn lookup_char(&self, character: char) -> usize {
@@ -212,7 +221,7 @@ impl Debugger {
             '^' => 229,
             '_' => 230,
             '`' => 231,
-            _ => 65,
+            _ => 250,
         }
     }
 }
