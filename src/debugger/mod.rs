@@ -140,17 +140,16 @@ impl Debugger {
             }
             line = 0;
             offset += 1;
-            self.window.update_with_buffer(&frame_buffer);
         }
+        self.window.update_with_buffer(&frame_buffer);
     }
 
     pub fn draw_text(&mut self, text: &str) {
-        let collection: Vec<char> = text.chars().collect();
 
-        let mut x = 10;
+        let mut x = 0;
         for ch in text.chars() {
-            thread::sleep_ms(2);
             self.draw_sprite(x, 10, ch);
+            // Increment the x position by 10 to prevent overlapping
             x += 10;
         }
     }

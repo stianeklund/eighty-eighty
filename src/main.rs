@@ -39,6 +39,7 @@ fn main() {
     let mut registers = Registers::new();
     // let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
+    debugger.draw_text("HELLO");
 
     // Load binary file
     memory.load_bin(bin);
@@ -48,7 +49,6 @@ fn main() {
     loop {
         // CPU Execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        debugger.draw_text("HELLO");
         // display.render_vram(&mut memory);
 
     }
