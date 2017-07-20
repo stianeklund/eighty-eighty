@@ -1,7 +1,7 @@
 use super::minifb::{Key, Scale, WindowOptions, Window};
 use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 
-
+use std::char;
 use std::io::prelude;
 use std::io::Read;
 use std::io::Cursor;
@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
 use display::Display;
+use cpu::{ExecutionContext, Registers};
 use memory::Memory;
 use std::thread;
 
@@ -113,11 +114,13 @@ impl Debugger {
         }
     }
 
+    // Takes a `char` type as input along with x & y positions.
     pub fn draw_sprite(&mut self, x: usize, y: usize, character: char) {
         let mut sprite_sheet = self.create_fb();
         // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-        // Lookup charcter in `lookup_char()` and return an integer value.
+        // Perform a lookup of the character in `lookup_char()`.
+        // Returns a integer value to be used with the frame buffer.
         let sprite_value = self.lookup_char(character);
 
         let sprite_w = 32;
@@ -143,6 +146,19 @@ impl Debugger {
         }
     }
 
+    pub fn num_to_text(&mut self, num: u8, mut x: usize, mut y: usize) {
+
+        let value = format!("{:04X}", num);
+        self.draw_text(&value, x, y);
+        // self.draw_text("Register A: ", 20, 40);
+    }
+
+    pub fn draw_number(&mut self, num: u32, mut x: usize, mut y: usize) {
+
+        for ch in char::from_digit(num, 10) {
+            self.draw_sprite(x, y, ch as char);
+        }
+    }
     pub fn draw_text(&mut self, text: &str, mut x: usize, mut y: usize) {
 
         for ch in text.to_uppercase().chars() {

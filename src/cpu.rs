@@ -26,15 +26,15 @@ const DEBUG: bool = true;
 
 // The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Registers {
-    opcode: u8,
+    pub opcode: u8,
 
     pc: u16,
     sp: u16,
 
     // 8-bit Registers
-    reg_a: u8,
+   pub reg_a: u8,
     reg_b: u8,
     reg_c: u8,
     reg_d: u8,
