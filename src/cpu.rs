@@ -35,30 +35,30 @@ pub struct Registers {
 
     // 8-bit Registers
     pub reg_a: u8,
-    reg_b: u8,
-    reg_c: u8,
-    reg_d: u8,
-    reg_e: u8,
-    reg_h: u8,
-    reg_l: u8,
-    reg_m: u8, // psuedo register
+    pub reg_b: u8,
+    pub reg_c: u8,
+    pub reg_d: u8,
+    pub reg_e: u8,
+    pub reg_h: u8,
+    pub reg_l: u8,
+    pub reg_m: u8, // psuedo register
 
     // 16-bit Register pairs
     reg_bc: u16,
     reg_de: u16,
     reg_hl: u16,
 
-    reg_psw: u16,
+    pub reg_psw: u16,
 
     // Status Register (Flags)
-    sign: bool,
-    zero: bool,
-    parity: bool,
+    pub sign: bool,
+    pub zero: bool,
+    pub parity: bool,
 
     pub carry: bool,
-    half_carry: bool,
+    pub half_carry: bool,
 
-    cycles: usize,
+    pub cycles: usize,
 }
 
 impl Registers {

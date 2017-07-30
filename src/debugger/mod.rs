@@ -17,11 +17,16 @@ mod font;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
+#[derive(Debug, Copy, Clone)]
+pub enum DebugType {
+    Bool(bool),
+    U8(u8),
+    U16(u16),
+}
 
 pub struct DebugFont {
     pub bitmap: Vec<u8>,
 }
-
 impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
@@ -94,17 +99,23 @@ impl Debugger {
         buffer
     }
 
-    // TODO We want to take a value in, determine it's type then
-    // call the respective function based upon the match result.
-    // The below is just a draft of what we want do accomplish albeit incorrect code.
-    // pub fn draw_debug(self, value: u8 | bool | &str, x: usize, y: usize) {
-    // match value {
-    // bool => {
-    // self.draw_bool(value, x, y)
-    // },
+    // pub fn draw_register(&mut self, register: &str, value: u8) {
+    // self.draw_text("Registers", 0, 0);
     //
+    // match register {
+    // "A" => self.draw_text(register, 10, 10),
+    // "B" => self.draw_text(register, 10, 20),
+    // "C" => self.draw_text(register, 10, 30),
+    // "D" => self.draw_text(register, 10, 40),
+    // "E" => self.draw_text(register, 10, 50),
+    // "H" => self.draw_text(register, 10, 60),
+    // "L" => self.draw_text(register, 10, 70),
+    // _ => println!("Register not covered by draw_register")
     // }
+    //
+    // self.draw_num(value, 40, 10);
     // }
+
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
         // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];

@@ -24,12 +24,6 @@ mod memory;
 mod keypad;
 
 use cpu::{ExecutionContext, Registers};
-pub fn draw_debug() {
-    debugger.draw_num(registers.reg_a, 130, 20);
-    debugger.draw_num(registers.opcode, 130, 40);
-    debugger.draw_num(registers.pc as u8, 130, 60);
-    debugger.draw_bool(registers.carry, 130, 80);
-}
 
 fn main() {
 
@@ -47,20 +41,25 @@ fn main() {
     // let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
 
-    debugger.draw_text("Opcode:", 10, 20);
-    debugger.draw_text("Register A:", 10, 40);
-    debugger.draw_text("PC:", 10, 60);
-    debugger.draw_text("Carry::", 10, 80);
+    // debugger.draw_text("Opcode:", 10, 20);
+    // debugger.draw_text("Register A:", 10, 40);
+    // debugger.draw_text("PC:", 10, 60);
+    // debugger.draw_text("carry::", 10, 80);
 
-    // Load binary file
+    // load binary file
     memory.load_bin(bin);
 
 
-    // TODO Implement break & step keyboard actions
+    // TODO implement break & step keyboard actions
     loop {
-        // CPU Execution
+        // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        draw_debug();
+        // debugger.draw_register("A", registers.reg_a);
+        // debugger.draw_register("B", registers.reg_b);
+        // debugger.draw_num(registers.reg_a, 130, 20);
+        // debugger.draw_num(registers.opcode, 130, 40);
+        // debugger.draw_num(registers.pc as u8, 130, 60);
+        // debugger.draw_bool(registers.carry, 130, 80);
         // display.render_vram(&mut memory);
 
     }
