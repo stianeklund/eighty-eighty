@@ -14,6 +14,7 @@ use std::thread;
 use minifb::{Window, WindowOptions, Scale, Key};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use debugger::{HEIGHT, WIDTH};
+
 mod cpu;
 mod opcode;
 mod display;
@@ -23,6 +24,12 @@ mod memory;
 mod keypad;
 
 use cpu::{ExecutionContext, Registers};
+pub fn draw_debug() {
+    debugger.draw_num(registers.reg_a, 130, 20);
+    debugger.draw_num(registers.opcode, 130, 40);
+    debugger.draw_num(registers.pc as u8, 130, 60);
+    debugger.draw_bool(registers.carry, 130, 80);
+}
 
 fn main() {
 
@@ -42,6 +49,8 @@ fn main() {
 
     debugger.draw_text("Opcode:", 10, 20);
     debugger.draw_text("Register A:", 10, 40);
+    debugger.draw_text("PC:", 10, 60);
+    debugger.draw_text("Carry::", 10, 80);
 
     // Load binary file
     memory.load_bin(bin);
@@ -51,11 +60,7 @@ fn main() {
     loop {
         // CPU Execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        //debugger.draw_number(registers.opcode, 115, 20);
-        // debugger.draw_number(registers.reg_a,120, 40);
-        debugger.num_to_text(registers.reg_a, 130, 20);
-        debugger.num_to_text(registers.opcode, 130, 40);
-
+        draw_debug();
         // display.render_vram(&mut memory);
 
     }

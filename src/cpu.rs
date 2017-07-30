@@ -30,11 +30,11 @@ const DEBUG: bool = true;
 pub struct Registers {
     pub opcode: u8,
 
-    pc: u16,
-    sp: u16,
+    pub pc: u16,
+    pub sp: u16,
 
     // 8-bit Registers
-   pub reg_a: u8,
+    pub reg_a: u8,
     reg_b: u8,
     reg_c: u8,
     reg_d: u8,
@@ -55,7 +55,7 @@ pub struct Registers {
     zero: bool,
     parity: bool,
 
-    carry: bool,
+    pub carry: bool,
     half_carry: bool,
 
     cycles: usize,

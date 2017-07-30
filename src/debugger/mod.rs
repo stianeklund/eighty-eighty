@@ -48,12 +48,6 @@ impl DebugFont {
     }
 }
 
-// TODO: Implement a way to display Cpu register values & memory pages.
-// I.e displaying VRAM page values & main memory values.
-// We also want to be able to peek at Cpu register values.
-// Displaying it all in one nice window vs printing a ton of text.
-// Whether or not that is possible with the current infrastructure I don't know
-
 pub struct Debugger {
     pub font: DebugFont,
     pub bitmap: font::Bitmap,
@@ -85,7 +79,7 @@ impl Debugger {
     // Cursor wraps another type & provides it with a Seek implementation
     // which calls that closure on each element.
     // We need a chunk size of 3 because 8 * 3 = 24 and we need a 24bit integer to present
-    // Create a temporary buffer & convert our bitmap values
+    // Create a temporary buffer & convert our bitmap values to be presented
     pub fn create_fb(&mut self) -> Vec<u32> {
         let mut buffer: Vec<u32> = self.font
             .bitmap
@@ -100,6 +94,17 @@ impl Debugger {
         buffer
     }
 
+    // TODO We want to take a value in, determine it's type then
+    // call the respective function based upon the match result.
+    // The below is just a draft of what we want do accomplish albeit incorrect code.
+    // pub fn draw_debug(self, value: u8 | bool | &str, x: usize, y: usize) {
+    // match value {
+    // bool => {
+    // self.draw_bool(value, x, y)
+    // },
+    //
+    // }
+    // }
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
         // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
@@ -146,19 +151,17 @@ impl Debugger {
         }
     }
 
-    pub fn num_to_text(&mut self, num: u8, mut x: usize, mut y: usize) {
+    pub fn draw_bool(&mut self, value: bool, mut x: usize, mut y: usize) {
+
+        let value = format!("{}", value);
+        self.draw_text(&value, x, y);
+    }
+    pub fn draw_num(&mut self, num: u8, mut x: usize, mut y: usize) {
 
         let value = format!("{:04X}", num);
         self.draw_text(&value, x, y);
-        // self.draw_text("Register A: ", 20, 40);
     }
 
-    pub fn draw_number(&mut self, num: u32, mut x: usize, mut y: usize) {
-
-        for ch in char::from_digit(num, 10) {
-            self.draw_sprite(x, y, ch as char);
-        }
-    }
     pub fn draw_text(&mut self, text: &str, mut x: usize, mut y: usize) {
 
         for ch in text.to_uppercase().chars() {
