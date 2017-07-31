@@ -32,8 +32,8 @@ impl DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
 
         // TODO: Improve path handling.
-        let path = Path::new("/home/stian/dev/projects/eighty-eighty/assets/ExportedFont.tga");
-        let mut file = File::open(&path).expect("File not found");
+        let path: &Path = Path::new("assets/ExportedFont.tga");
+        let mut file = File::open(&path).expect("Missing asset? Check your path");
 
         // This is the exact number of bytes of image data we want to read
         // By doing this we exclude the pesky footer data.

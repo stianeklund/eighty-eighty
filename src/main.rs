@@ -29,7 +29,7 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        println!("[Rom path]");
+        println!("[Please specify ROM as an argument]");
         return;
     }
 
@@ -52,7 +52,7 @@ fn main() {
     loop {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        // Update registry values continously
+        // Update registry values continuously
         debugger.render_reg_values(registers);
         // display.render_vram(&mut memory);
 

@@ -83,10 +83,10 @@ impl Memory {
 
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);
-        let mut file = File::open(&path).expect("File open failed");
+        let mut file = File::open(&path).expect("Couldn't load binary");
         let mut buf = Vec::new();
 
-        file.read_to_end(&mut buf).expect("Failed to read file");
+        file.read_to_end(&mut buf).expect("Failed to read binary");
         let buf_len = buf.len();
         for i in 0..buf_len {
             self.memory[i] = buf[i];
