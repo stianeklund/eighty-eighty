@@ -13,8 +13,6 @@ use cpu::{ExecutionContext, Registers};
 use memory::Memory;
 use std::thread;
 
-mod font;
-
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
 #[derive(Debug, Copy, Clone)]
@@ -64,12 +62,15 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new() -> Debugger {
-        let mut window =
-            Window::new("Debugger",
-                        WIDTH,
-                        HEIGHT,
-                        WindowOptions { scale: Scale::X2, ..WindowOptions::default() })
-                .unwrap();
+        let mut window = Window::new(
+            "Debugger",
+            WIDTH,
+            HEIGHT,
+            WindowOptions {
+                scale: Scale::X2,
+                ..WindowOptions::default()
+            },
+        ).unwrap();
 
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
@@ -90,9 +91,7 @@ impl Debugger {
             .bitmap
             .chunks(3)
             .map(|buf| {
-                let buf = Cursor::new(buf)
-                    .read_u24::<LittleEndian>()
-                    .unwrap();
+                let buf = Cursor::new(buf).read_u24::<LittleEndian>().unwrap();
                 buf
             })
             .collect();
@@ -113,7 +112,7 @@ impl Debugger {
         self.draw_num(registers.sp as usize, 130, 75);
         self.draw_bool(registers.carry, 130, 90);
     }
-        pub fn render_fb(&mut self) {
+    pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
         // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
@@ -156,7 +155,6 @@ impl Debugger {
             line = 0;
             offset += 1;
         }
-        self.window.update_with_buffer(&self.fb);
     }
 
     pub fn draw_bool(&mut self, value: bool, mut x: usize, mut y: usize) {

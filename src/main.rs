@@ -54,6 +54,9 @@ fn main() {
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // Update registry values continuously
         debugger.render_reg_values(registers);
+
+        // Update window with our frame buffer here instead of within the rendering function
+        debugger.window.update_with_buffer(&debugger.fb);
         // display.render_vram(&mut memory);
 
     }
