@@ -101,15 +101,17 @@ impl Debugger {
 
     pub fn draw_register_text(&mut self) {
         self.draw_text("Opcode:", 10, 20);
-        self.draw_text("Register A:", 10, 40);
+        self.draw_text("Register A:", 10, 35);
         self.draw_text("PC:", 10, 60);
-        self.draw_text("Carry:", 10, 80);
+        self.draw_text("Stack", 10, 75);
+        self.draw_text("Carry:", 10, 90);
     }
     pub fn render_reg_values(&mut self, registers: Registers) {
-        self.draw_num(registers.opcode, 130, 20);
-        self.draw_num(registers.reg_a, 130, 40);
-        self.draw_num(registers.pc as u8, 130, 60);
-        self.draw_bool(registers.carry, 130, 80);
+        self.draw_num(registers.opcode as usize, 130, 20);
+        self.draw_num(registers.reg_a as usize, 130, 35);
+        self.draw_num(registers.pc as usize, 130, 60);
+        self.draw_num(registers.sp as usize, 130, 75);
+        self.draw_bool(registers.carry, 130, 90);
     }
         pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
@@ -162,7 +164,7 @@ impl Debugger {
         let value = format!("{}", value);
         self.draw_text(&value, x, y);
     }
-    pub fn draw_num(&mut self, num: u8, mut x: usize, mut y: usize) {
+    pub fn draw_num(&mut self, num: usize, mut x: usize, mut y: usize) {
 
         let value = format!("{:04X}", num);
         self.draw_text(&value, x, y);
