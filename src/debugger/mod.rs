@@ -153,8 +153,8 @@ impl Debugger {
             }
             line = 0;
             offset += 1;
-            self.window.update_with_buffer(&self.fb);
         }
+        self.window.update_with_buffer(&self.fb);
     }
 
     pub fn draw_bool(&mut self, value: bool, mut x: usize, mut y: usize) {
