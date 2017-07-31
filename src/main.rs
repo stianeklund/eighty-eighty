@@ -41,10 +41,8 @@ fn main() {
     // let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
 
-    // debugger.draw_text("Opcode:", 10, 20);
-    // debugger.draw_text("Register A:", 10, 40);
-    // debugger.draw_text("PC:", 10, 60);
-    // debugger.draw_text("carry::", 10, 80);
+    // We don't need to redraw this so placing it outside the loop
+    debugger.draw_register_text();
 
     // load binary file
     memory.load_bin(bin);
@@ -54,12 +52,8 @@ fn main() {
     loop {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
-        // debugger.draw_register("A", registers.reg_a);
-        // debugger.draw_register("B", registers.reg_b);
-        // debugger.draw_num(registers.reg_a, 130, 20);
-        // debugger.draw_num(registers.opcode, 130, 40);
-        // debugger.draw_num(registers.pc as u8, 130, 60);
-        // debugger.draw_bool(registers.carry, 130, 80);
+        // Update registry values continously
+        debugger.render_reg_values(registers);
         // display.render_vram(&mut memory);
 
     }

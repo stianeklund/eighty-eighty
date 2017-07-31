@@ -99,24 +99,19 @@ impl Debugger {
         buffer
     }
 
-    // pub fn draw_register(&mut self, register: &str, value: u8) {
-    // self.draw_text("Registers", 0, 0);
-    //
-    // match register {
-    // "A" => self.draw_text(register, 10, 10),
-    // "B" => self.draw_text(register, 10, 20),
-    // "C" => self.draw_text(register, 10, 30),
-    // "D" => self.draw_text(register, 10, 40),
-    // "E" => self.draw_text(register, 10, 50),
-    // "H" => self.draw_text(register, 10, 60),
-    // "L" => self.draw_text(register, 10, 70),
-    // _ => println!("Register not covered by draw_register")
-    // }
-    //
-    // self.draw_num(value, 40, 10);
-    // }
-
-    pub fn render_fb(&mut self) {
+    pub fn draw_register_text(&mut self) {
+        self.draw_text("Opcode:", 10, 20);
+        self.draw_text("Register A:", 10, 40);
+        self.draw_text("PC:", 10, 60);
+        self.draw_text("Carry:", 10, 80);
+    }
+    pub fn render_reg_values(&mut self, registers: Registers) {
+        self.draw_num(registers.opcode, 130, 20);
+        self.draw_num(registers.reg_a, 130, 40);
+        self.draw_num(registers.pc as u8, 130, 60);
+        self.draw_bool(registers.carry, 130, 80);
+    }
+        pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
         // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
