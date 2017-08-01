@@ -22,10 +22,8 @@ pub struct DebugFont {
 impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
-
-        // TODO: Improve path handling.
         let path: &Path = Path::new("assets/ExportedFont.tga");
-        let mut file = File::open(&path).expect("Missing asset? Check your path");
+        let mut file = File::open(&path).expect("Asset not found");
 
         // This is the exact number of bytes of image data we want to read
         // By doing this we exclude the pesky footer data.
@@ -35,7 +33,7 @@ impl DebugFont {
         let result = file.read_exact(&mut file_data);
 
         match result {
-            Ok(result) => println!("Read {:?}: Bitmap {:?} bytes", &path, result),
+            Ok(result) => println!("{:?} Read {:?}", result, file),
             Err(e) => panic!("IO Error:: {}", e),
         }
         // This may not be entirely correct, but for now lets just
@@ -55,15 +53,14 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new() -> Debugger {
-        let mut window = Window::new(
-            "Debugger",
-            WIDTH,
-            HEIGHT,
-            WindowOptions {
-                scale: Scale::X2,
-                ..WindowOptions::default()
-            },
-        ).unwrap();
+        let mut window = Window::new("Debugger",
+                                     WIDTH,
+                                     HEIGHT,
+                                     WindowOptions {
+                                         scale: Scale::X2,
+                                         ..WindowOptions::default()
+                                     })
+                .unwrap();
 
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
@@ -83,30 +80,43 @@ impl Debugger {
             .bitmap
             .chunks(3)
             .map(|buf| {
-                let buf = Cursor::new(buf).read_u24::<LittleEndian>().unwrap();
-                buf
-            })
+                     let buf = Cursor::new(buf).read_u24::<LittleEndian>().unwrap();
+                     buf
+                 })
             .collect();
         buffer
     }
 
-    pub fn draw_register_text(&mut self) {
-        self.draw_text("Opcode:", 10, 20);
-        self.draw_text("Register A:", 10, 35);
-        self.draw_text("PC:", 10, 60);
-        self.draw_text("Stack", 10, 75);
-        self.draw_text("Carry:", 10, 90);
+    // Draw CPU status such as PC and Stack Pointer
+    pub fn draw_cpu_status_text(&mut self) {
+        self.draw_text("Opcode:", 0, 0);
+        self.draw_text("PC:", 0, 15);
+        self.draw_text("Stack:", 0, 30);
+        self.draw_text("Cycles:", 0, 45);
     }
-    pub fn render_reg_values(&mut self, registers: Registers) {
-        self.draw_num(registers.opcode as usize, 130, 20);
-        self.draw_num(registers.reg_a as usize, 130, 35);
-        self.draw_num(registers.pc as usize, 130, 60);
-        self.draw_num(registers.sp as usize, 130, 75);
-        self.draw_bool(registers.carry, 130, 90);
+    // Draw CPU status flags
+    pub fn draw_cpu_flags_text(&mut self) {
+        self.draw_text("Sign:", 0, 65);
+        self.draw_text("Zero:", 0, 80);
+        self.draw_text("Parity:", 0, 95);
+        self.draw_text("Carry:", 0, 110);
+        self.draw_text("Half Carry:", 0, 125);
+    }
+    pub fn draw_cpu_status_values(&mut self, registers: Registers) {
+        self.draw_num(registers.opcode as usize, 120, 0);
+        self.draw_num(registers.pc as usize, 120, 15);
+        self.draw_num(registers.sp as usize, 120, 30);
+        self.draw_num(registers.cycles, 120, 45);
+    }
+    pub fn draw_cpu_flag_values(&mut self, registers: Registers) {
+        self.draw_bool(registers.sign, 120, 65);
+        self.draw_bool(registers.zero, 120, 80);
+        self.draw_bool(registers.parity, 120, 95);
+        self.draw_bool(registers.carry, 120, 110);
+        self.draw_bool(registers.half_carry, 120, 125);
     }
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
-        // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
         for x in 0..WIDTH {
             for y in 0..HEIGHT {

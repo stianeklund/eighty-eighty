@@ -41,8 +41,9 @@ fn main() {
     // let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
 
-    // We don't need to redraw this so placing it outside the loop
-    debugger.draw_register_text();
+    // This doesn't need redraw, so we can place it outside the loop.
+    debugger.draw_cpu_status_text();
+    debugger.draw_cpu_flags_text();
 
     // load binary file
     memory.load_bin(bin);
@@ -53,7 +54,8 @@ fn main() {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // Update registry values continuously
-        debugger.render_reg_values(registers);
+        debugger.draw_cpu_status_values(registers);
+        debugger.draw_cpu_flag_values(registers);
 
         // Update window with our frame buffer here instead of within the rendering function
         debugger.window.update_with_buffer(&debugger.fb);
