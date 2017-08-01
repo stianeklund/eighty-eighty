@@ -15,12 +15,6 @@ use std::thread;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
-#[derive(Debug, Copy, Clone)]
-pub enum DebugType {
-    Bool(bool),
-    U8(u8),
-    U16(u16),
-}
 
 pub struct DebugFont {
     pub bitmap: Vec<u8>,
@@ -53,7 +47,6 @@ impl DebugFont {
 
 pub struct Debugger {
     pub font: DebugFont,
-    pub bitmap: font::Bitmap,
     pub window: Window,
     pub buffer: Vec<u32>,
     pub fb: Vec<u32>,
@@ -75,7 +68,6 @@ impl Debugger {
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
             font: DebugFont::new(),
-            bitmap: font::Bitmap::new(),
             window: window,
             fb: vec![0; WIDTH * HEIGHT],
             memory_page: vec![0; 65536],
