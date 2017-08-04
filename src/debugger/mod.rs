@@ -95,10 +95,11 @@ impl Debugger {
         self.draw_text("PC:", 0, 15);
         self.draw_text("Stack:", 0, 30);
         self.draw_text("Cycles:", 0, 45);
-        self.draw_num(reg.opcode as usize, 120, 0);
-        self.draw_num(reg.pc as usize, 120, 15);
-        self.draw_num(reg.sp as usize, 120, 30);
-        self.draw_num(reg.cycles, 120, 45);
+
+        self.draw_text(&format!("{:#02X}", reg.opcode), 120, 0);
+        self.draw_text(&format!("{:02X}", reg.pc), 120, 15);
+        self.draw_text(&format!("{:X}", reg.sp), 120, 30);
+        self.draw_text(&format!("{}", reg.cycles), 120, 45);
     }
     pub fn draw_cpu_flags(&mut self, reg: Registers) {
         self.draw_text("Sign:", 0, 65);
@@ -106,11 +107,12 @@ impl Debugger {
         self.draw_text("Parity:", 0, 95);
         self.draw_text("Carry:", 0, 110);
         self.draw_text("Half Carry:", 0, 125);
-        self.draw_bool(reg.sign, 120, 65);
-        self.draw_bool(reg.zero, 120, 80);
-        self.draw_bool(reg.parity, 120, 95);
-        self.draw_bool(reg.carry, 120, 110);
-        self.draw_bool(reg.half_carry, 120, 125);
+
+        self.draw_text(&format!("{}", reg.sign), 120, 65);
+        self.draw_text(&format!("{}", reg.zero), 120, 80);
+        self.draw_text(&format!("{}", reg.parity), 120, 95);
+        self.draw_text(&format!("{}", reg.carry), 120, 110);
+        self.draw_text(&format!("{}", reg.half_carry), 120, 125);
     }
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
@@ -155,18 +157,6 @@ impl Debugger {
             offset += 1;
         }
     }
-
-    pub fn draw_bool(&mut self, value: bool, mut x: usize, mut y: usize) {
-
-        let value = format!("{}", value);
-        self.draw_text(&value, x, y);
-    }
-    pub fn draw_num(&mut self, num: usize, mut x: usize, mut y: usize) {
-
-        let value = format!("{:04X}", num);
-        self.draw_text(&value, x, y);
-    }
-
     pub fn draw_text(&mut self, text: &str, mut x: usize, mut y: usize) {
 
         for ch in text.to_uppercase().chars() {
