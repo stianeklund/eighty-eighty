@@ -38,28 +38,23 @@ fn main() {
     // let mut inter = interconnect::Interconnect::new();
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
-    // let mut display = display::Display::new();
+    let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
-
-    // This doesn't need redraw, so we can place it outside the loop.
-    debugger.draw_cpu_status_text();
-    debugger.draw_cpu_flags_text();
 
     // load binary file
     memory.load_bin(bin);
-
 
     // TODO implement break & step keyboard actions
     loop {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // Update registry values continuously
-        debugger.draw_cpu_status_values(registers);
-        debugger.draw_cpu_flag_values(registers);
+        debugger.draw_cpu_status(registers);
+        debugger.draw_cpu_flags(registers);
 
         // Update window with our frame buffer here instead of within the rendering function
         debugger.window.update_with_buffer(&debugger.fb);
-        // display.render_vram(&mut memory);
+        display.window.update_with_buffer(&display.raster);
 
     }
 }

@@ -68,9 +68,9 @@ impl Display {
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
 
-        // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scanline.
-        // We simply iterate over the entirity of the size of the video hardware
-        // & iterater over the 8 pixels per byte.
+        // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scan line.
+        // We simply iterate over the entirety of the size of the video hardware
+        // & iterate over the 8 pixels per byte.
 
         let memory = &mut memory.memory;
 
@@ -89,7 +89,6 @@ impl Display {
                 }
                 x = x.wrapping_add(1);
             }
-            // println!("X: {}, Y: {}", x, y);
             counter = counter.wrapping_add(1);
         }
 
@@ -100,7 +99,7 @@ impl Display {
         }
         // We essentially are presenting the already iterated frame buffer
         // at this point.
-        self.window.update_with_buffer(&self.raster);
+        // self.window.update_with_buffer(&self.raster);
     }
     pub fn update_screen(&mut self, x: usize, y: usize) {
 

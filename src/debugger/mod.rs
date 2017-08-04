@@ -71,8 +71,8 @@ impl Debugger {
         }
     }
 
-    // Cursor wraps another type & provides it with a Seek implementation
-    // which calls that closure on each element.
+    // Cursor wraps another type & provides it with a Seek implementation which
+    // calls that closure on each element.
     // We need a chunk size of 3 because 8 * 3 = 24 and we need a 24bit integer to present
     // Create a temporary buffer & convert our bitmap values to be presented
     pub fn create_fb(&mut self) -> Vec<u32> {
@@ -87,33 +87,30 @@ impl Debugger {
         buffer
     }
 
-    // Draw CPU status such as PC and Stack Pointer
-    pub fn draw_cpu_status_text(&mut self) {
+    pub fn draw_cpu_registers(&mut self, reg: Registers) {
+        self.draw_text("Reg A:", 0, 65);
+    }
+    pub fn draw_cpu_status(&mut self, reg: Registers) {
         self.draw_text("Opcode:", 0, 0);
         self.draw_text("PC:", 0, 15);
         self.draw_text("Stack:", 0, 30);
         self.draw_text("Cycles:", 0, 45);
+        self.draw_num(reg.opcode as usize, 120, 0);
+        self.draw_num(reg.pc as usize, 120, 15);
+        self.draw_num(reg.sp as usize, 120, 30);
+        self.draw_num(reg.cycles, 120, 45);
     }
-    // Draw CPU status flags
-    pub fn draw_cpu_flags_text(&mut self) {
+    pub fn draw_cpu_flags(&mut self, reg: Registers) {
         self.draw_text("Sign:", 0, 65);
         self.draw_text("Zero:", 0, 80);
         self.draw_text("Parity:", 0, 95);
         self.draw_text("Carry:", 0, 110);
         self.draw_text("Half Carry:", 0, 125);
-    }
-    pub fn draw_cpu_status_values(&mut self, registers: Registers) {
-        self.draw_num(registers.opcode as usize, 120, 0);
-        self.draw_num(registers.pc as usize, 120, 15);
-        self.draw_num(registers.sp as usize, 120, 30);
-        self.draw_num(registers.cycles, 120, 45);
-    }
-    pub fn draw_cpu_flag_values(&mut self, registers: Registers) {
-        self.draw_bool(registers.sign, 120, 65);
-        self.draw_bool(registers.zero, 120, 80);
-        self.draw_bool(registers.parity, 120, 95);
-        self.draw_bool(registers.carry, 120, 110);
-        self.draw_bool(registers.half_carry, 120, 125);
+        self.draw_bool(reg.sign, 120, 65);
+        self.draw_bool(reg.zero, 120, 80);
+        self.draw_bool(reg.parity, 120, 95);
+        self.draw_bool(reg.carry, 120, 110);
+        self.draw_bool(reg.half_carry, 120, 125);
     }
     pub fn render_fb(&mut self) {
         let mut sprite_sheet = self.create_fb();
@@ -178,7 +175,7 @@ impl Debugger {
             x += 10;
         }
     }
-    // Looks up charcter from char & provides us with a corresponding value
+    // Looks up character from char & provides us with a corresponding value
     fn lookup_char(&self, character: char) -> usize {
         match character {
             ' ' => 0,
