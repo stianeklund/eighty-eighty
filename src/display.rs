@@ -1,4 +1,5 @@
-
+use std::io::Cursor;
+use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 use std::fmt;
 use super::minifb::{Key, Scale, WindowOptions, Window};
 // use super::interconnect;
@@ -53,10 +54,23 @@ impl Display {
             window: window,
         }
     }
+    pub fn create_fb(&mut self, memory: &mut Memory) -> Vec<u32> {
+        // Create 32bit bitmap array that can be used for rendering
+        let mut buffer: Vec<u32> = memory
+            .memory
+            .chunks(4)
+            .map(|buf| {
+                let buf = Cursor::new(buf).read_u32::<LittleEndian>().unwrap();
+                buf
+            })
+            .collect();
+        buffer
+    }
 
 
-    pub fn render_vram(&mut self, memory: &mut Memory) {
-
+    pub fn render_vram(&mut self, mut memory: &mut Memory) {
+        // Create a 32-bit buffer of bitmap data from memory.
+        let mut buffer: Vec<u32> = self.create_fb(memory);
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -72,16 +86,14 @@ impl Display {
         // We simply iterate over the entirety of the size of the video hardware
         // & iterate over the 8 pixels per byte.
 
-        let memory = &mut memory.memory;
 
         for offset in 0..(256 * 244 / 8) {
-
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
-                if (memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[counter as usize] = 0x0000000;
+                if (memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
+                    buffer[counter as usize] = 0x0000000;
                 } else {
-                    self.raster[counter as usize] = 0x0FFFFFF;
+                    buffer[counter as usize] = 0x0FFFFFF;
                 }
                 y = y.wrapping_sub(1);
                 if y < 0 {
@@ -92,21 +104,34 @@ impl Display {
             counter = counter.wrapping_add(1);
         }
 
-        for j in 0..HEIGHT {
-            for i in 0..WIDTH {
-                self.raster[y as usize * 224 + x as usize];
-            }
-        }
-        // We essentially are presenting the already iterated frame buffer
-        // at this point.
-        // self.window.update_with_buffer(&self.raster);
+        // self.draw(x as usize, y as usize, &mut memory);
+        self.window.update_with_buffer(&buffer);
     }
-    pub fn update_screen(&mut self, x: usize, y: usize) {
 
-        for j in 0..HEIGHT {
-            for i in 0..WIDTH {
-                self.raster[y.wrapping_mul(224).wrapping_add(x)];
+    // TODO
+    pub fn draw(&mut self, x: usize, y: usize, mut memory: &mut Memory) {
+        let mut sprite_sheet: Vec<u32> = self.create_fb(&mut memory);
+        let mut sprite_value = 0;
+
+        let sprite_w = 8;
+        let sprite_h = 8;
+
+        let index_x = sprite_w * (sprite_value % 8);
+        let index_y = sprite_h * (sprite_value / 8);
+        let tile_w = index_x + sprite_w;
+        let tile_h = index_y + sprite_h;
+
+        let mut offset = 0;
+        let mut line = 0;
+
+        for i in index_y..tile_h {
+            for j in index_x..tile_w {
+                self.raster[x + line + WIDTH * (y + offset)] = sprite_sheet[j + (i * HEIGHT)];
+                line += 1;
             }
+            line = 0;
+            offset += 1;
         }
+        self.window.update_with_buffer(&self.raster);
     }
 }

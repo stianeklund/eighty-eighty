@@ -52,9 +52,11 @@ fn main() {
         debugger.draw_cpu_status(registers);
         debugger.draw_cpu_flags(registers);
 
+        // display.draw(80, 80, &mut memory);
+        display.render_vram(&mut memory);
         // Update window with our frame buffer here instead of within the rendering function
+        //display.window.update_with_buffer(&display.raster);
         debugger.window.update_with_buffer(&debugger.fb);
-        display.window.update_with_buffer(&display.raster);
 
     }
 }

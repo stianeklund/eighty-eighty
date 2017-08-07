@@ -130,7 +130,6 @@ impl Debugger {
     // Takes a `char` type as input along with x & y positions.
     pub fn draw_sprite(&mut self, x: usize, y: usize, character: char) {
         let mut sprite_sheet = self.create_fb();
-        // let mut frame_buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
         // Perform a lookup of the character in `lookup_char()`.
         // Returns a integer value to be used with the frame buffer.

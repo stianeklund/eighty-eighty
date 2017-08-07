@@ -66,7 +66,7 @@ impl Registers {
         Registers {
             opcode: 0,
 
-            pc: 0,
+            pc: 0x100, // For testing purposes, some tests start at 0x100
             sp: 0,
 
             reg_a: 0,
