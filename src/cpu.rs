@@ -692,7 +692,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = value & 0xFF == 0;
         self.registers.sign = value & 0x80 != 0;
 
-        self.registers.half_carry = self.half_carry_sub(value as u16) == 0;
+        self.registers.half_carry = self.half_carry_sub(value as u16) != 0;
         self.registers.carry = value & 0x0100 != 0;
         self.registers.parity = value & 0xFF != 0;
 
@@ -1973,22 +1973,24 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn half_carry_add(&self, mut value: u16) -> u16 {
-        let mut ac: Vec<u16> = vec![0, 0, 1, 0, 1, 0, 1, 1];
+        let mut add = [0, 0, 1, 0, 1, 0, 1, 1];
         let a = (self.registers.reg_a & 0xFF) as u16;
         // Immediate value
         value = value & 0xFF;
         // u16 word value
-        let word = ((a + value) + 0x100) & 0xFF;
+        let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
         let row: u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
-        row & 0x7
+        // Return half carry add value
+        return add[row as usize & 0x7]
     }
 
     fn half_carry_sub(&self, mut value: u16) -> u16 {
-        let mut sub: Vec<u16> = vec![0, 1, 1, 1, 0, 0, 0, 1];
+        let sub = [0, 1, 1, 1, 0, 0, 0, 1];
         let a = (self.registers.reg_a & 0xFF) as u16;
         value = value & 0xFF;
-        let word: u16 = ((a - value) + 0x100) & 0xFF;
+        let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
         let row : u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
-        row & 0x7
+        // Return half carry sub value
+        return sub[row as usize & 0x7]
     }
 }
