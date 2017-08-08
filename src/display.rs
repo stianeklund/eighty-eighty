@@ -1,9 +1,7 @@
 use std::io::Cursor;
 use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 use std::fmt;
-use super::minifb::{Key, Scale, WindowOptions, Window};
-// use super::interconnect;
-use std::borrow::BorrowMut;
+use minifb::{Key, Scale, WindowOptions, Window};
 use std::iter::Enumerate;
 
 use cpu::ExecutionContext;

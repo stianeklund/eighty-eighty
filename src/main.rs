@@ -14,16 +14,15 @@ use std::thread;
 use minifb::{Window, WindowOptions, Scale, Key};
 use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use debugger::{HEIGHT, WIDTH};
+use cpu::{ExecutionContext, Registers};
 
 mod cpu;
 mod opcode;
 mod display;
 mod debugger;
-// mod interconnect;
 mod memory;
 mod keypad;
-
-use cpu::{ExecutionContext, Registers};
+mod test;
 
 fn main() {
 
@@ -35,7 +34,6 @@ fn main() {
 
     let bin = &args[1];
 
-    // let mut inter = interconnect::Interconnect::new();
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
     let mut display = display::Display::new();

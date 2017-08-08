@@ -1,4 +1,4 @@
-use super::minifb::{Key, Scale, WindowOptions, Window};
+use minifb::{Key, Scale, WindowOptions, Window};
 use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 
 use std::char;
