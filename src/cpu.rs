@@ -66,7 +66,7 @@ impl Registers {
         Registers {
             opcode: 0,
 
-            pc: 0x100, // For testing purposes, some tests start at 0x100
+            pc: 0,
             sp: 0,
 
             reg_a: 0,
@@ -146,7 +146,6 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::BC => self.registers.reg_bc = value as u16,
             RegisterPair::DE => self.registers.reg_de = value as u16,
             RegisterPair::HL => self.registers.reg_hl = value as u16,
-
         }
     }
 
@@ -176,7 +175,6 @@ impl<'a> ExecutionContext<'a> {
             Register::H => a += self.registers.reg_h,
             Register::L => a += self.registers.reg_l,
             Register::M => a += self.registers.reg_m,
-
         }
     }
 
@@ -203,7 +201,7 @@ impl<'a> ExecutionContext<'a> {
         match reg {
             Register::A => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) & 0x08 !=
-                                            0;
+                    0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -213,7 +211,7 @@ impl<'a> ExecutionContext<'a> {
 
             Register::B => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) & 0x08 !=
-                                            0;
+                    0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -223,7 +221,7 @@ impl<'a> ExecutionContext<'a> {
 
             Register::C => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) & 0x08 !=
-                                            0;
+                    0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -233,7 +231,7 @@ impl<'a> ExecutionContext<'a> {
 
             Register::D => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) & 0x08 !=
-                                            0;
+                    0;
                 if DEBUG {
                     println!("Setting half carry flag for ANA: {}",
                              self.registers.half_carry);
@@ -243,25 +241,25 @@ impl<'a> ExecutionContext<'a> {
 
             Register::E => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) & 0x08 !=
-                                            0;
+                    0;
                 self.registers.reg_a &= self.registers.reg_e;
             }
 
             Register::H => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) & 0x08 !=
-                                            0;
+                    0;
                 self.registers.reg_a &= self.registers.reg_h;
             }
 
             Register::L => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) & 0x08 !=
-                                            0;
+                    0;
                 self.registers.reg_a &= self.registers.reg_l;
             }
 
             Register::M => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) & 0x08 !=
-                                            0;
+                    0;
                 self.registers.reg_a &= self.registers.reg_m;
             }
         }
@@ -416,7 +414,6 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_d = high;
                 self.registers.reg_e = low;
-
             }
 
             RegisterPair::HL => {
@@ -546,7 +543,6 @@ impl<'a> ExecutionContext<'a> {
         } else {
             self.registers.carry = false;
         }
-
     }
 
     fn cma(&mut self) {
@@ -613,7 +609,6 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
-
             }
             Register::C => {
                 if result < self.registers.reg_c {
@@ -689,18 +684,22 @@ impl<'a> ExecutionContext<'a> {
             }
         };
     }
-    // Compare Immediate
+    // Compare Immediate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
         let value = self.registers.opcode & 0xFF;
 
         self.registers.zero = value & 0xFF == 0;
         self.registers.sign = value & 0x80 != 0;
-        self.registers.carry = value & 0xFF == 0;
+
+        self.registers.half_carry = self.half_carry_sub(value as u16) == 0;
+        self.registers.carry = value & 0x0100 != 0;
+        self.registers.parity = value & 0xFF != 0;
 
         self.adv_pc(2);
         self.adv_cycles(7);
     }
+
 
     // Compare Parity Even
     fn cpe(&mut self) {
@@ -724,7 +723,6 @@ impl<'a> ExecutionContext<'a> {
             self.registers.pc = self.memory.read_word(self.registers.pc);
 
             self.adv_cycles(17);
-
         } else {
             self.adv_cycles(11);
         }
@@ -743,13 +741,13 @@ impl<'a> ExecutionContext<'a> {
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
         let mut value: u16 = (self.registers.reg_h as u16) << 8 |
-                             (self.registers.reg_l as u16) as u16;
+            (self.registers.reg_l as u16) as u16;
 
         match reg {
             RegisterPair::BC => {
                 value;
                 value = value.wrapping_add((self.registers.reg_b as u16) >> 8 |
-                                           (self.registers.reg_c as u16));
+                    (self.registers.reg_c as u16));
                 self.registers.half_carry = 0 < (value & 0xFFFF);
             }
 
@@ -783,14 +781,12 @@ impl<'a> ExecutionContext<'a> {
 
     // Decrement memory or register
     fn dcr(&mut self, reg: Register) {
-
         // Example:
         // If the H register contains 3AH, and the L register contains 7CH
         // and memory location 3A7CH contains 40H, the instruction:
         // DCR M will cause memory location 3A7CH to contain 3FH.
 
         match reg {
-
             // register % 2 = odd (parity false)
             // register & 1 = even (parity true)
             //
@@ -815,7 +811,6 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.parity = !self.registers.reg_b.wrapping_add(1) & 1 == 0;
                 self.registers.sign = self.registers.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
-
             }
 
             Register::C => {
@@ -861,7 +856,6 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.parity = !self.registers.reg_l & 1 == 0;
                 self.registers.sign = self.registers.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
-
             }
 
             Register::M => {
@@ -1013,11 +1007,11 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.reg_l = self.memory
             .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
-                  0);
+                0);
 
         self.registers.reg_h = self.memory
             .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
-                  1);
+                1);
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1037,7 +1031,6 @@ impl<'a> ExecutionContext<'a> {
 
         if reg == Register::M {
             self.adv_cycles(10);
-
         } else {
             self.adv_cycles(5);
         }
@@ -1046,7 +1039,6 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn inx(&mut self, reg: RegisterPair) {
-
         match reg {
             RegisterPair::BC => {
                 self.registers.reg_c = self.registers.reg_c.wrapping_add(1);
@@ -1116,7 +1108,6 @@ impl<'a> ExecutionContext<'a> {
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
     fn stax(&mut self, reg: RegisterPair) {
-
         match reg {
             RegisterPair::BC => {
                 let bc = self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c;
@@ -1306,7 +1297,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
         self.adv_pc(1);
         self.adv_cycles(4);
-
     }
 
     // Return if no carry
@@ -1360,13 +1350,12 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_stack(&mut self) -> u16 {
         let sp = self.memory.read_word(self.registers.sp + 1) |
-                 self.memory.read_word(self.registers.sp) as u16;
+            self.memory.read_word(self.registers.sp) as u16;
         if DEBUG {
             println!("Popping stack. SP value: {:02X}", sp);
         }
         self.registers.sp += 2;
         sp
-
     }
 
     fn ret(&mut self) {
@@ -1438,7 +1427,6 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn rst(&mut self, value: u8) {
-
         let mut rst = 0u8;
 
         match value {
@@ -1596,7 +1584,6 @@ impl<'a> ExecutionContext<'a> {
 
             _ => println!("Unknown instruction {:#X}", self.registers.opcode),
         }
-
     }
 
     pub fn execute_instruction(&mut self, instruction: u8) {
@@ -1628,7 +1615,7 @@ impl<'a> ExecutionContext<'a> {
             let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
 
             let stack = self.memory.memory[self.registers.sp as usize + 1].wrapping_shl(8) |
-                        self.memory.memory[self.registers.sp as usize];
+                self.memory.memory[self.registers.sp as usize];
 
 
             println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
@@ -1645,7 +1632,6 @@ impl<'a> ExecutionContext<'a> {
         };
 
         match self.registers.opcode {
-
             0x00 => self.decode(Instruction::NOP),
             0x01 => self.decode(Instruction::NOP),
             0x02 => self.decode(Instruction::STAX(BC)),
@@ -1947,7 +1933,6 @@ impl<'a> ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-
         let instruction = self.memory.read(self.registers.pc as usize);
         for _ in 0..times {
             self.execute_instruction(instruction);
@@ -1985,5 +1970,25 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_psw = 0;
 
         self.adv_pc(1); // Is this correct to do?
+    }
+
+    fn half_carry_add(&self, mut value: u16) -> u16 {
+        let mut ac: Vec<u16> = vec![0, 0, 1, 0, 1, 0, 1, 1];
+        let a = (self.registers.reg_a & 0xFF) as u16;
+        // Immediate value
+        value = value & 0xFF;
+        // u16 word value
+        let word = ((a + value) + 0x100) & 0xFF;
+        let row: u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
+        row & 0x7
+    }
+
+    fn half_carry_sub(&self, mut value: u16) -> u16 {
+        let mut sub: Vec<u16> = vec![0, 1, 1, 1, 0, 0, 0, 1];
+        let a = (self.registers.reg_a & 0xFF) as u16;
+        value = value & 0xFF;
+        let word: u16 = ((a - value) + 0x100) & 0xFF;
+        let row : u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
+        row & 0x7
     }
 }

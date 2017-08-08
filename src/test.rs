@@ -11,7 +11,7 @@ mod tests {
         let mut registers = Registers::new();
 
         // Load CPUTEST from root directory
-        memory.load_bin("CPUTEST.COM");
+        memory.load_bin("8080PRE.COM");
 
         let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
 
@@ -21,20 +21,17 @@ mod tests {
         // Jump to 0x100 (CPUTEST requires us to start here);
         cpu.registers.pc = 0x100;
 
+
         loop {
             cpu.step(1);
             if cpu.registers.pc == 0x76 {
-                println!("HALT at {:#04X}\n", cpu.registers.pc);
+                println!("HALT at {:#04X}", cpu.registers.pc);
                 break
             }
+            // println!("PC: {:#04X}", cpu.registers.pc);
             if cpu.registers.pc == 0x0005 {
                 if cpu.registers.reg_c == 9 {
-                    return
-                }
-                println!("PC: {:#04X}", cpu.registers.pc);
-                if cpu.registers.pc == 9 {
                     let addr: u16 = cpu.registers.pc;
-                    // Read
                     let reg_de = vec![cpu.memory.read_word(addr)];
                     for i in reg_de {
                         cpu.memory.memory[i as usize];

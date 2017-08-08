@@ -16,6 +16,7 @@ use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
 
+#[macro_use] // TODO Remove me
 mod cpu;
 mod opcode;
 mod display;
