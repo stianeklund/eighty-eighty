@@ -1152,15 +1152,40 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn inr(&mut self, reg: Register) {
+        let mut value: u8 = 0;
         match reg {
-            Register::A => self.registers.reg_a.wrapping_add(1),
-            Register::B => self.registers.reg_b.wrapping_add(1),
-            Register::C => self.registers.reg_c.wrapping_add(1),
-            Register::D => self.registers.reg_d.wrapping_add(1),
-            Register::E => self.registers.reg_e.wrapping_add(1),
-            Register::H => self.registers.reg_h.wrapping_add(1),
-            Register::L => self.registers.reg_l.wrapping_add(1),
-            Register::M => self.registers.reg_m.wrapping_add(1),
+            Register::A => {
+                self.registers.reg_a += 1;
+                value = self.registers.reg_a;
+            },
+            Register::B => {
+                self.registers.reg_b += 1;
+                value = self.registers.reg_b;
+            },
+            Register::C => {
+                self.registers.reg_c += 1;
+                value = self.registers.reg_c;
+            }
+            Register::D => {
+                self.registers.reg_d += 1;
+                value = self.registers.reg_d;
+            }
+            Register::E => {
+                self.registers.reg_e += 1;
+                value = self.registers.reg_e;
+            }
+            Register::H => {
+                self.registers.reg_h += 1;
+                value = self.registers.reg_h;
+            }
+            Register::L => {
+                self.registers.reg_l += 1;
+                value = self.registers.reg_l;
+            }
+            Register::M => {
+                self.registers.reg_m += 1;
+                value = self.registers.reg_m;
+            }
         };
 
         if reg == Register::M {
@@ -1168,7 +1193,10 @@ impl<'a> ExecutionContext<'a> {
         } else {
             self.adv_cycles(5);
         }
-
+        self.registers.sign = value & 0x80 != 0;
+        self.registers.zero = value == 0;
+        self.registers.half_carry = value & 0x0F == 0;
+        self.registers.parity = self.parity(value as u8);
         self.adv_pc(2);
     }
 
