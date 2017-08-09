@@ -301,7 +301,9 @@ impl<'a> ExecutionContext<'a> {
 
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_word(self.registers.pc);
-        println!("Jumping to address: {:X}", self.registers.pc);
+        if DEBUG {
+            println!("Jumping to address: {:X}", self.registers.pc);
+        }
         self.adv_cycles(10);
     }
 
@@ -337,20 +339,20 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump no zero
     fn jnz(&mut self) {
-        // If the Zero bit is 0 the execution continues at the memory address
         if !self.registers.zero {
             self.registers.pc = self.memory.read_word(self.registers.pc);
-            self.adv_cycles(15);
         } else {
             self.adv_pc(3);
-            self.adv_cycles(10);
         }
+        self.adv_cycles(10);
     }
 
-    // If sign bit is one (false) indicating a negative eesult
+    // If sign bit is one (false) indicating a negative result
     fn jm(&mut self) {
         if self.registers.sign == false {
             self.registers.pc = self.memory.read_word(self.registers.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -359,6 +361,8 @@ impl<'a> ExecutionContext<'a> {
     fn jp(&mut self) {
         if self.registers.parity == true {
             self.registers.pc = self.memory.read_word(self.registers.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -367,6 +371,8 @@ impl<'a> ExecutionContext<'a> {
     fn jpe(&mut self) {
         if self.registers.parity == true {
             self.registers.pc = self.memory.read_word(self.registers.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -375,6 +381,8 @@ impl<'a> ExecutionContext<'a> {
     fn jpo(&mut self) {
         if self.registers.parity == false {
             self.registers.pc = self.memory.read_word(self.registers.pc);
+        } else {
+            self.adv_pc(3);
         }
         self.adv_cycles(10);
     }
@@ -688,13 +696,19 @@ impl<'a> ExecutionContext<'a> {
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
         let value = self.registers.opcode & 0xFF;
+        // Compare is done with subtraction, so we need to compare the result of
+        // accumulator with the immediate address.
+        let result = self.registers.reg_a - value;
 
-        self.registers.zero = value & 0xFF == 0;
-        self.registers.sign = value & 0x80 != 0;
-
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
         self.registers.half_carry = self.half_carry_sub(value as u16) != 0;
-        self.registers.carry = value & 0x0100 != 0;
-        self.registers.parity = value & 0xFF != 0;
+        self.registers.carry = (result & 0x0100) != 0;
+        self.registers.parity = self.parity(result & 0xFF);
+
+        // self.registers.zero = value & 0xFF == 0;
+        // self.registers.sign = value & 0x80 != 0;
+        // self.registers.carry = value & 0x0100 != 0;
 
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -2000,7 +2014,7 @@ impl<'a> ExecutionContext<'a> {
         // Immediate value
         value = value & 0xFF;
         // u16 word value (allow wrapping)
-        let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
+        let word: u16 = a.wrapping_sub(value).wrapping_add(0x100) & 0xFF;
         let row: u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
         // Return half carry add value
         add[row as usize & 0x7]
@@ -2010,9 +2024,27 @@ impl<'a> ExecutionContext<'a> {
         let sub = [0, 1, 1, 1, 0, 0, 0, 1];
         let a = (self.registers.reg_a & 0xFF) as u16;
         value = value & 0xFF;
-        let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
-        let row : u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
+        let word: u16 = a.wrapping_sub(value).wrapping_add(0x100) & 0xFF;
+        let row: u16 = (a & 0x88) >> 1 | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
         // Return half carry sub value
         sub[row as usize & 0x7]
     }
+    fn parity(&self, mut b: u8) -> bool {
+        let mut bits = 0;
+        let mut result: bool = false;
+        for i in 0..8 {
+            if b & 1 << i  == 1 {
+                bits += 1;
+            }
+            if bits & 1 == 0 {
+                result = false;
+                } else if bits & 1 == 1 {
+                result = true;
+            } else {
+                result = false;
+            }
+        }
+        result
+    }
 }
+
