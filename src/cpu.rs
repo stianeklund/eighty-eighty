@@ -698,7 +698,8 @@ impl<'a> ExecutionContext<'a> {
         let value = self.registers.opcode & 0xFF;
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
-        let result = self.registers.reg_a - value;
+        // let result = self.registers.reg_a.wrapping_sub(value);
+        let result = value - self.registers.reg_a;
 
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
@@ -940,18 +941,94 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn daa(&mut self) {
+        println!("Implementation not finished");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
     // TODO
     fn ei(&mut self) {
+        println!("Implementation not finished");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
+    // Rotate Accumulator Left Through Carry
+    fn ral(&mut self) {
+        let ral_debug: bool = true;
+
+        // The contents of the accumulator are rotated one bit position to the left.
+        // The high-order bit of the accumulator replaces the carry bit
+        // while the carry bit replaces the high-order bit of the accumulator
+        // Conditional flags affected: Carry
+
+        // Example (Accumulator) carry is set:
+        // 1 0 1 (1 0) 1 0 1
+        // After RAL instruction:
+        // 0 1 1 (0 1) 0 1 0
+
+        if ral_debug {
+            // Set Accumulator value for debugging purposes
+            // self.registers.reg_a = 0b10110101;
+            println!("RAL, Accumulator: {:b}", self.registers.reg_a);
+        }
+        self.registers.reg_a = self.registers.reg_a << 1;
+        self.registers.carry = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 1;
+        if ral_debug {
+            println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
+        }
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+    // Rotate Accumulator Right Through Carry
+    fn rar(&mut self) {
+        // The Carry bit is set equal to the high-order bit of the accumulator
+        // If one of the 4 lower bits are 1 we set the carry flag.
+        // If last bit is 1 bit shift one up so that the accumulator is 1
+        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
+        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+    // Rotate Accumulator Left
+    fn rlc(&mut self) {
+        // The Carry bit is set equal to the high-order bit of the accumulator
+        // If one of the 4 higher bits are 1 we set the carry flag.
+        self.registers.reg_a.rotate_left(1);
+        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+    fn rrc(&mut self) {
+        // The Carry bit is set equal to the low-order bit of the accumulator
+        // If one of the 4 lower bits are 1 we set the carry flag.
+        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+    // Return if no carry
+    fn rnc(&mut self) {
+        if !self.registers.carry {
+            self.ret();
+        } else {
+            self.adv_pc(1);
+        }
+    }
+    // TODO
+    fn rpe(&mut self) {
+        self.adv_pc(1);
+        // TODO Cycles 11 / 5
+        // self.adv_cycles(4);
+    }
     fn rc(&mut self) {
         // If Carry flag is set, return from subroutine
+        println!("Implementation not finished");
         if self.registers.carry {
             self.adv_cycles(11);
             self.ret();
@@ -963,27 +1040,47 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn rnz(&mut self) {
-        // Cycles should be 11 if the carry flag is false
+        println!("Implementation not finished");
         if self.registers.carry == false {
-            self.adv_cycles(6)
+            self.adv_cycles(11)
+        } else {
+            self.adv_cycles(5);
         }
-        self.adv_cycles(5);
         self.adv_pc(1);
+    }
+    // Return if minus
+    fn rm(&mut self) {
+        if self.registers.sign == true {
+            self.ret();
+            self.adv_cycles(11)
+        } else {
+            self.adv_cycles(5);
+            self.adv_pc(1);
+        }
+    }
+    fn rp(&mut self) {
+        if self.registers.sign == false {
+            self.ret();
+            self.adv_cycles(11)
+        } else {
+            self.adv_cycles(5);
+            self.adv_pc(1);
+        }
     }
 
     // TODO
     fn rz(&mut self) {
-        // Cycles should be 11 if the carry flag is false
+        println!("Implementation not finished");
         if self.registers.carry == false {
-            self.adv_cycles(6)
+            self.adv_cycles(11)
+        } else {
+            self.adv_cycles(5);
         }
-        self.adv_cycles(5);
         self.adv_pc(1);
     }
 
     fn mvi(&mut self, reg: Register) {
         let value = self.registers.opcode & 0x08;
-        println!("VALUE: {:?}", value);
         match reg {
             Register::A => self.write_reg(Register::A, value),
             Register::B => self.write_reg(Register::B, value),
@@ -1277,80 +1374,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
-    // Rotate Accumulator Left Through Carry
-    fn ral(&mut self) {
-        let RAL_DEBUG: bool = true;
 
-        // The contents of the accumulator are rotated one bit position to the left.
-        // The high-order bit of the accumulator replaces the carry bit
-        // while the carry bit replaces the high-order bit of the accumulator
-        // Conditional flags affected: Carry
-
-        // Example (Accumulator) carry is set:
-        // 1 0 1 (1 0) 1 0 1
-        // After RAL instruction:
-        // 0 1 1 (0 1) 0 1 0
-
-        if RAL_DEBUG {
-            // Set Accumulator value for debugging purposes
-            // self.registers.reg_a = 0b10110101;
-            println!("RAL, Accumulator: {:b}", self.registers.reg_a);
-        }
-        self.registers.reg_a = self.registers.reg_a << 1;
-        self.registers.carry = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 1;
-        if RAL_DEBUG {
-            println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
-        }
-        self.adv_pc(1);
-        self.adv_cycles(4);
-    }
-    // Rotate Accumulator Right Through Carry
-    fn rar(&mut self) {
-        // The Carry bit is set equal to the high-order bit of the accumulator
-        // If one of the 4 lower bits are 1 we set the carry flag.
-        // If last bit is 1 bit shift one up so that the accumulator is 1
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
-
-        self.adv_pc(1);
-        self.adv_cycles(4);
-    }
-
-    // Rotate Accumulator Left
-    fn rlc(&mut self) {
-        // The Carry bit is set equal to the high-order bit of the accumulator
-        // If one of the 4 higher bits are 1 we set the carry flag.
-        self.registers.reg_a.rotate_left(1);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
-
-        self.adv_pc(1);
-        self.adv_cycles(4);
-    }
-
-    fn rrc(&mut self) {
-        // The Carry bit is set equal to the low-order bit of the accumulator
-        // If one of the 4 lower bits are 1 we set the carry flag.
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
-        self.adv_pc(1);
-        self.adv_cycles(4);
-    }
-
-    // Return if no carry
-    fn rnc(&mut self) {
-        if !self.registers.carry {
-            self.ret();
-        } else {
-            self.adv_pc(1);
-        }
-    }
-
-    // TODO
-    fn rpe(&mut self) {
-        self.adv_pc(1);
-        // TODO Cycles 11 / 5
-        // self.adv_cycles(4);
-    }
 
     fn pop(&mut self, reg: RegisterPair) {
         let sp = self.registers.sp as usize;
@@ -1553,6 +1577,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::SBB(reg) => self.sbb(reg),
 
             Instruction::XRA(reg) => self.xra(reg),
+            Instruction::RP => self.rp(),
             Instruction::RPE => self.rpe(),
             Instruction::RET => self.ret(),
 
@@ -1591,6 +1616,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::RST(7) => self.rst(7),
 
             Instruction::RNZ => self.rnz(),
+            Instruction::RM => self.rm(),
             Instruction::RZ => self.rz(),
 
             Instruction::HLT => {
@@ -1626,7 +1652,6 @@ impl<'a> ExecutionContext<'a> {
         use self::Register::*;
         use self::RegisterPair::*;
 
-        // self.opcode = self.memory.read(self.pc as usize);
         self.registers.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
@@ -1894,7 +1919,6 @@ impl<'a> ExecutionContext<'a> {
             0xC1 => self.decode(Instruction::POP(BC)),
             0xC2 => self.decode(Instruction::JNZ),
             0xC3 => self.decode(Instruction::JMP),
-            // 0xC3 => self.decode(Instruction::CMP(A)),
             0xC4 => self.decode(Instruction::CNZ),
             0xC5 => self.decode(Instruction::PUSH(B)),
             0xC6 => self.decode(Instruction::ADI),
@@ -1953,7 +1977,7 @@ impl<'a> ExecutionContext<'a> {
             0xF5 => self.decode(Instruction::PUSH(H)),
             0xF6 => self.decode(Instruction::ANI),
             0xF7 => self.decode(Instruction::RST(4)),
-            0xF8 => self.decode(Instruction::RPE),
+            0xF8 => self.decode(Instruction::RM),
             0xF9 => self.decode(Instruction::PCHL),
 
             0xFA => self.decode(Instruction::JPE),

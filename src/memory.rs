@@ -91,6 +91,6 @@ impl Memory {
         for i in 0..buf_len {
             self.memory[i] = buf[i];
         }
-        println!("Loaded binary");
+        println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
     }
 }
