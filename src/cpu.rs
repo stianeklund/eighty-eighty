@@ -707,13 +707,38 @@ impl<'a> ExecutionContext<'a> {
         let value = self.registers.opcode & 0xFF;
         let ret: u16 = self.registers.pc + 3;
 
-        // Check if the parity is even / if the parity bit is set
+        // Check if the parity is even
         if value & 0xFF % 2 == 0 {
-            self.registers.parity = true;
-        }
+            // High order
+            self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+            // Low order
+            self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
 
-        // If parity flag is set continue call instruction
-        if self.registers.parity {
+            self.registers.sp = self.registers.sp.wrapping_sub(2);
+            self.registers.pc = self.memory.read_word(self.registers.pc);
+
+            self.adv_cycles(17);
+        } else {
+            self.adv_cycles(11);
+        }
+        if DEBUG {
+            println!("Subroutine call: {:02X}", self.registers.pc);
+            println!("Return address is: {:02X}", ret);
+        }
+        self.adv_pc(3);
+    }
+
+    // CALL if plus
+    fn cp(&mut self) {
+        // Fetch byte out of memory which we will use to compare & set flags with.
+        let value = self.registers.opcode & 0xFF;
+        let ret: u16 = self.registers.pc + 3;
+
+        // Check if the sign bit is zero
+        if value & 0x80 % 2 == 0 {
+            if DEBUG {
+                println!("Sign bit is zero, proceeding with CALL");
+            }
             // High order
             self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
             // Low order
@@ -733,8 +758,6 @@ impl<'a> ExecutionContext<'a> {
         }
         self.adv_pc(3);
     }
-
-
     fn dad(&mut self, reg: RegisterPair) {
         // Double precision ADD.
         // For these instructions, HL functions as an accumulator.
@@ -1409,7 +1432,6 @@ impl<'a> ExecutionContext<'a> {
         match dst {
             Register::M => {
                 self.write_reg(dst, value);
-                // self.registers.reg_m = self.registers.reg_hl as u8;
                 self.adv_cycles(7);
             }
 
@@ -1494,7 +1516,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::CMC => self.cmc(),
 
             Instruction::CMP(reg) => self.cmp(reg),
-            Instruction::CP => println!("Not implemented: {:?}", instruction),
+            Instruction::CP => self.cp(),
             Instruction::CPE => self.cpe(),
             Instruction::DCR(reg) => self.dcr(reg),
             Instruction::DCX(reg) => self.dcx(reg),
@@ -1913,7 +1935,7 @@ impl<'a> ExecutionContext<'a> {
             0xF1 => self.decode(Instruction::POP(HL)),
             0xF2 => self.decode(Instruction::JPO),
             0xF3 => self.decode(Instruction::XTHL),
-            0xF4 => self.decode(Instruction::CPO),
+            0xF4 => self.decode(Instruction::CP),
             0xF5 => self.decode(Instruction::PUSH(H)),
             0xF6 => self.decode(Instruction::ANI),
             0xF7 => self.decode(Instruction::RST(4)),
@@ -1969,7 +1991,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = false;
         self.registers.reg_psw = 0;
 
-        self.adv_pc(1); // Is this correct to do?
+        self.adv_pc(1);
     }
 
     fn half_carry_add(&self, mut value: u16) -> u16 {
@@ -1977,11 +1999,11 @@ impl<'a> ExecutionContext<'a> {
         let a = (self.registers.reg_a & 0xFF) as u16;
         // Immediate value
         value = value & 0xFF;
-        // u16 word value
+        // u16 word value (allow wrapping)
         let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
         let row: u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
         // Return half carry add value
-        return add[row as usize & 0x7]
+        add[row as usize & 0x7]
     }
 
     fn half_carry_sub(&self, mut value: u16) -> u16 {
@@ -1991,6 +2013,6 @@ impl<'a> ExecutionContext<'a> {
         let word: u16 = (a.wrapping_sub(value).wrapping_add(0x100) & 0xFF);
         let row : u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
         // Return half carry sub value
-        return sub[row as usize & 0x7]
+        sub[row as usize & 0x7]
     }
 }
