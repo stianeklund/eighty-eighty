@@ -350,7 +350,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump if Minus (If sign bit is one)
     fn jm(&mut self) {
-        if !self.registers.sign {
+        if self.registers.sign {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -360,7 +360,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump if Positive (If sign bit is zero)
     fn jp(&mut self) {
-        if self.registers.sign {
+        if !self.registers.sign {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
