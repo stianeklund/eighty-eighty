@@ -277,6 +277,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a &= self.registers.opcode;
 
         self.registers.carry = false;
+        self.registers.zero = false;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -327,7 +328,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // Jump if zero
+    // Jump if Zero (Jump if zero bit is 0)
     fn jz(&mut self) {
         if self.registers.zero {
             self.registers.pc = self.memory.read_word(self.registers.pc);
@@ -337,7 +338,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // Jump no zero
+    // Jump if Not Zero
     fn jnz(&mut self) {
         if !self.registers.zero {
             self.registers.pc = self.memory.read_word(self.registers.pc);
@@ -347,9 +348,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // If sign bit is one (false) indicating a negative result
+    // Jump if Minus (If sign bit is one)
     fn jm(&mut self) {
-        if self.registers.sign == false {
+        if !self.registers.sign {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -357,9 +358,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // Jump if parity true
+    // Jump if Positive (If sign bit is zero)
     fn jp(&mut self) {
-        if self.registers.parity == true {
+        if self.registers.sign {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -367,9 +368,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // If parity even
+    // If parity even (If parity bit is 1)
     fn jpe(&mut self) {
-        if self.registers.parity == true {
+        if self.registers.parity {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -377,9 +378,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // If parity off, e.g false
+    // If parity odd (If parity bit is 0)
     fn jpo(&mut self) {
-        if self.registers.parity == false {
+        if !self.registers.parity {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -694,18 +695,23 @@ impl<'a> ExecutionContext<'a> {
     }
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
+
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.registers.opcode & 0xFF;
+        let value = self.memory.read_low(self.registers.pc);
+
+
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
-        // let result = self.registers.reg_a.wrapping_sub(value);
-        let result = value - self.registers.reg_a;
+        let result = self.registers.reg_a - value;
 
+        if DEBUG {
+            println!("CPI Value: {:04X}", value);
+        }
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
         self.registers.half_carry = self.half_carry_sub(value as u16) != 0;
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.parity = self.parity(result & 0xFF);
+        self.registers.parity = self.parity(result as u8 & 0xFF);
 
         // self.registers.zero = value & 0xFF == 0;
         // self.registers.sign = value & 0x80 != 0;
@@ -718,12 +724,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Compare Parity Even
     fn cpe(&mut self) {
-        // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.registers.opcode & 0xFF;
-        let ret: u16 = self.registers.pc + 3;
-
         // Check if the parity is even
-        if value & 0xFF % 2 == 0 {
+        let ret: u16 = self.registers.pc + 3;
+        if self.registers.parity {
             // High order
             self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
             // Low order
@@ -745,12 +748,10 @@ impl<'a> ExecutionContext<'a> {
 
     // CALL if plus
     fn cp(&mut self) {
-        // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.registers.opcode & 0xFF;
         let ret: u16 = self.registers.pc + 3;
 
         // Check if the sign bit is zero
-        if value & 0x80 % 2 == 0 {
+        if self.registers.sign {
             if DEBUG {
                 println!("Sign bit is zero, proceeding with CALL");
             }
@@ -1134,7 +1135,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn lhld(&mut self) {
         // Load the HL register with 16 bits found at addr & addr + 1
-        // The byte at the memory address formed by concatenationg HI ADD with LOW ADD replaces
+        // The byte at the memory address formed by concatenating HI ADD with LOW ADD replaces
         // the contents of the L register.
         // The byte at the next higher memory address replaces the contents of the H register.
         // L <- (adr); H<-(adr+1)
@@ -1679,7 +1680,6 @@ impl<'a> ExecutionContext<'a> {
     pub fn execute_instruction(&mut self, instruction: u8) {
         use self::Register::*;
         use self::RegisterPair::*;
-
         self.registers.opcode = instruction;
         if DEBUG {
             println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",

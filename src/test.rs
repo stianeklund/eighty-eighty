@@ -29,25 +29,24 @@ mod tests {
 
         let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
 
-        // RET Set return address in memory
-        // Per i8080core return should be 032F
-        cpu.memory.memory[5] = 0xC9;
-        // println!("Setting return address: [5]: {:#04X}", cpu.memory.memory[5]);
 
-        // INIT
-        // i8080core sets this for i8080_init().. Why?
+        // Inject RET (0xC9) at 0x0005 to handle CALL 5
+        // CALL 5 is the last subroutine call in the test.
+        // Per i8080core return should be 032F at the end of the test
+        cpu.memory.memory[5] = 0xC9;
+
+        // i8080core sets this before init, not sure why.
         cpu.registers.pc = 0xF800;
 
         // TODO Look at what start addresses the other CPU tests need.
-        // Commented out as we're using 8080PRE as our test
-        // For CPUTEST Only
+        // All test binaries start at 0x0100.
         cpu.registers.pc = 0x0100;
         // println!("Jumping to: {:#04X}", cpu.registers.pc);
 
         let mut success: bool = false;
-        let mut instruction = cpu.memory.read(cpu.registers.pc as usize);
-        for i in 0..10 {
-            cpu.execute_instruction(instruction);
+        let instruction = cpu.memory.read(cpu.registers.pc as usize);
+        for _ in 0..10 {
+            cpu.step(1);
             // cpu.step(1);
            if cpu.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", cpu.registers.pc);
@@ -68,11 +67,11 @@ mod tests {
                 }
             }
             // 8080PRE Resets PC to 0 if there has been an error
-            if cpu.registers.pc == 0 {
+            if cpu.registers.pc == 00 {
                 println!("Jump to 0");
-                assert_eq!(cpu.registers.pc, 1);
             }
         }
+        assert_eq!(cpu.registers.pc, 0)
     }
 }
 

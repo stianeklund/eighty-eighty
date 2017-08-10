@@ -49,7 +49,6 @@ impl Memory {
     }
 
     pub fn read_low(&mut self, addr: u16) -> u8 {
-        // (self.memory[addr as usize + 2] as u16) << 8
         self.memory[addr as usize + 1]
     }
 
