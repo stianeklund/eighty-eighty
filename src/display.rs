@@ -103,7 +103,7 @@ impl Display {
         }
 
         // self.draw(x as usize, y as usize, &mut memory);
-        self.window.update_with_buffer(&buffer);
+        self.window.update_with_buffer(&buffer).expect("Overflow");
     }
 
     // TODO
@@ -130,6 +130,6 @@ impl Display {
             line = 0;
             offset += 1;
         }
-        self.window.update_with_buffer(&self.raster);
+        self.window.update_with_buffer(&self.raster).expect("Overflow");
     }
 }
