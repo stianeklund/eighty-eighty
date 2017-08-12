@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use cpu::{Registers, ExecutionContext};
+    use opcode::Instruction;
     use memory::Memory;
     use std::fs::File;
     use std::io::prelude::*;
@@ -68,10 +69,9 @@ mod tests {
             }
             // 8080PRE Resets PC to 0 if there has been an error
             if cpu.registers.pc == 00 {
-                println!("Jump to 0");
+                panic!();
             }
         }
-        // assert_eq!(cpu.registers.pc, 0)
     }
 }
 

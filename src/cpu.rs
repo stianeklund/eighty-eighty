@@ -1550,6 +1550,12 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
+    pub fn nop(&mut self) {
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
+
+
     pub fn decode(&mut self, instruction: Instruction) {
         use self::Register::*;
         use self::RegisterPair::*;
@@ -1557,10 +1563,7 @@ impl<'a> ExecutionContext<'a> {
         println!("Instruction: {:?},", instruction);
 
         match instruction {
-            Instruction::NOP => {
-                self.adv_pc(1);
-                self.adv_cycles(4);
-            }
+            Instruction::NOP => self.nop(),
 
             Instruction::ACI => self.aci(),
             Instruction::ADD(reg) => self.add(reg),
