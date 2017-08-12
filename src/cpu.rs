@@ -467,9 +467,9 @@ impl<'a> ExecutionContext<'a> {
                 // RET instruction can fetch the return address
 
                 // High order
-                self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 // Low order
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
 
 
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
@@ -493,9 +493,9 @@ impl<'a> ExecutionContext<'a> {
                 if self.registers.sign == true {
                     let ret: u16 = self.registers.pc + 3;
                     // High order
-                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret & 0xFF as u8;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
                     self.registers.pc = self.memory.read_word(self.registers.pc);
@@ -521,9 +521,9 @@ impl<'a> ExecutionContext<'a> {
                 if !self.registers.zero {
                     let ret: u16 = self.registers.pc + 3;
                     // High order
-                    self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
                     self.registers.pc = self.memory.read_word(self.registers.pc);
@@ -698,13 +698,16 @@ impl<'a> ExecutionContext<'a> {
     fn cpi(&mut self) {
 
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value: u16 = self.memory.read_word(self.registers.pc);
+        let value = self.memory.read_low(self.registers.pc);
+        // let value = self.memory.read_byte(self.registers.pc as u8);
        // println!("CPI value: {:X}", value);
 
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
-        let result = (self.registers.reg_a).wrapping_sub(value as u8);
-        println!("Result: {:X}", value);
+        println!("Value: {:X}", value);
+        let result = value.wrapping_sub(self.registers.reg_a);
+        println!("Result: {:X}", result);
+        println!("Zero result: {:X}", result & 0xFF);
 
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
@@ -1405,18 +1408,18 @@ impl<'a> ExecutionContext<'a> {
         let mut sp = self.registers.sp as usize;
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_c = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_b = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_c = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
+                self.registers.reg_b = self.memory.memory[(self.registers.sp as usize+ 1) & 0xFFFF];
             }
 
             RegisterPair::DE => {
-                self.registers.reg_e = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_d = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_e = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
+                self.registers.reg_d = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
             }
 
             RegisterPair::HL => {
-                self.registers.reg_l = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_h = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_l = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
+                self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
             }
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
