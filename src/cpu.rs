@@ -52,7 +52,7 @@ pub struct Registers {
 
     // Status Register (Flags)
     pub sign: bool,
-    pub zero: bool,
+    pub zero: bool,    // If the zero bit is one = true
     pub parity: bool,
 
     pub carry: bool,
@@ -328,9 +328,10 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // Jump if Zero (Jump if zero bit is 0)
+    // Jump if Zero (If zero bit is 1)
+    // If zero = 1 jump to address
     fn jz(&mut self) {
-        if self.registers.zero {
+        if self.registers.zero == true {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -338,9 +339,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // Jump if Not Zero
+    // Jump if Not Zero (if zero bit is 0 jump)
     fn jnz(&mut self) {
-        if !self.registers.zero {
+        if self.registers.zero == false {
             self.registers.pc = self.memory.read_word(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -478,8 +479,8 @@ impl<'a> ExecutionContext<'a> {
         }
 
         if DEBUG {
-            println!("Subroutine call: {:02X}", self.registers.pc);
-            println!("Return address is: {:02X}", ret);
+            println!("Subroutine call: {:#04X}", self.registers.pc);
+            println!("Return address is: {:#04X}", ret);
         }
 
         self.adv_cycles(17);
@@ -516,8 +517,8 @@ impl<'a> ExecutionContext<'a> {
 
         match self.registers.opcode {
             0xCC => {
-                // If the zero flag is set execute the call instruction
-                if self.registers.zero {
+                // If the zero bit is 0 perform call operation
+                if !self.registers.zero {
                     let ret: u16 = self.registers.pc + 3;
                     // High order
                     self.memory.memory[self.registers.sp as usize] = (ret >> 8 & 0xFF) as u8;
@@ -542,7 +543,7 @@ impl<'a> ExecutionContext<'a> {
         // This may be correct for Space Invaders but not for other programs.
         // See Comment on line 477.
 
-        if self.registers.carry == false {
+        if !self.registers.carry {
             // TODO: Check if carry flag should be set here
             self.registers.carry = true;
             if DEBUG {
@@ -697,25 +698,19 @@ impl<'a> ExecutionContext<'a> {
     fn cpi(&mut self) {
 
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.memory.read_low(self.registers.pc);
-
+        let value: u16 = self.memory.read_word(self.registers.pc);
+       // println!("CPI value: {:X}", value);
 
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
-        let result = self.registers.reg_a - value;
+        let result = (self.registers.reg_a).wrapping_sub(value as u8);
+        println!("Result: {:X}", value);
 
-        if DEBUG {
-            println!("CPI Value: {:04X}", value);
-        }
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
-        self.registers.half_carry = self.half_carry_sub(value as u16) != 0;
+        self.registers.half_carry = !self.half_carry_sub(value as u16) != 0;
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.parity = self.parity(result as u8 & 0xFF);
-
-        // self.registers.zero = value & 0xFF == 0;
-        // self.registers.sign = value & 0x80 != 0;
-        // self.registers.carry = value & 0x0100 != 0;
 
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -1081,7 +1076,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value = self.registers.opcode & 0x08;
+        let value: u8 = self.memory.read_word(self.registers.pc) as u8;
+        // let value = self.registers.opcode & 0xFF;
         match reg {
             Register::A => self.write_reg(Register::A, value),
             Register::B => self.write_reg(Register::B, value),
@@ -1406,25 +1402,24 @@ impl<'a> ExecutionContext<'a> {
 
 
     fn pop(&mut self, reg: RegisterPair) {
-        let sp = self.registers.sp as usize;
+        let mut sp = self.registers.sp as usize;
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_b = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_c = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_c = self.memory.memory[sp + 1] & 0xFFFF;
+                self.registers.reg_b = self.memory.memory[sp + 0] & 0xFFFF;
             }
 
             RegisterPair::DE => {
-                self.registers.reg_d = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_e = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_e = self.memory.memory[sp + 1] & 0xFFFF;
+                self.registers.reg_d = self.memory.memory[sp + 0] & 0xFFFF;
             }
 
             RegisterPair::HL => {
-                self.registers.reg_h = self.memory.memory[sp + 1] & 0xFFFF;
-                self.registers.reg_l = self.memory.memory[sp + 0] & 0xFFFF;
+                self.registers.reg_l = self.memory.memory[sp + 1] & 0xFFFF;
+                self.registers.reg_h = self.memory.memory[sp + 0] & 0xFFFF;
             }
         }
-
-        self.registers.sp.wrapping_add(2);
+        self.registers.sp = self.registers.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
@@ -1432,7 +1427,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_psw(&mut self) {
         self.registers.reg_psw = self.memory.read_word(self.registers.sp + 1) & 0xFFFF as u16;
-        self.registers.sp.wrapping_add(2);
+        self.registers.sp = self.registers.sp.wrapping_add(2);
 
         self.adv_pc(1);
         self.adv_cycles(10);
