@@ -97,11 +97,13 @@ impl Debugger {
         self.draw_text("Stack:", 0, 30);
         self.draw_text("Cycles:", 0, 45);
 
+
         self.draw_text(&format!("{:#02X}", reg.opcode), 120, 0);
         self.draw_text(&format!("{:02X}", reg.pc), 120, 15);
         self.draw_text(&format!("{:X}", reg.sp), 120, 30);
         self.draw_text(&format!("{}", reg.cycles), 120, 45);
     }
+
     pub fn draw_cpu_flags(&mut self, reg: Registers) {
         self.draw_text("Sign:", 0, 65);
         self.draw_text("Zero:", 0, 80);

@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use cpu::{Registers, ExecutionContext};
-    use opcode::Instruction;
     use memory::Memory;
     use std::fs::File;
     use std::io::prelude::*;
@@ -41,11 +40,9 @@ mod tests {
 
         // All test binaries start at 0x0100.
         cpu.registers.pc = 0x0100;
-        // println!("Jumping to: {:#04X}", cpu.registers.pc);
 
         let mut success: bool = false;
-        let instruction = cpu.memory.read(cpu.registers.pc as usize);
-        // for _ in 0..70 {
+
         loop {
             cpu.step(1);
             // cpu.step(1);
@@ -68,6 +65,9 @@ mod tests {
                 }
             }
             sleep_ms(50);
+            // Panic if opcode is 0x00 or PC is 0.
+            assert_ne!(cpu.registers.pc, 0);
+            assert_ne!(cpu.registers.opcode, 0x00);
         }
     }
 }

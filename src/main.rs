@@ -36,7 +36,7 @@ fn main() {
 
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
-    // let mut display = display::Display::new();
+    let mut display = display::Display::new();
     let mut debugger = debugger::Debugger::new();
 
     // load binary file
@@ -47,14 +47,14 @@ fn main() {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // Update registry values continuously
-        debugger.draw_cpu_status(registers);
-        debugger.draw_cpu_flags(registers);
+        // debugger.draw_cpu_status(registers);
+        // debugger.draw_cpu_flags(registers);
 
         // display.draw(80, 80, &mut memory);
         // display.render_vram(&mut memory);
         // Update window with our frame buffer here instead of within the rendering function
         // display.window.update_with_buffer(&display.raster);
-        debugger.window.update_with_buffer(&debugger.fb).unwrap();
+        // debugger.window.update_with_buffer(&debugger.fb).unwrap();
 
 
     }

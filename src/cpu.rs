@@ -737,18 +737,17 @@ impl<'a> ExecutionContext<'a> {
             }
         };
     }
+
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.memory.read_low(self.registers.pc);
-        // let value = self.memory.read_imm16(self.registers.pc);
-        // println!("CPI value: {:X}", value);
+        let value = self.memory.(self.registers.pc + 1);
 
-        // Compare is done with subtraction, so we need to compare the result of
-        // accumulator with the immediate address.
+        // Compare is done with subtraction.
+        // Compare the result of the accumulator with the immediate address.
         println!("Value: {:X}", value);
         println!("A reg: {:X}", self.registers.reg_a);
-        // let result = self.registers.reg_a - value;
+
         let result = value - self.registers.reg_a;
         println!("Result: {:X}", result);
         println!("Zero result: {:X}", result & 0xFF);
@@ -1187,15 +1186,10 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H register.
         // L <- (adr); H<-(adr+1)
 
-        self.registers.reg_l = self.memory.read(
-            (self.registers.opcode as usize + 2 << 8 |
-                 self.registers.opcode as usize + 1) + 0,
-        );
+        self.registers.reg_l = self.memory.read_low(self.registers.pc);
+        // (self.registers.opcode + 2 as u16) << 8 | self.registers.opcode + 1) as u16));
 
-        self.registers.reg_h = self.memory.read(
-            (self.registers.opcode as usize + 2 << 8 |
-                 self.registers.opcode as usize + 1) + 1,
-        );
+        self.registers.reg_h = self.memory.read_high(self.registers.pc);
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1410,9 +1404,10 @@ impl<'a> ExecutionContext<'a> {
 
         if reg == Register::M {
             self.adv_cycles(3);
+        } else {
+            self.adv_cycles(4);
         }
 
-        self.adv_cycles(4);
         self.adv_pc(1);
     }
 
@@ -1440,19 +1435,11 @@ impl<'a> ExecutionContext<'a> {
 
     fn xthl(&mut self) {
         // Swap H:L with top word on stack
+        self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
+        self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
+        self.memory.memory[self.registers.sp as usize + 0] = self.registers.reg_l;
+        self.memory.memory[self.registers.sp as usize + 1] = self.registers.reg_h;
 
-        match self.registers.opcode {
-            0xE3 => {
-                let mut reg_l = self.registers.reg_l;
-                let mut reg_h = self.registers.reg_h;
-
-                self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
-                self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
-                self.memory.memory[self.registers.sp as usize + 0] = reg_l;
-                self.memory.memory[self.registers.sp as usize + 1] = reg_h;
-            }
-            _ => println!("Opcode not covered by XTHL"),
-        };
         self.adv_cycles(18);
         self.adv_pc(1);
     }
@@ -1751,18 +1738,16 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.cycles
             );
             println!(
-                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}",
+                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
+                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
                 self.registers.reg_a,
                 self.registers.reg_b,
                 self.registers.reg_c,
-                self.registers.reg_d
-            );
-            println!(
-                "E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
+                self.registers.reg_d,
                 self.registers.reg_e,
                 self.registers.reg_h,
                 self.registers.reg_l,
-                self.registers.reg_m
+                self.registers.reg_m,
             );
 
 
@@ -2069,7 +2054,6 @@ impl<'a> ExecutionContext<'a> {
             0xEF => self.decode(Instruction::RST(5)),
 
             0xF0 => self.decode(Instruction::RP),
-            // 0xF1 => self.decode(Instruction::POP(HL)),
             0xF1 => self.decode(Instruction::POP_PSW(A)),
             0xF2 => self.decode(Instruction::JPO),
             0xF3 => self.decode(Instruction::XTHL),
@@ -2093,7 +2077,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-        let instruction = self.memory.read(self.registers.pc as usize);
+        let instruction = self.memory.read(self.registers.pc);
         for _ in 0..times {
             self.execute_instruction(instruction);
             self.registers.pc &= 0xFFFF;
@@ -2102,7 +2086,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     pub fn run(&mut self) {
-        let instruction = self.memory.read(self.registers.pc as usize);
+        let instruction = self.memory.read(self.registers.pc);
         self.execute_instruction(instruction);
     }
 
