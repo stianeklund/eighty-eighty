@@ -56,7 +56,7 @@ pub enum Instruction {
     ANA(Register),
     ANI,
     CALL(u16),
-    CC(u16),
+    CC,
     CNZ,
     CMA,
     CNC,

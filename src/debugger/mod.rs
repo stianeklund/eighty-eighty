@@ -53,14 +53,15 @@ pub struct Debugger {
 
 impl Debugger {
     pub fn new() -> Debugger {
-        let mut window = Window::new("Debugger",
-                                     WIDTH,
-                                     HEIGHT,
-                                     WindowOptions {
-                                         scale: Scale::X2,
-                                         ..WindowOptions::default()
-                                     })
-                .unwrap();
+        let mut window = Window::new(
+            "Debugger",
+            WIDTH,
+            HEIGHT,
+            WindowOptions {
+                scale: Scale::X2,
+                ..WindowOptions::default()
+            },
+        ).unwrap();
 
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
@@ -80,9 +81,9 @@ impl Debugger {
             .bitmap
             .chunks(3)
             .map(|buf| {
-                     let buf = Cursor::new(buf).read_u24::<LittleEndian>().unwrap();
-                     buf
-                 })
+                let buf = Cursor::new(buf).read_u24::<LittleEndian>().unwrap();
+                buf
+            })
             .collect();
         buffer
     }

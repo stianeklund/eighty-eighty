@@ -6,6 +6,8 @@ mod tests {
     use std::fs::File;
     use std::io::prelude::*;
     use std::path::Path;
+    use std::thread::sleep;
+    use std::thread::sleep_ms;
 
     #[test]
     fn cpu_test() {
@@ -25,7 +27,6 @@ mod tests {
             memory.memory[i + 0x0100] = buf[i];
         }
         println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
-
 
         let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
 
@@ -50,13 +51,13 @@ mod tests {
             // cpu.step(1);
             if cpu.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", cpu.registers.pc);
-                break
+                break;
             }
             if cpu.registers.pc == 0x0005 {
                 if cpu.registers.reg_c == 9 {
                     let addr: u16 = cpu.registers.pc;
                     // Create register pair
-                    let reg_de = vec![cpu.memory.read_word(addr as u8)];
+                    let reg_de = vec![cpu.memory.read_word(addr)];
                     for i in reg_de {
                         println!("{:?}", cpu.memory.memory[i as usize]);
                         success = true;
@@ -66,6 +67,7 @@ mod tests {
                     println!("{}", cpu.registers.reg_e);
                 }
             }
+            sleep_ms(50);
         }
     }
 }

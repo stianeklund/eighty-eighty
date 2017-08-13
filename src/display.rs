@@ -34,15 +34,16 @@ impl fmt::UpperHex for Display {
 
 impl Display {
     pub fn new() -> Display {
-        let mut window = Window::new("Eighty Eighty",
-                                     WIDTH,
-                                     HEIGHT,
-                                     WindowOptions {
-                                         resize: false,
-                                         scale: Scale::X2,
-                                         ..WindowOptions::default()
-                                     })
-            .unwrap();
+        let mut window = Window::new(
+            "Eighty Eighty",
+            WIDTH,
+            HEIGHT,
+            WindowOptions {
+                resize: false,
+                scale: Scale::X2,
+                ..WindowOptions::default()
+            },
+        ).unwrap();
 
 
         Display {
@@ -67,8 +68,6 @@ impl Display {
 
 
     pub fn render_vram(&mut self, mut memory: &mut Memory) {
-        // Create a 32-bit buffer of bitmap data from memory.
-        let mut buffer: Vec<u32> = self.create_fb(memory);
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
@@ -89,9 +88,9 @@ impl Display {
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    buffer[counter as usize] = 0x0000000;
+                    self.raster[counter as usize] = 0x0000000;
                 } else {
-                    buffer[counter as usize] = 0x0FFFFFF;
+                    self.raster[counter as usize] = 0x0FFFFFF;
                 }
                 y = y.wrapping_sub(1);
                 if y < 0 {
@@ -101,9 +100,8 @@ impl Display {
             }
             counter = counter.wrapping_add(1);
         }
-
+        self.window.update_with_buffer(&self.raster);
         // self.draw(x as usize, y as usize, &mut memory);
-        self.window.update_with_buffer(&buffer).expect("Overflow");
     }
 
     // TODO
@@ -124,12 +122,18 @@ impl Display {
 
         for i in index_y..tile_h {
             for j in index_x..tile_w {
-                self.raster[x + line + WIDTH * (y + offset)] = sprite_sheet[j + (i * HEIGHT)];
+                self.raster[x.wrapping_add(line).wrapping_add(WIDTH).wrapping_mul(
+                    y.wrapping_add(
+                        offset,
+                    ),
+                )]; // = memory.memory[j + (i * HEIGHT)];
                 line += 1;
             }
             line = 0;
             offset += 1;
         }
-        self.window.update_with_buffer(&self.raster).expect("Overflow");
+        self.window.update_with_buffer(&self.raster).expect(
+            "Overflow",
+        );
     }
 }

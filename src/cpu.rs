@@ -52,7 +52,7 @@ pub struct Registers {
 
     // Status Register (Flags)
     pub sign: bool,
-    pub zero: bool,    // If the zero bit is one = true
+    pub zero: bool, // If the zero bit is one = true
     pub parity: bool,
 
     pub carry: bool,
@@ -200,66 +200,68 @@ impl<'a> ExecutionContext<'a> {
         // Check if the 4th bit is set on all registers
         match reg {
             Register::A => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) & 0x08 !=
-                    0;
-                if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
-                }
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_a) &
+                    0x08 != 0;
                 self.registers.reg_a &= self.registers.reg_a;
             }
 
             Register::B => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) &
+                    0x08 != 0;
                 if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
+                    println!(
+                        "Setting half carry flag for ANA: {}",
+                        self.registers.half_carry
+                    );
                 }
                 self.registers.reg_a &= self.registers.reg_b;
             }
 
             Register::C => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) &
+                    0x08 != 0;
                 if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
+                    println!(
+                        "Setting half carry flag for ANA: {}",
+                        self.registers.half_carry
+                    );
                 }
                 self.registers.reg_a &= self.registers.reg_c;
             }
 
             Register::D => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) &
+                    0x08 != 0;
                 if DEBUG {
-                    println!("Setting half carry flag for ANA: {}",
-                             self.registers.half_carry);
+                    println!(
+                        "Setting half carry flag for ANA: {}",
+                        self.registers.half_carry
+                    );
                 }
                 self.registers.reg_a &= self.registers.reg_d;
             }
 
             Register::E => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_e) &
+                    0x08 != 0;
                 self.registers.reg_a &= self.registers.reg_e;
             }
 
             Register::H => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_h) &
+                    0x08 != 0;
                 self.registers.reg_a &= self.registers.reg_h;
             }
 
             Register::L => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_l) &
+                    0x08 != 0;
                 self.registers.reg_a &= self.registers.reg_l;
             }
 
             Register::M => {
-                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) & 0x08 !=
-                    0;
+                self.registers.half_carry = (self.registers.reg_a | self.registers.reg_m) &
+                    0x08 != 0;
                 self.registers.reg_a &= self.registers.reg_m;
             }
         }
@@ -303,7 +305,7 @@ impl<'a> ExecutionContext<'a> {
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_imm16(self.registers.pc);
         if DEBUG {
-            println!("Jumping to address: {:X}", self.registers.pc);
+            println!("Jumping to address: {:04X}", self.registers.pc);
         }
         self.adv_cycles(10);
     }
@@ -445,7 +447,7 @@ impl<'a> ExecutionContext<'a> {
         let value = self.memory.read_imm16(self.registers.pc);
 
         let addr = value + 2 << 8 | value + 1;
-        self.memory.write_word(reg_a, addr);
+        self.memory.write_word(reg_a as u16, addr);
 
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -456,6 +458,7 @@ impl<'a> ExecutionContext<'a> {
         // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
 
+
         let ret: u16 = self.registers.pc + 3;
 
         match self.registers.opcode {
@@ -465,9 +468,9 @@ impl<'a> ExecutionContext<'a> {
                 // Write subroutine addresses to memory
                 // We need to put these addresses into memory so that the
                 // RET instruction can fetch the return address
-
                 // High order
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] =
+                    (ret >> 8 & 0xFF) as u8;
                 // Low order
                 self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
 
@@ -479,8 +482,8 @@ impl<'a> ExecutionContext<'a> {
         }
 
         if DEBUG {
-            println!("Subroutine call: {:#04X}", self.registers.pc);
-            println!("Return address is: {:#04X}", ret);
+            println!("Subroutine call: {:04X}", self.registers.pc);
+            println!("Return address is: {:04X}", ret);
         }
 
         self.adv_cycles(17);
@@ -493,9 +496,11 @@ impl<'a> ExecutionContext<'a> {
                 if self.registers.sign == true {
                     let ret: u16 = self.registers.pc + 3;
                     // High order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] =
+                        (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as
+                        u8;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
                     self.registers.pc = self.memory.read_imm16(self.registers.pc);
@@ -507,6 +512,42 @@ impl<'a> ExecutionContext<'a> {
             }
             _ => println!("Opcode not handled by CM"),
         };
+    }
+
+    fn cc(&mut self) {
+        let ret: u16 = self.registers.pc + 3;
+
+        if self.registers.carry {
+            match self.registers.opcode {
+                0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC => {
+                    // 0xE7 | 0xEF | 0xEE | 0xED | 0xDD | 0xFD | 0xFF => {
+
+                    // Write subroutine addresses to memory
+                    // We need to put these addresses into memory so that the
+                    // RET instruction can fetch the return address
+                    // High order
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] =
+                        (ret >> 8 & 0xFF) as u8;
+                    // Low order
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 &
+                        0xFF;
+
+
+                    self.registers.sp = self.registers.sp.wrapping_sub(2);
+                    self.registers.pc = self.memory.read_imm16(self.registers.pc);
+                }
+                _ => println!("Unknown call address: {:#X}", self.registers.opcode),
+            }
+            self.adv_cycles(17);
+        } else {
+            self.adv_cycles(11);
+            self.adv_pc(2);
+        }
+        if DEBUG {
+            println!("Subroutine call: {:04X}", self.registers.pc);
+            println!("Return address is: {:04X}", ret);
+        }
+
     }
 
     // Call if Zero
@@ -521,9 +562,11 @@ impl<'a> ExecutionContext<'a> {
                 if !self.registers.zero {
                     let ret: u16 = self.registers.pc + 3;
                     // High order
-                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] =
+                        (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 &
+                        0xFF as u8;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
                     self.registers.pc = self.memory.read_imm16(self.registers.pc);
@@ -696,11 +739,10 @@ impl<'a> ExecutionContext<'a> {
     }
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
-
         // Fetch byte out of memory which we will use to compare & set flags with.
         let value = self.memory.read_low(self.registers.pc);
         // let value = self.memory.read_imm16(self.registers.pc);
-       // println!("CPI value: {:X}", value);
+        // println!("CPI value: {:X}", value);
 
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
@@ -785,8 +827,9 @@ impl<'a> ExecutionContext<'a> {
         match reg {
             RegisterPair::BC => {
                 value;
-                value = value.wrapping_add((self.registers.reg_b as u16) >> 8 |
-                    (self.registers.reg_c as u16));
+                value = value.wrapping_add(
+                    (self.registers.reg_b as u16) >> 8 | (self.registers.reg_c as u16),
+                );
                 self.registers.half_carry = 0 < (value & 0xFFFF);
             }
 
@@ -815,7 +858,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = true;
         self.adv_pc(1);
         self.adv_cycles(10);
-        value = self.registers.sp
+        self.registers.sp = value;
     }
 
     // Decrement memory or register
@@ -1144,13 +1187,15 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H register.
         // L <- (adr); H<-(adr+1)
 
-        self.registers.reg_l = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
-                0);
+        self.registers.reg_l = self.memory.read(
+            (self.registers.opcode as usize + 2 << 8 |
+                 self.registers.opcode as usize + 1) + 0,
+        );
 
-        self.registers.reg_h = self.memory
-            .read((self.registers.opcode as usize + 2 << 8 | self.registers.opcode as usize + 1) +
-                1);
+        self.registers.reg_h = self.memory.read(
+            (self.registers.opcode as usize + 2 << 8 |
+                 self.registers.opcode as usize + 1) + 1,
+        );
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1161,8 +1206,6 @@ impl<'a> ExecutionContext<'a> {
         println!("Skipping IN instruction");
         self.adv_cycles(10);
         self.adv_pc(2);
-
-
     }
     fn inr(&mut self, reg: Register) {
         let mut value: u8 = 0;
@@ -1170,11 +1213,11 @@ impl<'a> ExecutionContext<'a> {
             Register::A => {
                 self.registers.reg_a += 1;
                 value = self.registers.reg_a;
-            },
+            }
             Register::B => {
                 self.registers.reg_b += 1;
                 value = self.registers.reg_b;
-            },
+            }
             Register::C => {
                 self.registers.reg_c += 1;
                 value = self.registers.reg_c;
@@ -1249,60 +1292,35 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push(&mut self, reg: Register) {
-        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
-
         match reg {
             Register::B => {
-                sub2 = self.registers.reg_c;
-                sub1 = self.registers.reg_b;
-                self.registers.sp.wrapping_sub(2);
+                self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_b;
+                self.memory.memory[self.registers.sp as usize - 2] = self.registers.reg_c;
+                self.registers.sp = self.registers.sp - 2;
             }
 
             Register::D => {
-                sub2 = self.registers.reg_e;
-                sub1 = self.registers.reg_d;
-                self.registers.sp.wrapping_sub(2);
+                self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_d;
+                self.memory.memory[self.registers.sp as usize - 2] = self.registers.reg_e;
+                self.registers.sp = self.registers.sp - 2;
             }
 
             Register::H => {
-                sub2 = self.registers.reg_l;
-                sub2 = self.registers.reg_h;
-                self.registers.sp.wrapping_sub(2);
+                self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_h;
+                self.memory.memory[self.registers.sp as usize - 2] = self.registers.reg_l;
+                self.registers.sp = self.registers.sp - 2;
             }
 
             _ => println!("Unknown push instruction"),
         }
-
-        self.registers.sp.wrapping_sub(2);
-
         self.adv_cycles(11);
         self.adv_pc(1);
     }
     fn push_psw(&mut self) {
-        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
-        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
         self.memory.memory[self.registers.sp as usize - 2];
-        if self.registers.sign {
-
-        }
-
-
-
-        }
-
-    // Flag mask
-    // #define F_CARRY         0x01
-    // #define F_UN1           0x02
-    // #define F_PARITY        0x04
-    // #define F_UN3           0x08
-    // #define F_HCARRY        0x10
-    // #define F_UN5           0x20
-    // #define F_ZERO          0x40
-    // #define F_NEG 0x80
-
-
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
+    }
 
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
@@ -1440,23 +1458,28 @@ impl<'a> ExecutionContext<'a> {
     }
 
 
-
     fn pop(&mut self, reg: RegisterPair) {
         let mut sp = self.registers.sp as usize;
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_c = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
-                self.registers.reg_b = self.memory.memory[(self.registers.sp as usize+ 1) & 0xFFFF];
+                self.registers.reg_c = self.memory.memory[(self.registers.sp as usize + 0) &
+                                                              0xFFFF];
+                self.registers.reg_b = self.memory.memory[(self.registers.sp as usize + 1) &
+                                                              0xFFFF];
             }
 
             RegisterPair::DE => {
-                self.registers.reg_e = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
-                self.registers.reg_d = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
+                self.registers.reg_e = self.memory.memory[(self.registers.sp as usize + 0) &
+                                                              0xFFFF];
+                self.registers.reg_d = self.memory.memory[(self.registers.sp as usize + 1) &
+                                                              0xFFFF];
             }
 
             RegisterPair::HL => {
-                self.registers.reg_l = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
-                self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
+                self.registers.reg_l = self.memory.memory[(self.registers.sp as usize + 0) &
+                                                              0xFFFF];
+                self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) &
+                                                              0xFFFF];
             }
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
@@ -1467,7 +1490,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_psw(&mut self) {
         self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
-        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 ==0;
+        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 == 0;
         self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 == 0;
         self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 == 0;
         self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 == 0;
@@ -1479,31 +1502,21 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_imm16(self.registers.sp + 1) |
-            self.memory.read_imm16(self.registers.sp) as u16;
+        let sp = self.memory.read_word(self.registers.sp);
         if DEBUG {
-            println!("Popping stack. SP value: {:02X}", sp);
+            println!("Popping stack. SP value: {:04X}", sp);
         }
         self.registers.sp += 2;
         sp
     }
 
     fn ret(&mut self) {
+        let return_addr = self.memory.pop(self.registers.sp);
         if DEBUG {
-            println!("RET instruction, memory value: {:X}",
-                     self.memory.read_imm16(self.registers.sp));
+            println!("Returning from subroutine: {:04X}", return_addr);
         }
-
-        let sp = self.memory.read_imm16(self.registers.sp);
-
-
-        if DEBUG {
-            println!("Returning from subroutine: {:04X}", sp);
-        }
-
-        self.registers.sp.wrapping_sub(2);
         self.adv_cycles(10);
-        self.registers.pc = sp;
+        self.registers.pc = return_addr;
     }
 
     // TODO
@@ -1524,7 +1537,7 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_a |= self.registers.reg_h,
             Register::L => self.registers.reg_a |= self.registers.reg_l,
             Register::M => self.registers.reg_a |= self.registers.reg_m,
-        };
+        }
 
         if reg == Register::M {
             self.adv_cycles(7);
@@ -1533,10 +1546,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
-
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
-        match dst {
+        match src {
             Register::A => self.write_reg(dst, value),
             Register::B => self.write_reg(dst, value),
             Register::C => self.write_reg(dst, value),
@@ -1545,13 +1557,21 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.write_reg(dst, value),
             Register::L => self.write_reg(dst, value),
             Register::H => self.write_reg(dst, value),
-            Register::M => self.write_reg(dst, value),
+            Register::M => {
+                let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let val = self.memory.memory[addr as usize];
+                println!("Value:{:X}", val);
+                self.write_reg(dst, val);
+                self.adv_cycles(2);
+            }
         }
-        println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
+
+        if DEBUG {
+            println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
+        }
         self.adv_cycles(5);
         self.adv_pc(1);
     }
-
     fn rst(&mut self, value: u8) {
         let mut rst = 0u8;
 
@@ -1586,7 +1606,7 @@ impl<'a> ExecutionContext<'a> {
     fn shld(&mut self) {
         let reg_a = self.registers.reg_a;
         let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
-        self.memory.write_word(reg_a, hl);
+        self.memory.write_word(reg_a as u16, hl);
 
         self.adv_cycles(13);
         self.adv_pc(3);
@@ -1615,6 +1635,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::ANI => self.ani(),
 
             Instruction::CALL(addr) => self.call(addr),
+            Instruction::CC => self.cc(),
             Instruction::CPI => self.cpi(),
             Instruction::CZ => self.cz(),
             Instruction::CM => self.cm(),
@@ -1722,42 +1743,52 @@ impl<'a> ExecutionContext<'a> {
         use self::RegisterPair::*;
         self.registers.opcode = instruction;
         if DEBUG {
-            println!("Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
-                     self.registers.opcode,
-                     self.registers.pc,
-                     self.registers.sp,
-                     self.registers.cycles);
-            println!("Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}",
-                     self.registers.reg_a,
-                     self.registers.reg_b,
-                     self.registers.reg_c,
-                     self.registers.reg_d);
-            println!("E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
-                     self.registers.reg_e,
-                     self.registers.reg_h,
-                     self.registers.reg_l,
-                     self.registers.reg_m);
+            println!(
+                "Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
+                self.registers.opcode,
+                self.registers.pc,
+                self.registers.sp,
+                self.registers.cycles
+            );
+            println!(
+                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}",
+                self.registers.reg_a,
+                self.registers.reg_b,
+                self.registers.reg_c,
+                self.registers.reg_d
+            );
+            println!(
+                "E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
+                self.registers.reg_e,
+                self.registers.reg_h,
+                self.registers.reg_l,
+                self.registers.reg_m
+            );
 
 
             let bc = (self.registers.reg_b as u16) << 8 | self.registers.reg_c as u16;
             let de = (self.registers.reg_d as u16) << 8 | self.registers.reg_e as u16;
             let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
 
-            let stack = self.memory.memory[self.registers.sp as usize + 1].wrapping_shl(8) |
-                self.memory.memory[self.registers.sp as usize];
+            let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 |
+                self.memory.memory[self.registers.sp as usize] as u16;
 
 
-            println!("Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
-                     bc,
-                     de,
-                     hl);
-            println!("Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
-                     self.registers.sign,
-                     self.registers.zero,
-                     self.registers.parity,
-                     self.registers.carry,
-                     self.registers.half_carry);
-            println!("Stack: {:04X}", stack);
+            println!(
+                "Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
+                bc,
+                de,
+                hl
+            );
+            println!(
+                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
+                self.registers.sign,
+                self.registers.zero,
+                self.registers.parity,
+                self.registers.carry,
+                self.registers.half_carry
+            );
+            println!("Stack: {:04X}", stack as u16);
         };
 
         match self.registers.opcode {
@@ -2014,7 +2045,7 @@ impl<'a> ExecutionContext<'a> {
 
             0xDA => self.decode(Instruction::JC),
             0xDB => self.decode(Instruction::IN),
-            0xDC => self.decode(Instruction::CC(0xDC)),
+            0xDC => self.decode(Instruction::CC),
             0xDD => self.decode(Instruction::CALL(0xDD)),
             0xDE => self.decode(Instruction::SBI),
             0xDF => self.decode(Instruction::RST(3)),
@@ -2126,12 +2157,12 @@ impl<'a> ExecutionContext<'a> {
         let mut bits = 0;
         let mut result: bool = false;
         for i in 0..8 {
-            if b & 1 << i  == 1 {
+            if b & 1 << i == 1 {
                 bits += 1;
             }
             if bits & 1 == 0 {
                 result = false;
-                } else if bits & 1 == 1 {
+            } else if bits & 1 == 1 {
                 result = true;
             } else {
                 result = false;
@@ -2140,4 +2171,3 @@ impl<'a> ExecutionContext<'a> {
         result
     }
 }
-

@@ -26,29 +26,31 @@ impl Memory {
         Memory { memory: [0; 65536] }
     }
 
-    pub fn read_byte(&mut self, byte: u8) -> u8 {
-        self.memory[byte as usize & 0xFFF] & 0xFF
+    pub fn read_byte(&mut self, addr: u16) -> u8 {
+        self.memory[addr as usize & 0xFFF] & 0xFF
     }
 
     pub fn read_next_byte(&mut self, byte: u8) -> u8 {
         self.memory[byte as usize + 1]
     }
-    pub fn write_byte(&mut self, addr: u8, mut byte: u16) {
+    pub fn write_byte(&mut self, addr: u16, mut byte: u16) {
         byte = self.memory[addr as usize & 0xFFFF] as u16;
     }
     pub fn read_imm16(&mut self, addr: u16) -> u16 {
-        // addr = opcode[2] << 8 | opcode[1];
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
-    pub fn read_word(&mut self, addr: u8) -> u16 {
-        return (self.memory[addr as usize] | (self.memory[(addr as usize + 1) << 8])) as u16
+    pub fn pop(&mut self, addr: u16) -> u16 {
+        (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16)
+    }
+    pub fn read_word(&mut self, addr: u16) -> u16 {
+        return (self.memory[addr as usize] | (self.memory[(addr as usize + 1) << 8])) as u16;
+
         // return self.read_byte(addr as u8) | (self.read_byte(addr  as u8 + 1) << 8)
     }
     pub fn write_memory(&mut self, addr: u16) {
         // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
     }
-
 
     pub fn read_high(&mut self, addr: u16) -> u8 {
         (self.memory[addr as usize + 2])
@@ -58,13 +60,9 @@ impl Memory {
         self.memory[addr as usize + 1]
     }
 
-    pub fn write_word(&mut self, addr: u8, word: u16) {
+    pub fn write_word(&mut self, addr: u16, word: u16) {
         self.write_byte(addr, word & 0xFF);
         self.write_byte(addr + 1, (word >> 8) & 0xFF);
-    }
-    pub fn read_short(&mut self, addr: usize) -> u16 {
-        // TODO Investigate whether this is correct..
-        (self.memory[addr + 1] << 8 | self.memory[addr]) as u16
     }
 
     // Reads the memory address and returns a 16 bit integer, for self.pc / sp instructions
