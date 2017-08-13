@@ -16,7 +16,6 @@ use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
 
-#[macro_use] // TODO Remove me
 mod cpu;
 mod opcode;
 mod display;
@@ -37,8 +36,8 @@ fn main() {
 
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
-    let mut display = display::Display::new();
-    let mut debugger = debugger::Debugger::new();
+    // let mut display = display::Display::new();
+    // let mut debugger = debugger::Debugger::new();
 
     // load binary file
     memory.load_bin(bin);
@@ -48,14 +47,14 @@ fn main() {
         // CPU execution
         ExecutionContext::new(&mut memory, &mut registers).step(1);
         // Update registry values continuously
-        debugger.draw_cpu_status(registers);
-        debugger.draw_cpu_flags(registers);
+        // debugger.draw_cpu_status(registers);
+        // debugger.draw_cpu_flags(registers);
 
         // display.draw(80, 80, &mut memory);
-        display.render_vram(&mut memory);
+        // display.render_vram(&mut memory);
         // Update window with our frame buffer here instead of within the rendering function
-        //display.window.update_with_buffer(&display.raster);
-        debugger.window.update_with_buffer(&debugger.fb);
+        // display.window.update_with_buffer(&display.raster);
+        // debugger.window.update_with_buffer(&debugger.fb);
 
     }
 }

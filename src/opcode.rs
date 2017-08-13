@@ -115,7 +115,7 @@ pub enum Instruction {
     CPE,
     XRI,
     RP,
-    POP_PSW(RegisterPair),
+    POP_PSW(Register),
     JP,
     DI,
     CP,

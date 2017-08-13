@@ -22,7 +22,6 @@ mod tests {
         file.read_to_end(&mut buf).expect("Failed to read binary");
         let buf_len = buf.len();
         for i in 0..buf_len {
-
             memory.memory[i + 0x0100] = buf[i];
         }
         println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
@@ -39,17 +38,17 @@ mod tests {
         // i8080core sets this before init, not sure why.
         cpu.registers.pc = 0xF800;
 
-        // TODO Look at what start addresses the other CPU tests need.
         // All test binaries start at 0x0100.
         cpu.registers.pc = 0x0100;
         // println!("Jumping to: {:#04X}", cpu.registers.pc);
 
         let mut success: bool = false;
         let instruction = cpu.memory.read(cpu.registers.pc as usize);
-        for _ in 0..30 {
+        // for _ in 0..70 {
+        loop {
             cpu.step(1);
             // cpu.step(1);
-           if cpu.registers.pc == 0x76 {
+            if cpu.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", cpu.registers.pc);
                 break
             }
@@ -57,7 +56,7 @@ mod tests {
                 if cpu.registers.reg_c == 9 {
                     let addr: u16 = cpu.registers.pc;
                     // Create register pair
-                    let reg_de = vec![cpu.memory.read_word(addr)];
+                    let reg_de = vec![cpu.memory.read_word(addr as u8)];
                     for i in reg_de {
                         println!("{:?}", cpu.memory.memory[i as usize]);
                         success = true;
@@ -67,11 +66,6 @@ mod tests {
                     println!("{}", cpu.registers.reg_e);
                 }
             }
-            // 8080PRE Resets PC to 0 if there has been an error
-            // if cpu.registers.pc == 00 {
-            //    panic!();
-            // }
         }
     }
 }
-

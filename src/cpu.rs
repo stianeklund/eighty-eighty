@@ -273,8 +273,8 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        self.registers.half_carry = (self.registers.reg_a | self.registers.opcode) & 0x08 != 0;
-        self.registers.reg_a &= self.registers.opcode;
+        self.registers.half_carry = (self.registers.pc | self.registers.pc) & 0x08 != 0;
+        self.registers.reg_a &= self.memory.read_imm16(self.registers.pc) as u8;
 
         self.registers.carry = false;
         self.registers.zero = false;
@@ -301,7 +301,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn jmp(&mut self) {
-        self.registers.pc = self.memory.read_word(self.registers.pc);
+        self.registers.pc = self.memory.read_imm16(self.registers.pc);
         if DEBUG {
             println!("Jumping to address: {:X}", self.registers.pc);
         }
@@ -311,7 +311,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if carry
     fn jc(&mut self) {
         if self.registers.carry {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -321,7 +321,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if no carry
     fn jnc(&mut self) {
         if !self.registers.carry {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -332,7 +332,7 @@ impl<'a> ExecutionContext<'a> {
     // If zero = 1 jump to address
     fn jz(&mut self) {
         if self.registers.zero == true {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -342,7 +342,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Not Zero (if zero bit is 0 jump)
     fn jnz(&mut self) {
         if self.registers.zero == false {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -352,7 +352,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Minus (If sign bit is one)
     fn jm(&mut self) {
         if self.registers.sign {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -362,7 +362,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Positive (If sign bit is zero)
     fn jp(&mut self) {
         if !self.registers.sign {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -372,7 +372,7 @@ impl<'a> ExecutionContext<'a> {
     // If parity even (If parity bit is 1)
     fn jpe(&mut self) {
         if self.registers.parity {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -382,7 +382,7 @@ impl<'a> ExecutionContext<'a> {
     // If parity odd (If parity bit is 0)
     fn jpo(&mut self) {
         if !self.registers.parity {
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
         } else {
             self.adv_pc(3);
         }
@@ -401,7 +401,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn lxi_sp(&mut self) {
-        self.registers.sp = self.memory.read_word(self.registers.pc);
+        self.registers.sp = self.memory.read_imm16(self.registers.pc);
 
         self.adv_pc(3);
         self.adv_cycles(10);
@@ -442,7 +442,7 @@ impl<'a> ExecutionContext<'a> {
     fn sta(&mut self) {
         let reg_a = self.registers.reg_a;
 
-        let value = self.memory.read_word(self.registers.pc);
+        let value = self.memory.read_imm16(self.registers.pc);
 
         let addr = value + 2 << 8 | value + 1;
         self.memory.write_word(reg_a, addr);
@@ -473,7 +473,7 @@ impl<'a> ExecutionContext<'a> {
 
 
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
-                self.registers.pc = self.memory.read_word(self.registers.pc);
+                self.registers.pc = self.memory.read_imm16(self.registers.pc);
             }
             _ => println!("Unknown call address: {:#X}", self.registers.opcode),
         }
@@ -495,10 +495,10 @@ impl<'a> ExecutionContext<'a> {
                     // High order
                     self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret & 0xFF as u8;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = (ret & 0xFF) as u8;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
-                    self.registers.pc = self.memory.read_word(self.registers.pc);
+                    self.registers.pc = self.memory.read_imm16(self.registers.pc);
                     self.adv_cycles(17);
                 } else {
                     self.adv_cycles(11);
@@ -523,10 +523,10 @@ impl<'a> ExecutionContext<'a> {
                     // High order
                     self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                     // Low order
-                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
+                    self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF as u8;
 
                     self.registers.sp = self.registers.sp.wrapping_sub(2);
-                    self.registers.pc = self.memory.read_word(self.registers.pc);
+                    self.registers.pc = self.memory.read_imm16(self.registers.pc);
                     self.adv_cycles(17);
                 } else {
                     self.adv_cycles(11);
@@ -699,13 +699,15 @@ impl<'a> ExecutionContext<'a> {
 
         // Fetch byte out of memory which we will use to compare & set flags with.
         let value = self.memory.read_low(self.registers.pc);
-        // let value = self.memory.read_byte(self.registers.pc as u8);
+        // let value = self.memory.read_imm16(self.registers.pc);
        // println!("CPI value: {:X}", value);
 
         // Compare is done with subtraction, so we need to compare the result of
         // accumulator with the immediate address.
         println!("Value: {:X}", value);
-        let result = value.wrapping_sub(self.registers.reg_a);
+        println!("A reg: {:X}", self.registers.reg_a);
+        // let result = self.registers.reg_a - value;
+        let result = value - self.registers.reg_a;
         println!("Result: {:X}", result);
         println!("Zero result: {:X}", result & 0xFF);
 
@@ -731,7 +733,7 @@ impl<'a> ExecutionContext<'a> {
             self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
 
             self.adv_cycles(17);
         } else {
@@ -759,7 +761,7 @@ impl<'a> ExecutionContext<'a> {
             self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = ret as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
-            self.registers.pc = self.memory.read_word(self.registers.pc);
+            self.registers.pc = self.memory.read_imm16(self.registers.pc);
 
             self.adv_cycles(17);
         } else {
@@ -1039,8 +1041,10 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn rnz(&mut self) {
-        println!("Implementation not finished");
-        if self.registers.carry == false {
+        if !self.registers.zero {
+            self.ret()
+        }
+        if !self.registers.carry {
             self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
@@ -1049,7 +1053,7 @@ impl<'a> ExecutionContext<'a> {
     }
     // Return if minus
     fn rm(&mut self) {
-        if self.registers.sign == true {
+        if self.registers.sign {
             self.ret();
             self.adv_cycles(11)
         } else {
@@ -1058,7 +1062,7 @@ impl<'a> ExecutionContext<'a> {
         }
     }
     fn rp(&mut self) {
-        if self.registers.sign == false {
+        if !self.registers.sign {
             self.ret();
             self.adv_cycles(11)
         } else {
@@ -1066,11 +1070,11 @@ impl<'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
-
-    // TODO
     fn rz(&mut self) {
-        println!("Implementation not finished");
-        if self.registers.carry == false {
+        if self.registers.zero {
+            self.ret();
+        }
+        if !self.registers.carry {
             self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
@@ -1079,7 +1083,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value: u8 = self.memory.read_word(self.registers.pc) as u8;
+        let value: u8 = self.memory.read_imm16(self.registers.pc) as u8;
         // let value = self.registers.opcode & 0xFF;
         match reg {
             Register::A => self.write_reg(Register::A, value),
@@ -1100,9 +1104,10 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn lda(&mut self) {
-        self.registers.reg_a = self.memory.read(self.registers.pc as usize);
-        self.adv_pc(3);
+        let addr = self.memory.read_imm16(self.registers.pc + 3) as u8;
+        self.registers.reg_a = addr;
         self.adv_cycles(13);
+        self.adv_pc(3);
     }
 
     fn ldax(&mut self, reg: RegisterPair) {
@@ -1151,6 +1156,14 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
+    // TODO Read up on IN & OUT instructions
+    fn input(&mut self) {
+        println!("Skipping IN instruction");
+        self.adv_cycles(10);
+        self.adv_pc(2);
+
+
+    }
     fn inr(&mut self, reg: Register) {
         let mut value: u8 = 0;
         match reg {
@@ -1266,6 +1279,30 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(11);
         self.adv_pc(1);
     }
+    fn push_psw(&mut self) {
+        let mut sub2 = self.memory.read(self.registers.sp.wrapping_sub(2) as usize);
+        let mut sub1 = self.memory.read(self.registers.sp.wrapping_sub(1) as usize);
+        self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
+        self.memory.memory[self.registers.sp as usize - 2];
+        if self.registers.sign {
+
+        }
+
+
+
+        }
+
+    // Flag mask
+    // #define F_CARRY         0x01
+    // #define F_UN1           0x02
+    // #define F_PARITY        0x04
+    // #define F_UN3           0x08
+    // #define F_HCARRY        0x10
+    // #define F_UN5           0x20
+    // #define F_ZERO          0x40
+    // #define F_NEG 0x80
+
+
 
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
@@ -1429,16 +1466,21 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn pop_psw(&mut self) {
-        self.registers.reg_psw = self.memory.read_word(self.registers.sp + 1) & 0xFFFF as u16;
-        self.registers.sp = self.registers.sp.wrapping_add(2);
+        self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
+        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 ==0;
+        self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 == 0;
+        self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 == 0;
+        self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 == 0;
+        self.registers.half_carry = self.memory.memory[self.registers.sp as usize] & 0x10 == 0;
 
+        self.registers.sp = self.registers.sp.wrapping_add(2);
         self.adv_pc(1);
         self.adv_cycles(10);
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_word(self.registers.sp + 1) |
-            self.memory.read_word(self.registers.sp) as u16;
+        let sp = self.memory.read_imm16(self.registers.sp + 1) |
+            self.memory.read_imm16(self.registers.sp) as u16;
         if DEBUG {
             println!("Popping stack. SP value: {:02X}", sp);
         }
@@ -1449,10 +1491,10 @@ impl<'a> ExecutionContext<'a> {
     fn ret(&mut self) {
         if DEBUG {
             println!("RET instruction, memory value: {:X}",
-                     self.memory.read_word(self.registers.sp));
+                     self.memory.read_imm16(self.registers.sp));
         }
 
-        let sp = self.memory.read_word(self.registers.sp);
+        let sp = self.memory.read_imm16(self.registers.sp);
 
 
         if DEBUG {
@@ -1466,8 +1508,8 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn out(&mut self) {
-        println!("Not implemented");
-        self.adv_pc(3);
+        println!("Not implemented, skipping");
+        self.adv_pc(2);
         self.adv_cycles(10);
     }
     fn ora(&mut self, reg: Register) {
@@ -1495,21 +1537,18 @@ impl<'a> ExecutionContext<'a> {
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
         match dst {
-            Register::M => {
-                self.write_reg(dst, value);
-                self.adv_cycles(7);
-            }
-
-            _ => {
-                self.write_reg(dst, value);
-                self.adv_cycles(5);
-            }
+            Register::A => self.write_reg(dst, value),
+            Register::B => self.write_reg(dst, value),
+            Register::C => self.write_reg(dst, value),
+            Register::D => self.write_reg(dst, value),
+            Register::E => self.write_reg(dst, value),
+            Register::H => self.write_reg(dst, value),
+            Register::L => self.write_reg(dst, value),
+            Register::H => self.write_reg(dst, value),
+            Register::M => self.write_reg(dst, value),
         }
-
-        if DEBUG {
-            println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
-        }
-
+        println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
+        self.adv_cycles(5);
         self.adv_pc(1);
     }
 
@@ -1615,7 +1654,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::POP_PSW(reg) => self.pop_psw(),
             Instruction::PUSH(reg) => self.push(reg),
 
-            Instruction::IN => println!("Not implemented: {:?}", instruction),
+            Instruction::IN => self.input(),
             Instruction::INR(reg) => self.inr(reg),
             Instruction::INX(reg) => self.inx(reg),
             Instruction::INX_SP => self.inx_sp(),
@@ -1999,7 +2038,8 @@ impl<'a> ExecutionContext<'a> {
             0xEF => self.decode(Instruction::RST(5)),
 
             0xF0 => self.decode(Instruction::RP),
-            0xF1 => self.decode(Instruction::POP(HL)),
+            // 0xF1 => self.decode(Instruction::POP(HL)),
+            0xF1 => self.decode(Instruction::POP_PSW(A)),
             0xF2 => self.decode(Instruction::JPO),
             0xF3 => self.decode(Instruction::XTHL),
             0xF4 => self.decode(Instruction::CP),
