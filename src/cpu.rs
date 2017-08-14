@@ -741,7 +741,7 @@ impl<'a> ExecutionContext<'a> {
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.memory.(self.registers.pc + 1);
+        let value = self.memory.read(self.registers.pc + 1);
 
         // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
