@@ -734,8 +734,11 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
+                self.adv_cycles(4);
             }
         };
+        self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // Compare Immediate with Accumulator
