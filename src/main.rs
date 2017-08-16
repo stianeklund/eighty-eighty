@@ -1,20 +1,10 @@
 extern crate minifb;
 extern crate byteorder;
 
-use std::io::prelude;
-use std::io::Read;
-use std::io::Cursor;
-use std::fs::File;
-use std::io::{Seek, SeekFrom};
-use std::path::Path;
-use std::cmp::PartialEq;
-
-use std::env;
-use std::thread;
-use minifb::{Window, WindowOptions, Scale, Key};
-use byteorder::{ByteOrder, LittleEndian, ReadBytesExt};
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
+use std::env;
+use std::thread::sleep_ms;
 
 mod cpu;
 mod opcode;
@@ -37,7 +27,7 @@ fn main() {
     let mut memory = memory::Memory::new();
     let mut registers = Registers::new();
     let mut display = display::Display::new();
-    let mut debugger = debugger::Debugger::new();
+    // let mut debugger = debugger::Debugger::new();
 
     // load binary file
     memory.load_bin(bin);
@@ -51,10 +41,11 @@ fn main() {
         // debugger.draw_cpu_flags(registers);
 
         // display.draw(80, 80, &mut memory);
-        // display.render_vram(&mut memory);
+        display.render_vram(&mut memory);
         // Update window with our frame buffer here instead of within the rendering function
         // display.window.update_with_buffer(&display.raster);
         // debugger.window.update_with_buffer(&debugger.fb).unwrap();
+        sleep_ms(20);
 
 
     }

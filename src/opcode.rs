@@ -44,8 +44,6 @@ impl fmt::UpperHex for RegisterPair {
     }
 }
 
-
-
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd)]
 pub enum Instruction {
     NOP,

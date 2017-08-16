@@ -40,14 +40,14 @@ impl Display {
             HEIGHT,
             WindowOptions {
                 resize: false,
-                scale: Scale::X2,
+                scale: Scale::X1,
                 ..WindowOptions::default()
             },
         ).unwrap();
 
 
         Display {
-            raster: vec![0; WIDTH * HEIGHT],
+            raster: vec![0; WIDTH * HEIGHT * 4],
             vblank: false,
             draw_flag: true,
             window: window,
@@ -88,9 +88,9 @@ impl Display {
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[counter as usize] = 0x0000000;
+                    self.raster[counter as usize] = 0x00000000;
                 } else {
-                    self.raster[counter as usize] = 0x0FFFFFF;
+                    self.raster[counter as usize] = 0x0FFFFFFF;
                 }
                 y = y.wrapping_sub(1);
                 if y < 0 {
@@ -99,14 +99,13 @@ impl Display {
                 x = x.wrapping_add(1);
             }
             counter = counter.wrapping_add(1);
+            // self.window.update_with_buffer(&self.raster);
         }
-        self.window.update_with_buffer(&self.raster);
-        // self.draw(x as usize, y as usize, &mut memory);
+        self.draw(x as usize, y as usize, &mut memory);
     }
 
     // TODO
     pub fn draw(&mut self, x: usize, y: usize, mut memory: &mut Memory) {
-        let mut sprite_sheet: Vec<u32> = self.create_fb(&mut memory);
         let mut sprite_value = 0;
 
         let sprite_w = 8;
@@ -122,18 +121,13 @@ impl Display {
 
         for i in index_y..tile_h {
             for j in index_x..tile_w {
-                self.raster[x.wrapping_add(line).wrapping_add(WIDTH).wrapping_mul(
-                    y.wrapping_add(
-                        offset,
-                    ),
-                )]; // = memory.memory[j + (i * HEIGHT)];
+                // self.raster[x + WIDTH * y] // = memory.memory[j + (i * HEIGHT)] as u32;
+                self.raster[x + line + WIDTH * offset] = memory.memory[j + (i * HEIGHT)] as u32;
                 line += 1;
             }
             line = 0;
             offset += 1;
         }
-        self.window.update_with_buffer(&self.raster).expect(
-            "Overflow",
-        );
+        self.window.update_with_buffer(&self.raster).unwrap();
     }
 }

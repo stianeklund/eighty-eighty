@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::prelude::*;
 use std::path::Path;
 
 use opcode::{Instruction, Register, RegisterPair};
@@ -886,19 +885,17 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::B => {
-                // TODO Investigate behavior here.. Underflow occurs unless we wrap.
-                self.registers.reg_b = self.registers.reg_b.wrapping_sub(1) & 0xFF;
-
+                self.registers.reg_b = self.registers.reg_b - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_b & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_b & 0xFF == 0;
-                // Overflow happens here
-                self.registers.parity = !self.registers.reg_b.wrapping_add(1) & 1 == 0;
+                self.registers.parity = !self.registers.reg_b + 1 & 1 == 0;
                 self.registers.sign = self.registers.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
             }
 
             Register::C => {
-                self.registers.reg_c = self.registers.reg_c.wrapping_sub(1) & 0xFF;
+                // self.registers.reg_c = self.registers.reg_c.wrapping_sub(1) & 0xFF;
+                self.registers.reg_c = self.registers.reg_c - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_c & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_c & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_c & 1 == 0;
@@ -907,7 +904,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::D => {
-                self.registers.reg_d = self.registers.reg_d.wrapping_sub(1) & 0xFF;
+                self.registers.reg_d = self.registers.reg_d - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_d & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_d & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_b & 1 == 0;
@@ -916,7 +913,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::E => {
-                self.registers.reg_e = self.registers.reg_e.wrapping_sub(1) & 0xFF;
+                self.registers.reg_e = self.registers.reg_e - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_e & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_e & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_e & 1 == 0;
@@ -925,7 +922,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::H => {
-                self.registers.reg_h = self.registers.reg_h.wrapping_sub(1) & 0xFF;
+                self.registers.reg_h = self.registers.reg_h - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_h & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_h & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_h & 1 == 0;
@@ -934,7 +931,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::L => {
-                self.registers.reg_l = self.registers.reg_l.wrapping_sub(1) & 0xFF;
+                self.registers.reg_l = self.registers.reg_l - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_l & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_l & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_l & 1 == 0;
@@ -943,7 +940,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::M => {
-                self.registers.reg_m = self.registers.reg_m.wrapping_sub(1) & 0xFF;
+                self.registers.reg_m = self.registers.reg_m - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_m & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_m & 0xFF == 0;
                 self.registers.parity = !self.registers.reg_m & 1 == 0;
@@ -1609,9 +1606,6 @@ impl<'a> ExecutionContext<'a> {
 
 
     pub fn decode(&mut self, instruction: Instruction) {
-        use self::Register::*;
-        use self::RegisterPair::*;
-
         println!("Instruction: {:?},", instruction);
 
         match instruction {
@@ -2080,17 +2074,17 @@ impl<'a> ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, mut times: u8) {
-        let instruction = self.memory.read(self.registers.pc);
+        let addr = self.memory.read(self.registers.pc);
         for _ in 0..times {
-            self.execute_instruction(instruction);
+            self.execute_instruction(addr);
             self.registers.pc &= 0xFFFF;
             times += 1;
         }
     }
 
-    pub fn run(&mut self) {
-        let instruction = self.memory.read(self.registers.pc);
-        self.execute_instruction(instruction);
+    pub fn read_instruction(&mut self, instruction: &mut Instruction) {
+        let addr = self.memory.read(self.registers.pc);
+        self.execute_instruction(addr);
     }
 
     pub fn reset(&mut self) {
