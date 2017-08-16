@@ -40,7 +40,7 @@ impl Display {
             HEIGHT,
             WindowOptions {
                 resize: false,
-                scale: Scale::X1,
+                scale: Scale::X2,
                 ..WindowOptions::default()
             },
         ).unwrap();
@@ -99,35 +99,37 @@ impl Display {
                 x = x.wrapping_add(1);
             }
             counter = counter.wrapping_add(1);
-            // self.window.update_with_buffer(&self.raster);
+           //  self.draw(x as usize, y as usize, memory);
         }
-        self.draw(x as usize, y as usize, &mut memory);
+
+        self.window.update_with_buffer(&self.raster);
     }
 
     // TODO
     pub fn draw(&mut self, x: usize, y: usize, mut memory: &mut Memory) {
         let mut sprite_value = 0;
 
-        let sprite_w = 8;
-        let sprite_h = 8;
+        let sprite_sheet = self.create_fb(memory);
+        let sprite_w = 50;
+        let sprite_h = 50;
 
-        let index_x = sprite_w * (sprite_value % 8);
-        let index_y = sprite_h * (sprite_value / 8);
+        let index_x = sprite_w * (sprite_value % 50);
+        let index_y = sprite_h * (sprite_value / 50);
         let tile_w = index_x + sprite_w;
         let tile_h = index_y + sprite_h;
 
+
         let mut offset = 0;
         let mut line = 0;
-
         for i in index_y..tile_h {
             for j in index_x..tile_w {
                 // self.raster[x + WIDTH * y] // = memory.memory[j + (i * HEIGHT)] as u32;
-                self.raster[x + line + WIDTH * offset] = memory.memory[j + (i * HEIGHT)] as u32;
+                self.raster[x + line + WIDTH * offset] = sprite_sheet[j + (i * HEIGHT)] as u32;
                 line += 1;
             }
             line = 0;
             offset += 1;
         }
-        self.window.update_with_buffer(&self.raster).unwrap();
+        // self.window.update_with_buffer(&self.raster).unwrap();
     }
 }

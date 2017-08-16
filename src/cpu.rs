@@ -870,16 +870,11 @@ impl<'a> ExecutionContext<'a> {
         // DCR M will cause memory location 3A7CH to contain 3FH.
 
         match reg {
-            // register % 2 = odd (parity false)
-            // register & 1 = even (parity true)
-            //
-            // The goal here is to read out the low bits and check for parity.
-            // self.parity = !self.registers.reg_m + 1 & 1 == 0;
             Register::A => {
-                self.registers.reg_a = self.registers.reg_a.wrapping_sub(1) & 0xFF;
+                self.registers.reg_a = self.registers.reg_a - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_a & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_a & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_a + 1 & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
                 self.registers.sign = self.registers.reg_a & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -888,7 +883,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_b = self.registers.reg_b - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_b & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_b & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_b + 1 & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_b & 0xFF);
                 self.registers.sign = self.registers.reg_b & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -898,7 +893,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_c = self.registers.reg_c - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_c & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_c & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_c & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_c & 0xFF);
                 self.registers.sign = self.registers.reg_c & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -907,7 +902,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_d = self.registers.reg_d - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_d & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_d & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_b & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_d & 0xFF);
                 self.registers.sign = self.registers.reg_d & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -916,7 +911,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_e = self.registers.reg_e - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_e & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_e & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_e & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_e & 0xFF);
                 self.registers.sign = self.registers.reg_e & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -925,7 +920,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_h = self.registers.reg_h - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_h & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_h & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_h & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_h & 0xFF);
                 self.registers.sign = self.registers.reg_h & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -934,7 +929,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = self.registers.reg_l - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_l & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_l & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_l & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_l & 0xFF);
                 self.registers.sign = self.registers.reg_l & 0x80 != 0;
                 self.adv_cycles(5);
             }
@@ -943,7 +938,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_m = self.registers.reg_m - 1 & 0xFF;
                 self.registers.half_carry = !self.registers.reg_m & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_m & 0xFF == 0;
-                self.registers.parity = !self.registers.reg_m & 1 == 0;
+                self.registers.parity = self.parity(self.registers.reg_m & 0xFF);
                 self.registers.sign = self.registers.reg_m & 0x80 != 0;
                 self.adv_cycles(6);
             }
@@ -1125,8 +1120,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value: u8 = self.memory.read_imm16(self.registers.pc) as u8;
-        // let value = self.registers.opcode & 0xFF;
+        let value: u8 = self.memory.read_imm16(self.registers.pc + 1) as u8;
+
         match reg {
             Register::A => self.write_reg(Register::A, value),
             Register::B => self.write_reg(Register::B, value),
@@ -1135,12 +1130,11 @@ impl<'a> ExecutionContext<'a> {
             Register::E => self.write_reg(Register::D, value),
             Register::H => self.write_reg(Register::D, value),
             Register::L => self.write_reg(Register::D, value),
-            Register::M => self.write_reg(Register::M, value),
+            Register::M => {
+                self.write_reg(Register::M, value);
+                self.adv_cycles(3);
+            },
         }
-        if reg == Register::M {
-            self.adv_cycles(3)
-        }
-
         self.adv_cycles(7);
         self.adv_pc(2);
     }
