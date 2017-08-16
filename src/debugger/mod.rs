@@ -3,10 +3,8 @@ use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 
 use std::char;
 use std::io::prelude;
-use std::io::Read;
-use std::io::Cursor;
+use std::io::*;
 use std::fs::File;
-use std::io::{Seek, SeekFrom};
 use std::path::Path;
 use display::Display;
 use cpu::{ExecutionContext, Registers};
@@ -19,6 +17,7 @@ pub const HEIGHT: usize = 256;
 pub struct DebugFont {
     pub bitmap: Vec<u8>,
 }
+
 impl DebugFont {
     pub fn new() -> DebugFont {
         let mut font = DebugFont { bitmap: Vec::<u8>::new() };
@@ -160,7 +159,6 @@ impl Debugger {
         }
     }
     pub fn draw_text(&mut self, text: &str, mut x: usize, mut y: usize) {
-
         for ch in text.to_uppercase().chars() {
             self.draw_sprite(x, y, ch);
             // TODO Look into X & Y padding values
@@ -238,3 +236,4 @@ impl Debugger {
         }
     }
 }
+
