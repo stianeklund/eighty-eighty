@@ -180,21 +180,21 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn add(&mut self, reg: Register) {
-        let mut value = self.registers.reg_a;
+        let mut reg_a = self.registers.reg_a;
 
         match reg {
-            Register::A => value += self.registers.reg_a,
-            Register::B => value += self.registers.reg_b,
-            Register::C => value += self.registers.reg_c,
-            Register::D => value += self.registers.reg_d,
-            Register::E => value += self.registers.reg_e,
-            Register::H => value += self.registers.reg_h,
-            Register::L => value += self.registers.reg_l,
-            Register::M => value += self.registers.reg_m,
+            Register::A => reg_a += self.registers.reg_a,
+            Register::B => reg_a += self.registers.reg_b,
+            Register::C => reg_a += self.registers.reg_c,
+            Register::D => reg_a += self.registers.reg_d,
+            Register::E => reg_a += self.registers.reg_e,
+            Register::H => reg_a += self.registers.reg_h,
+            Register::L => reg_a += self.registers.reg_l,
+            Register::M => reg_a += self.registers.reg_m,
         }
-        self.registers.half_carry = self.half_carry_add(value as u16) == 0;
-        self.registers.carry = value > 0xFF;
-        self.registers.parity = self.parity(value & 0x0F);
+        self.registers.half_carry = self.half_carry_add(reg_a as u16) == 0;
+        self.registers.carry = reg_a > 0xFF;
+        self.registers.parity = self.parity(reg_a & 0x0F);
         self.adv_pc(1);
         self.adv_cycles(4)
     }
@@ -1009,18 +1009,18 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn mvi(&mut self, reg: Register) {
-        let value: u8 = self.memory.read_imm16(self.registers.pc) as u8;
+        let value = self.memory.read_imm16(self.registers.pc) as u16;
 
         match reg {
-            Register::A => self.write_reg(Register::A, value),
-            Register::B => self.write_reg(Register::B, value),
-            Register::C => self.write_reg(Register::C, value),
-            Register::D => self.write_reg(Register::D, value),
-            Register::E => self.write_reg(Register::D, value),
-            Register::H => self.write_reg(Register::D, value),
-            Register::L => self.write_reg(Register::D, value),
+            Register::A => self.write_reg(Register::A, value as u8),
+            Register::B => self.write_reg(Register::B, value as u8),
+            Register::C => self.write_reg(Register::C, value as u8),
+            Register::D => self.write_reg(Register::D, value as u8),
+            Register::E => self.write_reg(Register::D, value as u8),
+            Register::H => self.write_reg(Register::D, value as u8),
+            Register::L => self.write_reg(Register::D, value as u8),
             Register::M => {
-                self.write_reg(Register::M, value);
+                self.write_reg(Register::M, value as u8);
                 self.adv_cycles(3);
             }
         }
@@ -1231,14 +1231,14 @@ impl<'a> ExecutionContext<'a> {
         let carry = if self.registers.carry { 0x01 } else { 0x00 };
 
         match reg {
-            Register::A => reg_a - self.registers.reg_a - carry,
-            Register::B => reg_a - self.registers.reg_b - carry,
-            Register::C => reg_a - self.registers.reg_c - carry,
-            Register::D => reg_a - self.registers.reg_d - carry,
-            Register::E => reg_a - self.registers.reg_e - carry,
-            Register::H => reg_a - self.registers.reg_h - carry,
-            Register::L => reg_a - self.registers.reg_l - carry,
-            Register::M => reg_a - self.registers.reg_m - carry,
+            Register::A => reg_a -= self.registers.reg_a - carry,
+            Register::B => reg_a -= self.registers.reg_b - carry,
+            Register::C => reg_a -= self.registers.reg_c - carry,
+            Register::D => reg_a -= self.registers.reg_d - carry,
+            Register::E => reg_a -= self.registers.reg_e - carry,
+            Register::H => reg_a -= self.registers.reg_h - carry,
+            Register::L => reg_a -= self.registers.reg_l - carry,
+            Register::M => reg_a -= self.registers.reg_m - carry,
             };
 
         if reg == Register::M {
@@ -1263,14 +1263,14 @@ impl<'a> ExecutionContext<'a> {
         let mut reg_a = self.registers.reg_a;
 
         match reg {
-            Register::A => reg_a - self.registers.reg_a,
-            Register::B => reg_a - self.registers.reg_b,
-            Register::C => reg_a - self.registers.reg_c,
-            Register::D => reg_a - self.registers.reg_d,
-            Register::E => reg_a - self.registers.reg_e,
-            Register::H => reg_a - self.registers.reg_h,
-            Register::L => reg_a - self.registers.reg_l,
-            Register::M => reg_a - self.registers.reg_m,
+            Register::A => reg_a -= self.registers.reg_a,
+            Register::B => reg_a -= self.registers.reg_b,
+            Register::C => reg_a -= self.registers.reg_c,
+            Register::D => reg_a -= self.registers.reg_d,
+            Register::E => reg_a -= self.registers.reg_e,
+            Register::H => reg_a -= self.registers.reg_h,
+            Register::L => reg_a -= self.registers.reg_l,
+            Register::M => reg_a -= self.registers.reg_m,
         };
 
         if reg == Register::M {
