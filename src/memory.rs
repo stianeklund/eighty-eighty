@@ -36,7 +36,8 @@ impl Memory {
     pub fn write_byte(&mut self, addr: u16, mut byte: u16) {
         byte = self.memory[addr as usize & 0xFFFF] as u16;
     }
-    pub fn read_imm16(&mut self, addr: u16) -> u16 {
+    // Read immediate value
+    pub fn read_imm(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
     pub fn pop(&mut self, addr: u16) -> u16 {
@@ -46,7 +47,6 @@ impl Memory {
         return (self.memory[addr as usize] | (self.memory[(addr as usize + 1) << 8])) as u16;
     }
     pub fn write_memory(&mut self, addr: u16) {
-        // (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);
     }
 
