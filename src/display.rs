@@ -39,34 +39,31 @@ impl Display {
             WIDTH,
             HEIGHT,
             WindowOptions {
-                resize: false,
-                scale: Scale::X2,
+                resize: true,
+                scale: Scale::X4,
                 ..WindowOptions::default()
             },
         ).unwrap();
 
 
         Display {
-            raster: vec![0; WIDTH * HEIGHT * 4],
+            raster: vec![0; WIDTH * HEIGHT],
             vblank: false,
             draw_flag: true,
             window: window,
         }
     }
-    pub fn create_fb(&mut self, memory: &mut Memory) -> Vec<u32> {
-        // Create 32bit bitmap array that can be used for rendering
-        let mut buffer: Vec<u32> = memory
-            .memory
-            .chunks(4)
-            .map(|buf| {
-                let buf = Cursor::new(buf).read_u32::<LittleEndian>().unwrap();
-                buf
-            })
-            .collect();
-        buffer
+    pub fn render(&mut self, mut memory: &mut Memory) {
+        for x in 0..WIDTH {
+            for y in 0..HEIGHT {
+                let image_y = 255 - y;
+                let offset = (WIDTH * image_y) + x;
+                let frame_offset = (WIDTH * y) + x;
+                self.raster[frame_offset] = memory.memory[offset] as u32;
+                // self.raster[x + (y * WIDTH)] = ((x ^ (y * HEIGHT) & 0xFF) * 1) as u32;
+            }
+        }
     }
-
-
     pub fn render_vram(&mut self, mut memory: &mut Memory) {
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
@@ -92,44 +89,14 @@ impl Display {
                 } else {
                     self.raster[counter as usize] = 0x0FFFFFFF;
                 }
-                y = y.wrapping_sub(1);
+                y -= 1;
                 if y < 0 {
                     y = 255;
                 }
-                x = x.wrapping_add(1);
+                x += 1;
+                self.render(memory)
             }
             counter = counter.wrapping_add(1);
-           //  self.draw(x as usize, y as usize, memory);
         }
-
-        self.window.update_with_buffer(&self.raster);
-    }
-
-    // TODO
-    pub fn draw(&mut self, x: usize, y: usize, mut memory: &mut Memory) {
-        let mut sprite_value = 0;
-
-        let sprite_sheet = self.create_fb(memory);
-        let sprite_w = 50;
-        let sprite_h = 50;
-
-        let index_x = sprite_w * (sprite_value % 50);
-        let index_y = sprite_h * (sprite_value / 50);
-        let tile_w = index_x + sprite_w;
-        let tile_h = index_y + sprite_h;
-
-
-        let mut offset = 0;
-        let mut line = 0;
-        for i in index_y..tile_h {
-            for j in index_x..tile_w {
-                // self.raster[x + WIDTH * y] // = memory.memory[j + (i * HEIGHT)] as u32;
-                self.raster[x + line + WIDTH * offset] = sprite_sheet[j + (i * HEIGHT)] as u32;
-                line += 1;
-            }
-            line = 0;
-            offset += 1;
-        }
-        // self.window.update_with_buffer(&self.raster).unwrap();
     }
 }
