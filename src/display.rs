@@ -40,36 +40,34 @@ impl Display {
             HEIGHT,
             WindowOptions {
                 resize: true,
-                scale: Scale::X4,
+                scale: Scale::X2,
                 ..WindowOptions::default()
             },
         ).unwrap();
 
 
         Display {
-            raster: vec![0; WIDTH * HEIGHT],
+            raster: vec![0; WIDTH * HEIGHT * 5],
             vblank: false,
             draw_flag: true,
             window: window,
         }
     }
     pub fn render(&mut self, mut memory: &mut Memory) {
-        for x in 0..WIDTH {
-            for y in 0..HEIGHT {
-                let image_y = 255 - y;
-                let offset = (WIDTH * image_y) + x;
-                let frame_offset = (WIDTH * y) + x;
-                self.raster[frame_offset] = memory.memory[offset] as u32;
-                // self.raster[x + (y * WIDTH)] = ((x ^ (y * HEIGHT) & 0xFF) * 1) as u32;
+            for x in 0..WIDTH {
+                for y in 0..HEIGHT {
+                    let image_y = 255 - y;
+                    let offset = (WIDTH * image_y) + x;
+                    let frame_offset = (WIDTH * y) + x;
+                    self.raster[frame_offset] = memory.memory[offset] as u32;
+                    // self.raster[x + (y * WIDTH)] = ((x ^ (y * HEIGHT) & 0xFF) * 1) as u32;
+                }
             }
-        }
     }
     pub fn render_vram(&mut self, mut memory: &mut Memory) {
         // 0x2400 is the beginning of VRAM
         let mut base: u16 = 0x2400;
         let mut offset: u16 = 0;
-        let mut x: u8 = 0;
-        let mut y: u8 = 255;
 
         let mut counter: u8 = 0;
 
@@ -82,21 +80,21 @@ impl Display {
 
 
         for offset in 0..(256 * 244 / 8) {
+            let mut x: u8 = 0;
+            let mut y: u8 = 224;
             for shift in 0..8 {
                 // Inner loop should split the byte into bits (8 pixels per byte)
                 if (memory.memory[base as usize + offset as usize] >> shift) & 1 != 0 {
-                    self.raster[counter as usize] = 0x00000000;
+                    self.raster[offset as usize] = 0;
                 } else {
-                    self.raster[counter as usize] = 0x0FFFFFFF;
+                    self.raster[offset as usize] = 0x00FFFFFF;
                 }
                 y -= 1;
-                if y < 0 {
-                    y = 255;
+                if y <= 0 {
+                    y = 224;
                 }
                 x += 1;
-                self.render(memory)
             }
-            counter = counter.wrapping_add(1);
         }
     }
 }

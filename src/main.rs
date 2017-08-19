@@ -3,6 +3,7 @@ extern crate byteorder;
 
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
+use minifb::Key;
 use std::env;
 use std::thread::sleep_ms;
 
@@ -41,11 +42,14 @@ fn main() {
         // debugger.draw_cpu_flags(registers);
 
         // display.draw(80, 80, &mut memory);
-        display.render(&mut memory);
-        // display.render_vram(&mut memory);
+        // display.render(&mut memory);
+        display.render_vram(&mut memory);
         // Update window with our frame buffer here instead of within the rendering function
-        display.window.update_with_buffer(&display.raster).unwrap();
         // debugger.window.update_with_buffer(&debugger.fb).unwrap();
+        if display.window.is_key_down(Key::Escape) {
+            break
+        }
+        display.window.update_with_buffer(&display.raster).unwrap();
         sleep_ms(20);
 
 

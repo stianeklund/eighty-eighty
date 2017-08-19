@@ -194,7 +194,7 @@ impl<'a> ExecutionContext<'a> {
         }
         self.registers.half_carry = self.half_carry_add(reg_a as u16) == 0;
         self.registers.carry = reg_a > 0xFF;
-        self.registers.parity = self.parity(reg_a & 0x0F);
+        self.registers.parity = self.parity(reg_a);
         self.adv_pc(1);
         self.adv_cycles(4)
     }
@@ -665,7 +665,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = result & 0xFF == 0;
         self.registers.half_carry = !self.half_carry_sub(value as u16) != 0;
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
 
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -992,9 +992,12 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
+    // Move Immediate Data
     fn mvi(&mut self, reg: Register) {
-        let value = self.memory.read_imm(self.registers.pc) as u16;
-
+        // The MVI instruction uses a 8-bit data quantity, as opposed to
+        // LXI which uses a 16-bit data quantity.
+        let value = self.memory.read(self.registers.pc + 1) as u16;
+        println!("Value: {:04X}", value);
         match reg {
             Register::A => self.write_reg(Register::A, value as u8),
             Register::B => self.write_reg(Register::B, value as u8),
@@ -1377,7 +1380,7 @@ impl<'a> ExecutionContext<'a> {
     fn ret(&mut self) {
         let return_addr = self.memory.pop(self.registers.sp);
         if DEBUG {
-            println!("Returning from subroutine: {:04X}", return_addr);
+            println!("Returning to: {:04X}", return_addr);
         }
         self.adv_cycles(10);
         self.registers.pc = return_addr;
@@ -1412,7 +1415,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
-        match src {
+        match dst {
             Register::A => self.write_reg(dst, value),
             Register::B => self.write_reg(dst, value),
             Register::C => self.write_reg(dst, value),
