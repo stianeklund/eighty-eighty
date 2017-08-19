@@ -28,6 +28,7 @@ pub enum RegisterPair {
     BC,
     DE,
     HL,
+    SP
 }
 
 impl fmt::UpperHex for Register {
@@ -67,13 +68,13 @@ pub enum Instruction {
     Cz(u16),
     Daa,
     Dad(RegisterPair),
-    DadSp,
+    DadSp(RegisterPair),
     Dcr(Register),
     Dcx(RegisterPair),
-    DcxSp,
+    DcxSp(RegisterPair),
     Hlt,
     Inx(RegisterPair),
-    InxSp,
+    InxSp(RegisterPair),
     Inr(Register),
     Jc,
     Jnc,

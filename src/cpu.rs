@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::path::Path;
-
+use byteorder::{ByteOrder, LittleEndian};
 use opcode::{Instruction, Register, RegisterPair};
 // use super::interconnect::Interconnect;
 use memory::Memory;
@@ -129,7 +129,9 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
+    // Write register value with little endianness.
     fn write_reg(&mut self, reg: Register, value: u8) {
+        // Convert byte to little endian.
         match reg {
             Register::A => self.registers.reg_a = value,
             Register::B => self.registers.reg_b = value,
@@ -147,6 +149,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::BC => self.registers.reg_bc = value as u16,
             RegisterPair::DE => self.registers.reg_de = value as u16,
             RegisterPair::HL => self.registers.reg_hl = value as u16,
+            RegisterPair::SP => self.registers.sp = value as u16,
         }
     }
 
@@ -423,8 +426,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_h = high;
                 self.registers.reg_l = low;
             }
-        };
-
+            RegisterPair::SP => self.registers.sp = self.memory.read_imm(self.registers.pc)
+        }
         self.adv_cycles(10);
         self.adv_pc(3);
     }
@@ -448,7 +451,7 @@ impl<'a> ExecutionContext<'a> {
         let ret: u16 = self.registers.pc + 3;
 
         match addr {
-            0xCC | 0xCD | 0xC4 | 0xCC | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFC => {
+            0xCC | 0xCD | 0xC4 | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFC => {
                 // High order byte
                 self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
                 // Low order byte
@@ -697,43 +700,38 @@ impl<'a> ExecutionContext<'a> {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        let mut value: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16) as u16;
+        let mut value =  0;
 
         match reg {
             RegisterPair::BC => {
-                value;
-                value = value.wrapping_add(
-                    (self.registers.reg_b as u16) >> 8 | (self.registers.reg_c as u16),
-                );
-                self.registers.half_carry = 0 < (value & 0xFFFF);
+                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                value += (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
+                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
             }
 
             RegisterPair::DE => {
-                value;
-
-                value += (self.registers.reg_d as u16) >> 8 | (self.registers.reg_e as u16);
-                self.registers.half_carry = 0 < (value & 0xFFFF);
+                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                value += (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
+                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
             }
 
             RegisterPair::HL => {
-                println!("DAD shouldn't run on HL, dad_sp handles this");
+                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                value += (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
+            },
+            // DAD SP
+            _ => {
+                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                value += self.registers.sp as u16;
+                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
             }
-        };
+        }
+        self.registers.reg_h = ((value as u16) >> 8 & 0xFF) as u8;
+        self.registers.reg_l = ((value as u16) >> 8 & 0xFF) as u8;
 
-        self.registers.reg_h = ((value as u16) >> 8 & 0xFFFF) as u8;
-        self.registers.reg_l = ((value as u16) >> 0 & 0xFFFF) as u8;
-
-        self.adv_pc(1);
         self.adv_cycles(10);
-    }
-
-    fn dad_sp(&mut self) {
-        let mut value: u16;
-        value = (self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l) as u16;
-        self.registers.carry = true;
         self.adv_pc(1);
-        self.adv_cycles(10);
-        self.registers.sp = value;
     }
 
     // Decrement memory or register
@@ -745,7 +743,7 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             Register::A => {
-                self.registers.reg_a = self.registers.reg_a - 1 & 0xFF;
+                self.registers.reg_a = self.registers.reg_a.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_a & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_a & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
@@ -754,7 +752,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::B => {
-                self.registers.reg_b = self.registers.reg_b - 1 & 0xFF;
+                self.registers.reg_b = self.registers.reg_b.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_b & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_b & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_b & 0xFF);
@@ -763,7 +761,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::C => {
-                self.registers.reg_c = self.registers.reg_c - 1 & 0xFF;
+                self.registers.reg_c = self.registers.reg_c.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_c & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_c & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_c & 0xFF);
@@ -772,7 +770,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::D => {
-                self.registers.reg_d = self.registers.reg_d - 1 & 0xFF;
+                self.registers.reg_d = self.registers.reg_d.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_d & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_d & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_d & 0xFF);
@@ -781,7 +779,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::E => {
-                self.registers.reg_e = self.registers.reg_e - 1 & 0xFF;
+                self.registers.reg_e = self.registers.reg_e.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_e & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_e & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_e & 0xFF);
@@ -790,7 +788,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::H => {
-                self.registers.reg_h = self.registers.reg_h - 1 & 0xFF;
+                self.registers.reg_h = self.registers.reg_h.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_h & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_h & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_h & 0xFF);
@@ -799,7 +797,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::L => {
-                self.registers.reg_l = self.registers.reg_l - 1 & 0xFF;
+                self.registers.reg_l = self.registers.reg_l.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_l & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_l & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_l & 0xFF);
@@ -808,7 +806,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             Register::M => {
-                self.registers.reg_m = self.registers.reg_m - 1 & 0xFF;
+                self.registers.reg_m = self.registers.reg_m.wrapping_sub(1) & 0xFF;
                 self.registers.half_carry = !self.registers.reg_m & 0x0F == 0x0F;
                 self.registers.zero = self.registers.reg_m & 0xFF == 0;
                 self.registers.parity = self.parity(self.registers.reg_m & 0xFF);
@@ -839,15 +837,10 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_h = hl.wrapping_shl(8) & 0xFF;
                 self.registers.reg_l = hl.wrapping_shl(0) & 0xFF;
             }
-        }
-        self.adv_cycles(5);
-        self.adv_pc(1);
-    }
-
-    fn dcx_sp(&mut self) {
-        self.registers.sp.wrapping_sub(1);
-        self.adv_cycles(5);
-        self.adv_pc(1);
+            RegisterPair::SP => self.registers.sp = self.registers.sp.wrapping_sub(1),
+            }
+            self.adv_cycles(5);
+            self.adv_pc(1);
     }
 
     // TODO
@@ -996,18 +989,26 @@ impl<'a> ExecutionContext<'a> {
     fn mvi(&mut self, reg: Register) {
         // The MVI instruction uses a 8-bit data quantity, as opposed to
         // LXI which uses a 16-bit data quantity.
-        let value = self.memory.read(self.registers.pc + 1) as u16;
+        // First MVI instruction is:
+        // Address  Bytes    Operand  Exp       Comment
+        // 18D7:    06 00    LD       B,$00    ; Count 256 bytes
+        // In our case we get 0006 with self.memory.read, but it's stored as 06.
+        // TODO: Look into endianess here, and or rewrite the write_memory function to write the
+        // correct value to register.
+        let mut value = self.memory.read(self.registers.pc + 1);
         println!("Value: {:04X}", value);
+        // let value = self.memory.read(self.registers.pc) >> 2 & 0x80;
+        // println!("Value: {:04X}", value);
         match reg {
-            Register::A => self.write_reg(Register::A, value as u8),
-            Register::B => self.write_reg(Register::B, value as u8),
-            Register::C => self.write_reg(Register::C, value as u8),
-            Register::D => self.write_reg(Register::D, value as u8),
-            Register::E => self.write_reg(Register::D, value as u8),
-            Register::H => self.write_reg(Register::D, value as u8),
-            Register::L => self.write_reg(Register::D, value as u8),
+            Register::A => self.registers.reg_a = value,
+            Register::B => self.registers.reg_b = value,
+            Register::C => self.registers.reg_c = value,
+            Register::D => self.registers.reg_d = value,
+            Register::E => self.registers.reg_e = value,
+            Register::H => self.registers.reg_h = value,
+            Register::L => self.registers.reg_l = value,
             Register::M => {
-                self.write_reg(Register::M, value as u8);
+                self.registers.reg_m = value;
                 self.adv_cycles(3);
             }
         }
@@ -1063,9 +1064,10 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
-    // TODO Read up on IN & OUT instructions
+    // Read one byte from input device #0 into the accumulator
+    // Instructions in this class occupy 2 bytes.
     fn input(&mut self) {
-        println!("Skipping IN instruction");
+        println!("Not implemented yet, skipping");
         self.adv_cycles(10);
         self.adv_pc(2);
     }
@@ -1140,14 +1142,11 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.reg_h += 1;
                 }
             }
+            RegisterPair::SP => {
+                self.registers.sp += 1;
+                self.adv_pc(1);
+            }
         };
-
-        self.adv_cycles(6);
-        self.adv_pc(1);
-    }
-
-    fn inx_sp(&mut self) {
-        self.registers.sp += 1;
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -1199,6 +1198,7 @@ impl<'a> ExecutionContext<'a> {
                 let hl = self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l;
                 self.memory.memory[hl as usize] = self.registers.reg_a;
             }
+            RegisterPair::SP => eprintln!("STAX should not run on SP register"),
         }
 
         self.adv_cycles(7);
@@ -1348,6 +1348,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
                 self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
             }
+            RegisterPair::SP => println!("LOL"),
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
 
@@ -1513,12 +1514,12 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Cpe(addr) => self.cpe(addr),
             Instruction::Dcr(reg) => self.dcr(reg),
             Instruction::Dcx(reg) => self.dcx(reg),
-            Instruction::DcxSp => self.dcx_sp(),
+            Instruction::DcxSp(reg) => self.dcx(reg),
 
             Instruction::Di => println!("Not implemented: {:?}", instruction),
             Instruction::Daa => self.daa(),
             Instruction::Dad(reg) => self.dad(reg),
-            Instruction::DadSp => self.dad_sp(),
+            Instruction::DadSp(reg) => self.dad(reg),
             Instruction::Ei => self.ei(),
             Instruction::Jc => self.jc(),
             Instruction::Jmp => self.jmp(),
@@ -1543,7 +1544,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::In => self.input(),
             Instruction::Inr(reg) => self.inr(reg),
             Instruction::Inx(reg) => self.inx(reg),
-            Instruction::InxSp => self.inx_sp(),
+            Instruction::InxSp(reg) => self.inx(reg),
             Instruction::Out => self.out(),
 
             Instruction::Sta => self.sta(),
@@ -1616,8 +1617,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.cycles
             );
             println!(
-                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
-                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
+                "Registers: A: {:04X}, B: {:04X}, C: {:04X}, D: {:04X}, \
+                E: {:04X}, H: {:04X}, L: {:04X}, M: {:04X}",
                 self.registers.reg_a,
                 self.registers.reg_b,
                 self.registers.reg_c,
@@ -1712,16 +1713,16 @@ impl<'a> ExecutionContext<'a> {
             0x30 => self.decode(Instruction::Nop),
             0x31 => self.decode(Instruction::LxiSp),
             0x32 => self.decode(Instruction::Sta),
-            0x33 => self.decode(Instruction::InxSp),
+            0x33 => self.decode(Instruction::InxSp(SP)),
             0x34 => self.decode(Instruction::Inr(M)),
             0x35 => self.decode(Instruction::Dcr(M)),
             0x36 => self.decode(Instruction::Mvi(M)),
             0x37 => self.decode(Instruction::Stc),
             0x38 => self.decode(Instruction::Nop),
-            0x39 => self.decode(Instruction::DadSp),
+            0x39 => self.decode(Instruction::DadSp(SP)),
 
             0x3A => self.decode(Instruction::Lda),
-            0x3B => self.decode(Instruction::DcxSp),
+            0x3B => self.decode(Instruction::DcxSp(SP)),
             0x3C => self.decode(Instruction::Inr(A)),
             0x3D => self.decode(Instruction::Dcr(A)),
             0x3E => self.decode(Instruction::Mvi(A)),
