@@ -924,11 +924,13 @@ impl<'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
-    // TODO
+    // Return if Parity Even
     fn rpe(&mut self) {
-        self.adv_pc(1);
-        // TODO Cycles 11 / 5
-        // self.adv_cycles(4);
+        if self.registers.parity {
+            self.ret()
+        } else {
+            self.adv_pc(1);
+        }
     }
     fn rc(&mut self) {
         // If Carry flag is set, return from subroutine
@@ -1417,7 +1419,17 @@ impl<'a> ExecutionContext<'a> {
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
         match dst {
-            Register::A => self.write_reg(dst, value),
+            Register::A => {
+                if src == Register::M {
+                    let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                    let val = self.memory.memory[addr as usize];
+                    println!("Value:{:X}", val);
+                    self.write_reg(dst, val);
+                    self.adv_cycles(2);
+                } else {
+                    self.write_reg(dst, value)
+                }
+            },
             Register::B => self.write_reg(dst, value),
             Register::C => self.write_reg(dst, value),
             Register::D => self.write_reg(dst, value),
