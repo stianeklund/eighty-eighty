@@ -1,5 +1,5 @@
     org 100h
-    lxi hl, 4110 ; 100e
+    lxi hl, 4110
     lxi hl, hlval
     mov a,m
     cpi 0a5h
@@ -8,5 +8,5 @@
     mov a,m
     cpi 03ch
     jnz 0
-
+    hlt
     hlval: db 0a5h, 03ch

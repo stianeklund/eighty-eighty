@@ -127,12 +127,10 @@ mod tests {
                 }
             }
             sleep_ms(50);
-            // Panic if opcode is 0x00 or PC is 0.
-            if cpu.registers.opcode == 0xA5 {
+            // Last instruction is to halt emulator, lets panic here.
+            if cpu.registers.opcode == 0x76 {
                 break;
-
             }
-            // assert_eq!(cpu.registers.opcode, 0xA5);
         }
     }
 }
