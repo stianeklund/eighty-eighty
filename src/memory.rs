@@ -40,6 +40,10 @@ impl Memory {
     pub fn read_imm(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
+    // Create register pair
+    pub fn create_rp(&mut self, reg1: u8, reg2: u8) -> u16 {
+        (self.memory[reg1 as usize + 2] as u16) << 8 | (self.memory[reg2 as usize + 1] as u16)
+    }
     pub fn pop(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16)
     }

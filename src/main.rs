@@ -1,4 +1,6 @@
 #![feature(inclusive_range,inclusive_range_syntax)]
+#![feature(ascii_ctype)]
+
 extern crate minifb;
 extern crate byteorder;
 

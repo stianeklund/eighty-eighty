@@ -385,10 +385,9 @@ impl<'a> ExecutionContext<'a> {
         let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
         self.registers.pc = hl;
         if DEBUG {
-            println!("Jumping to address: {:X}", self.registers.pc);
+            println!("Jumping to address: {:0X}", self.registers.pc);
         };
         self.adv_cycles(5);
-        self.adv_pc(1);
     }
 
     fn lxi_sp(&mut self) {
@@ -471,9 +470,13 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(17);
     }
 
+    // Call if Minus (if sign bit is 1, indicating a negative result)
     fn cm(&mut self, addr: u16) {
-        if self.registers.sign == true {
+        if self.registers.sign {
             self.call(addr);
+        } else {
+            self.adv_cycles(11);
+            self.adv_pc(2);
         }
     }
 
@@ -488,6 +491,15 @@ impl<'a> ExecutionContext<'a> {
 
     // Call if Zero
     fn cz(&mut self, addr: u16) {
+        if self.registers.zero {
+            self.call(addr);
+        } else {
+            self.adv_cycles(11);
+            self.adv_pc(3);
+        }
+    }
+
+    fn cnz(&mut self, addr: u16) {
         if !self.registers.zero {
             self.call(addr);
         } else {
@@ -697,9 +709,9 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    // CALL if plus
+    // CALL if plus (if sign bit is zero, indicating a positive result)
     fn cp(&mut self, addr: u16) {
-        if self.registers.sign {
+        if !self.registers.sign {
             self.call(addr);
         } else {
             self.adv_cycles(11);
@@ -953,14 +965,12 @@ impl<'a> ExecutionContext<'a> {
     // TODO
     fn rnz(&mut self) {
         if !self.registers.zero {
-            self.ret()
-        }
-        if !self.registers.carry {
-            self.adv_cycles(11)
+            self.adv_cycles(11);
+            self.ret();
         } else {
             self.adv_cycles(5);
+            self.adv_pc(1);
         }
-        self.adv_pc(1);
     }
     // Return if minus
     fn rm(&mut self) {
@@ -972,6 +982,7 @@ impl<'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
+    // Return if positive (if zign bit is 0)
     fn rp(&mut self) {
         if !self.registers.sign {
             self.ret();
@@ -984,13 +995,11 @@ impl<'a> ExecutionContext<'a> {
     fn rz(&mut self) {
         if self.registers.zero {
             self.ret();
-        }
-        if !self.registers.carry {
             self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
+            self.adv_pc(1);
         }
-        self.adv_pc(1);
     }
 
     // Move Immediate Data
@@ -1125,7 +1134,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = value == 0;
         self.registers.half_carry = value & 0x0F == 0;
         self.registers.parity = self.parity(value as u8);
-        self.adv_pc(2);
+        self.adv_pc(1);
     }
 
     fn inx(&mut self, reg: RegisterPair) {
@@ -1366,9 +1375,9 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO Investigate conditional flags (especially carry)
     fn pop_psw(&mut self) {
-
         self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
         self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 != 0;
+
         self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 != 0;
         self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 != 0;
         self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 != 0;
@@ -1524,6 +1533,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Cc(addr) => self.cc(addr),
             Instruction::Cpi => self.cpi(),
             Instruction::Cpo(addr) => self.cpo(addr),
+            Instruction::Cnz(addr) => self.cnz(addr),
             Instruction::Cz(addr) => self.cz(addr),
             Instruction::Cm(addr) => self.cm(addr),
             Instruction::Cnc(addr) => self.cnc(addr),
@@ -1955,7 +1965,7 @@ impl<'a> ExecutionContext<'a> {
 
             0xF0 => self.decode(Instruction::Rp),
             0xF1 => self.decode(Instruction::PopPsw(A)),
-            0xF2 => self.decode(Instruction::Jpo),
+            0xF2 => self.decode(Instruction::Jp),
             0xF3 => self.decode(Instruction::Xthl),
             0xF4 => self.decode(Instruction::Cp(0xF4)),
             0xF5 => self.decode(Instruction::Push(H)),
@@ -1964,7 +1974,7 @@ impl<'a> ExecutionContext<'a> {
             0xF8 => self.decode(Instruction::Rm),
             0xF9 => self.decode(Instruction::Pchl),
 
-            0xFA => self.decode(Instruction::Jpe),
+            0xFA => self.decode(Instruction::Jm),
             0xFB => self.decode(Instruction::Xchg),
             0xFC => self.decode(Instruction::Cm(0xFC)),
             0xFD => self.decode(Instruction::Call(0xFD)),

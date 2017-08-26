@@ -8,6 +8,7 @@ mod tests {
     use std::path::Path;
     use std::thread::sleep;
     use std::thread::sleep_ms;
+    use std::ascii::AsciiExt;
 
     #[test]
     fn cpu_test() {
@@ -30,7 +31,6 @@ mod tests {
 
         let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
 
-
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
         // Per i8080core return should be 032F at the end of the test
@@ -44,31 +44,45 @@ mod tests {
 
         let mut success: bool = false;
 
-        loop {
+        'main: loop {
             cpu.step(1);
-            // cpu.step(1);
+
             if cpu.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", cpu.registers.pc);
                 #[should_panic]
                 assert_ne!(cpu.registers.pc, 0x76);
             }
-            if cpu.registers.pc == 0x0005 {
+            // If PC is 5 we're at the return address we set earlier.
+            // Print out characters from rom
+            if cpu.registers.pc == 05 {
                 if cpu.registers.reg_c == 9 {
-                    let addr: u16 = cpu.registers.pc;
                     // Create register pair
-                    let reg_de = vec![cpu.memory.read_word(addr)];
-                    for i in reg_de {
-                        io::stdout().write(&[cpu.memory.memory[i as usize]]);
-                        success = true;
+                    let mut de: u16 = (cpu.memory.memory[cpu.registers.reg_d as usize] as u16) << 8
+                        | (cpu.memory.memory[cpu.registers.reg_e as usize] as u16) as u16;
+
+                    'print: loop {
+                        let mut output = cpu.memory.memory[de as usize];
+                        output & 0x7F;
+
+                        //output.escape_unicode()
+                        if output as char == '$' {
+                            break 'print
+                        } else if output as char != '$' {
+                            de += 1;
+                        }
+                        print!("{}", output as char);
                     }
                 }
                 if cpu.registers.reg_c == 2 {
-                    io::stdout().write(&[cpu.registers.reg_e]).unwrap();
+                    print!("{}", cpu.registers.reg_e as char);
                 }
             }
-            sleep_ms(50);
+            sleep_ms(5);
 
             if cpu.registers.pc == 0 {
+                let stack = (cpu.memory.memory[cpu.registers.sp as usize + 1] as u16) << 8 |
+                cpu.memory.memory[cpu.registers.sp as usize] as u16;
+                println!("\nJump to 0 from {:04X}", stack);
                 break
             }
             assert_ne!(cpu.registers.opcode, 0x00);
