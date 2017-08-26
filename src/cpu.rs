@@ -2,10 +2,9 @@ use std::fs::File;
 use std::path::Path;
 use byteorder::{ByteOrder, LittleEndian};
 use opcode::{Instruction, Register, RegisterPair};
-// use super::interconnect::Interconnect;
 use memory::Memory;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 // Intel 8080 Notes:
 //
@@ -657,12 +656,16 @@ impl<'a> ExecutionContext<'a> {
 
         // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
-        println!("Value: {:X}", value);
-        println!("A reg: {:X}", self.registers.reg_a);
+        if DEBUG {
+            println!("Value: {:X}", value);
+            println!("A reg: {:X}", self.registers.reg_a);
+        }
 
         let result = value - self.registers.reg_a;
-        println!("Result: {:X}", result);
-        println!("Zero result: {:X}", result & 0xFF);
+        if DEBUG {
+            println!("Result: {:X}", result);
+            println!("Zero result: {:X}", result & 0xFF);
+        }
 
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
@@ -678,6 +681,15 @@ impl<'a> ExecutionContext<'a> {
     // Compare Parity Even
     fn cpe(&mut self, addr: u16) {
         if self.registers.parity {
+            self.call(addr);
+        } else {
+            self.adv_cycles(11);
+            self.adv_pc(3);
+        }
+    }
+    // TODO Consolidate
+    fn cpo(&mut self, addr: u16) {
+        if !self.registers.parity {
             self.call(addr);
         } else {
             self.adv_cycles(11);
@@ -845,42 +857,28 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn daa(&mut self) {
-        println!("Implementation not finished");
+        println!("DAA, Implementation not finished");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
     // TODO
     fn ei(&mut self) {
-        println!("Implementation not finished");
+        println!("EI, Implementation not finished");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
 
     // Rotate Accumulator Left Through Carry
     fn ral(&mut self) {
-        let ral_debug: bool = true;
 
         // The contents of the accumulator are rotated one bit position to the left.
         // The high-order bit of the accumulator replaces the carry bit
         // while the carry bit replaces the high-order bit of the accumulator
         // Conditional flags affected: Carry
-
-        // Example (Accumulator) carry is set:
-        // 1 0 1 (1 0) 1 0 1
-        // After RAL instruction:
-        // 0 1 1 (0 1) 0 1 0
-
-        if ral_debug {
-            // Set Accumulator value for debugging purposes
-            // self.registers.reg_a = 0b10110101;
-            println!("RAL, Accumulator: {:b}", self.registers.reg_a);
-        }
         self.registers.reg_a = self.registers.reg_a << 1;
         self.registers.carry = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 1;
-        if ral_debug {
-            println!("After RAL, Accumulator: {:b}", self.registers.reg_a);
-        }
+
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -910,7 +908,7 @@ impl<'a> ExecutionContext<'a> {
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        self.registers.carry = self.registers.reg_a & 0x01 != 0;
         self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
         self.adv_pc(1);
         self.adv_cycles(4);
@@ -932,9 +930,17 @@ impl<'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
+    // Return if Parity Odd
+    fn rpo(&mut self) {
+        if !self.registers.parity {
+            self.ret()
+        } else {
+            self.adv_pc(1);
+        }
+    }
+    // Return if Carry
     fn rc(&mut self) {
         // If Carry flag is set, return from subroutine
-        println!("Implementation not finished");
         if self.registers.carry {
             self.adv_cycles(11);
             self.ret();
@@ -998,7 +1004,7 @@ impl<'a> ExecutionContext<'a> {
         // TODO: Look into endianess here, and or rewrite the write_memory function to write the
         // correct value to register.
         let mut value = self.memory.read(self.registers.pc + 1);
-        println!("Value: {:04X}", value);
+        if DEBUG { println!("Value: {:04X}", value); }
         // let value = self.memory.read(self.registers.pc) >> 2 & 0x80;
         // println!("Value: {:04X}", value);
         match reg {
@@ -1069,7 +1075,7 @@ impl<'a> ExecutionContext<'a> {
     // Read one byte from input device #0 into the accumulator
     // Instructions in this class occupy 2 bytes.
     fn input(&mut self) {
-        println!("Not implemented yet, skipping");
+        if DEBUG { println!("Not implemented yet, skipping"); }
         self.adv_cycles(10);
         self.adv_pc(2);
     }
@@ -1350,7 +1356,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
                 self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
             }
-            RegisterPair::SP => println!("LOL"),
+            RegisterPair::SP => println!("POP SP called at POP instruction, please fix"),
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
 
@@ -1358,13 +1364,15 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
+    // TODO Investigate conditional flags (especially carry)
     fn pop_psw(&mut self) {
+
         self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
-        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 == 0;
-        self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 == 0;
-        self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 == 0;
-        self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 == 0;
-        self.registers.half_carry = self.memory.memory[self.registers.sp as usize] & 0x10 == 0;
+        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 != 0;
+        self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 != 0;
+        self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 != 0;
+        self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 != 0;
+        self.registers.half_carry = self.memory.memory[self.registers.sp as usize] & 0x10 != 0;
 
         self.registers.sp = self.registers.sp.wrapping_add(2);
         self.adv_pc(1);
@@ -1423,7 +1431,7 @@ impl<'a> ExecutionContext<'a> {
                 if src == Register::M {
                     let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                     let val = self.memory.memory[addr as usize];
-                    println!("Value:{:X}", val);
+                    if DEBUG { println!("Value:{:X}", val); }
                     self.write_reg(dst, val);
                     self.adv_cycles(2);
                 } else {
@@ -1440,7 +1448,7 @@ impl<'a> ExecutionContext<'a> {
             Register::M => {
                 let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 let val = self.memory.memory[addr as usize];
-                println!("Value:{:X}", val);
+                if DEBUG { println!("Value:{:X}", val); }
                 self.write_reg(dst, val);
                 self.adv_cycles(2);
             }
@@ -1500,7 +1508,7 @@ impl<'a> ExecutionContext<'a> {
 
 
     pub fn decode(&mut self, instruction: Instruction) {
-        println!("Instruction: {:?},", instruction);
+        if DEBUG { println!("Instruction: {:?},", instruction); }
 
         match instruction {
             Instruction::Nop => self.nop(),
@@ -1515,6 +1523,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Call(addr) => self.call(addr),
             Instruction::Cc(addr) => self.cc(addr),
             Instruction::Cpi => self.cpi(),
+            Instruction::Cpo(addr) => self.cpo(addr),
             Instruction::Cz(addr) => self.cz(addr),
             Instruction::Cm(addr) => self.cm(addr),
             Instruction::Cnc(addr) => self.cnc(addr),
@@ -1573,7 +1582,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Rnc => self.rnc(),
             Instruction::Rrc => self.rrc(),
             Instruction::Rim => println!("Not implemented: {:?}", instruction),
-
+            Instruction::Rpo => self.rpo(),
             Instruction::Rst(0) => self.rst(1),
             Instruction::Rst(1) => self.rst(2),
             Instruction::Rst(2) => self.rst(2),

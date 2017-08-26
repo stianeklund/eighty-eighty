@@ -4,6 +4,7 @@ mod tests {
     use memory::Memory;
     use std::fs::File;
     use std::io::prelude::*;
+    use std::io::{self, Write};
     use std::path::Path;
     use std::thread::sleep;
     use std::thread::sleep_ms;
@@ -48,7 +49,8 @@ mod tests {
             // cpu.step(1);
             if cpu.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", cpu.registers.pc);
-                break;
+                #[should_panic]
+                assert_ne!(cpu.registers.pc, 0x76);
             }
             if cpu.registers.pc == 0x0005 {
                 if cpu.registers.reg_c == 9 {
@@ -56,20 +58,23 @@ mod tests {
                     // Create register pair
                     let reg_de = vec![cpu.memory.read_word(addr)];
                     for i in reg_de {
-                        println!("{:?}", cpu.memory.memory[i as usize]);
+                        io::stdout().write(&[cpu.memory.memory[i as usize]]);
                         success = true;
                     }
                 }
                 if cpu.registers.reg_c == 2 {
-                    println!("{}", cpu.registers.reg_e);
+                    io::stdout().write(&[cpu.registers.reg_e]).unwrap();
                 }
             }
             sleep_ms(50);
-            // Panic if opcode is 0x00 or PC is 0.
-            assert_ne!(cpu.registers.pc, 0);
+
+            if cpu.registers.pc == 0 {
+                break
+            }
             assert_ne!(cpu.registers.opcode, 0x00);
         }
     }
+
     #[test]
     fn hl_mem_test() {
         // Standup memory & registers
