@@ -227,7 +227,9 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", stack);
                 break
             }
-            assert_ne!(cpu.registers.opcode, 0x00);
+            if cpu.registers.opcode == 0x00 {
+                panic!();
+            }
         }
     }
 }

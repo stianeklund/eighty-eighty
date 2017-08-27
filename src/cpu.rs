@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use opcode::{Instruction, Register, RegisterPair};
 use memory::Memory;
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 // Intel 8080 Notes:
 //
@@ -1496,7 +1496,54 @@ impl<'a> ExecutionContext<'a> {
 
 
     pub fn decode(&mut self, instruction: Instruction) {
-        if DEBUG { println!("Instruction: {:?},", instruction); }
+        if DEBUG {
+            println!("Opcode:{:#02X} Instruction: {:?},", self.registers.opcode, instruction);
+        }
+        if DEBUG {
+            println!(
+                "PC: {:02X}, SP: {:X}, Cycles: {}",
+                self.registers.pc,
+                self.registers.sp,
+                self.registers.cycles
+            );
+            println!(
+                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
+                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
+                self.registers.reg_a,
+                self.registers.reg_b,
+                self.registers.reg_c,
+                self.registers.reg_d,
+                self.registers.reg_e,
+                self.registers.reg_h,
+                self.registers.reg_l,
+                self.registers.reg_m,
+            );
+
+
+            let bc = (self.registers.reg_b as u16) << 8 | self.registers.reg_c as u16;
+            let de = (self.registers.reg_d as u16) << 8 | self.registers.reg_e as u16;
+            let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+
+            let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 |
+                self.memory.memory[self.registers.sp as usize] as u16;
+
+
+            println!(
+                "Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
+                bc,
+                de,
+                hl
+            );
+            println!(
+                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
+                self.registers.sign,
+                self.registers.zero,
+                self.registers.parity,
+                self.registers.carry,
+                self.registers.half_carry
+            );
+            println!("Stack: {:04X}", stack as u16);
+        };
 
         match instruction {
             Instruction::Nop => self.nop(),
@@ -1618,52 +1665,6 @@ impl<'a> ExecutionContext<'a> {
         use self::Register::*;
         use self::RegisterPair::*;
         self.registers.opcode = instruction;
-        if DEBUG {
-            println!(
-                "Opcode: {:#02X}, PC: {:02X}, SP: {:X}, Cycles: {}",
-                self.registers.opcode,
-                self.registers.pc,
-                self.registers.sp,
-                self.registers.cycles
-            );
-            println!(
-                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
-                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
-                self.registers.reg_a,
-                self.registers.reg_b,
-                self.registers.reg_c,
-                self.registers.reg_d,
-                self.registers.reg_e,
-                self.registers.reg_h,
-                self.registers.reg_l,
-                self.registers.reg_m,
-            );
-
-
-            let bc = (self.registers.reg_b as u16) << 8 | self.registers.reg_c as u16;
-            let de = (self.registers.reg_d as u16) << 8 | self.registers.reg_e as u16;
-            let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
-
-            let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 |
-                self.memory.memory[self.registers.sp as usize] as u16;
-
-
-            println!(
-                "Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
-                bc,
-                de,
-                hl
-            );
-            println!(
-                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
-                self.registers.sign,
-                self.registers.zero,
-                self.registers.parity,
-                self.registers.carry,
-                self.registers.half_carry
-            );
-            println!("Stack: {:04X}", stack as u16);
-        };
 
         match self.registers.opcode {
             0x00 => self.decode(Instruction::Nop),
