@@ -6,25 +6,22 @@ use memory::Memory;
 
 const DEBUG: bool = true;
 
-// Intel 8080 Notes:
-//
-// The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
-// The A register is the primary 8-bit accumulator.
-// The other 6 registers can be used as individual registers, or as 3 16-bit
-// register pairs
-// (BC, DE and HL).
-
-// Some instructions enable the HL register pair as a 16-bit accumulator & a
-// psuedo reg, M.
-// The M register can be used almost anywhere that any other registers can use,
-// referring to the memory address pointed to by the HL pair.
-
-// BC, DE, or HL, (referred to as B, D, H in Intel documents)
-// or SP can be loaded with an immediate 16-bit value (using LXI).
-// Incremented or decremented (using INX and DCX)
-// or added to HL (using DAD).
-
-// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
+/// Intel 8080 Notes:
+///
+/// The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
+/// The A register is the primary 8-bit accumulator.
+/// The other 6 registers can be used as individual registers, or as 3 16-bit
+/// register pairs, (BC, DE and HL).
+///
+/// Some instructions enable the HL register pair as a 16-bit accumulator & a
+/// pseudo reg, M.
+///
+/// The M register can be used almost anywhere that any other registers can use,
+/// referring to the memory address pointed to by the HL pair.
+/// BC, DE, or HL, (referred to as B, D, H in Intel documents)
+/// or SP can be loaded with an immediate 16-bit value (using LXI).
+/// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
+/// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 #[derive(Debug, Copy, Clone)]
 pub struct Registers {
@@ -96,18 +93,16 @@ impl Registers {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ExecutionContext<'a> {
-    pub memory: &'a mut Memory,
     pub registers: &'a mut Registers,
+    pub memory: &'a mut Memory,
 }
-
-impl<'a> ExecutionContext<'a> {
+impl <'a> ExecutionContext<'a> {
     pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
         ExecutionContext {
-            memory: memory,
             registers: registers,
+            memory: memory,
         }
     }
 
@@ -648,7 +643,7 @@ impl<'a> ExecutionContext<'a> {
             println!("A reg: {:02X}", self.registers.reg_a);
         }
 
-        let result = self.registers.reg_a - value;
+        let result = self.registers.reg_a.wrapping_sub(value);
         if DEBUG {
             println!("Result: {:X}", result);
             println!("Zero result: {:X}", result & 0xFF);
@@ -1036,7 +1031,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::DE => {
                 let addr = (self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e) as u16;
                 self.registers.reg_a = self.memory.memory[addr as usize];
-                println!("LDA RP Register A value: {:X}", self.registers.reg_a);
+                if DEBUG { println!("LDA RP Register A value: {:04X}", self.registers.reg_a) };
             }
 
             _ => println!("LDAX on invalid register"),
@@ -1398,7 +1393,7 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO
     fn out(&mut self) {
-        println!("Not implemented, skipping");
+        if DEBUG { println!("Not implemented, skipping"); }
         self.adv_pc(2);
         self.adv_cycles(10);
     }
