@@ -429,13 +429,14 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
+    // Store Accumulator direct
     fn sta(&mut self) {
         let reg_a = self.registers.reg_a;
 
         let value = self.memory.read_imm(self.registers.pc);
 
         let addr = value + 2 << 8 | value + 1;
-        self.memory.write_word(reg_a as u16, addr);
+        self.memory.write_byte(reg_a as u16, addr);
 
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -1281,25 +1282,35 @@ impl<'a> ExecutionContext<'a> {
             Register::E => self.registers.reg_a ^= self.registers.reg_e,
             Register::H => self.registers.reg_a ^= self.registers.reg_h,
             Register::L => self.registers.reg_a ^= self.registers.reg_l,
-            Register::M => self.registers.reg_a ^= self.registers.reg_m,
-        };
-
-        if reg == Register::M {
-            self.adv_cycles(3);
-        } else {
-            self.adv_cycles(4);
+            Register::M => {
+                let value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                self.registers.reg_a ^= value as u8;
+                self.adv_cycles(3);
+            }
         }
+        self.registers.half_carry = false;
+        self.registers.carry = false;
+        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = self.registers.reg_a & 0x80 !=0;
+        self.registers.parity = self.parity(self.registers.reg_a);
 
+        self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        self.registers.half_carry = (self.registers.reg_a | self.registers.opcode) & 0x08 != 0;
-        self.registers.reg_a ^= self.registers.opcode;
+        let value = self.memory.read_byte(self.registers.pc + 1);
+        self.registers.reg_a ^= value;
+
+        self.registers.half_carry = false;
         self.registers.carry = false;
-        self.adv_pc(2);
+        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = self.registers.reg_a & 0x80 !=0;
+        self.registers.parity = self.parity(self.registers.reg_a);
+
         self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     fn xchg(&mut self) {
@@ -1668,7 +1679,7 @@ impl<'a> ExecutionContext<'a> {
 
         match self.registers.opcode {
             0x00 => self.decode(Instruction::Nop),
-            0x01 => self.decode(Instruction::Nop),
+            0x01 => self.decode(Instruction::Lxi(BC)),
             0x02 => self.decode(Instruction::Stax(BC)),
             0x03 => self.decode(Instruction::Inx(BC)),
             0x04 => self.decode(Instruction::Inr(B)),
@@ -1722,7 +1733,7 @@ impl<'a> ExecutionContext<'a> {
             0x2F => self.decode(Instruction::Cma),
 
             0x30 => self.decode(Instruction::Nop),
-            0x31 => self.decode(Instruction::LxiSp),
+            0x31 => self.decode(Instruction::Lxi(SP)),
             0x32 => self.decode(Instruction::Sta),
             0x33 => self.decode(Instruction::InxSp(SP)),
             0x34 => self.decode(Instruction::Inr(M)),

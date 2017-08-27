@@ -164,7 +164,7 @@ mod tests {
         let mut memory = Memory::new();
         let mut registers = Registers::new();
 
-        let path = Path::new("TEST.COM");
+        let path = Path::new("8080EX1.COM");
         let mut file = File::open(&path).expect("Couldn't load binary");
         let mut buf = Vec::new();
 
@@ -228,7 +228,7 @@ mod tests {
                 break
             }
             if cpu.registers.opcode == 0x00 {
-                panic!();
+               panic!();
             }
         }
     }
