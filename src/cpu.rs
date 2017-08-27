@@ -285,7 +285,6 @@ impl<'a> ExecutionContext<'a> {
         // Add Immediate to Accumulator
 
         // I'm not sure this is correct, investigate this.
-        // self.registers.opcode & 0xF00 >> 8;
         self.registers.reg_a += self.registers.opcode;
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -532,31 +531,6 @@ impl<'a> ExecutionContext<'a> {
     fn cmp(&mut self, reg: Register) {
         // Compare Register or Memory With Accumulator
 
-        // The specified byte is compared to the contents of the accumulator
-        // The comparison is performed by internally subtracting
-        // the contents of REG from the accumulator (leaving both unchanged)
-        // and setting the conditional flags according to the result
-        // The Zero flag should be set if the quantities are equal
-        // and reset if they're not equal
-
-        // Since a subtraction operation is performed the carry bit should be set
-        // if there is no carry out of bit 7, indicating that the contents of REG
-        // are greater than the contents of the accumulator
-        // Otherwise it should reset
-
-        // Flag Register bits:
-        // 7  6  5  4  3  2  1  0
-        // S  Z  0  A  0  P  1  C
-        // Sign | Zero | Not used | AC | Not used | Parity | Always 1 | Carry
-
-        // Conditional Flags affected: Carry, Zero, Sign, Parity, Half Carry
-        // E.g:
-        // Accumulator:
-        // 0 0 0 0 1 0 1
-        // B Register:
-        // 1 1 1 1 1 0 1 1
-        // Result:
-        // 0 0 0 0 0 1 0 1
         let mut result = self.registers.reg_a;
         match reg {
             Register::A => {
@@ -669,11 +643,11 @@ impl<'a> ExecutionContext<'a> {
         // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
         if DEBUG {
-            println!("Value: {:X}", value);
-            println!("A reg: {:X}", self.registers.reg_a);
+            println!("Value: {:02X}", value);
+            println!("A reg: {:02X}", self.registers.reg_a);
         }
 
-        let result = value - self.registers.reg_a;
+        let result = self.registers.reg_a - value;
         if DEBUG {
             println!("Result: {:X}", result);
             println!("Zero result: {:X}", result & 0xFF);
@@ -873,10 +847,15 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
+    fn di(&mut self) {
+       println!("Disable Interrupt Sytem. WARNING, not implemented");
+        self.adv_pc(1);
+        self.adv_cycles(4);
+    }
 
     // TODO
     fn ei(&mut self) {
-        println!("EI, Implementation not finished");
+        println!("Enable Interrupt System. WARNING, not implemented");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
@@ -1438,7 +1417,7 @@ impl<'a> ExecutionContext<'a> {
         match dst {
             Register::A => {
                 if src == Register::M {
-                    let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                    let addr: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                     let val = self.memory.memory[addr as usize];
                     if DEBUG { println!("Value:{:X}", val); }
                     self.write_reg(dst, val);
@@ -1547,7 +1526,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Dcx(reg) => self.dcx(reg),
             Instruction::DcxSp(reg) => self.dcx(reg),
 
-            Instruction::Di => println!("Not implemented: {:?}", instruction),
+            Instruction::Di => self.di(),
             Instruction::Daa => self.daa(),
             Instruction::Dad(reg) => self.dad(reg),
             Instruction::DadSp(reg) => self.dad(reg),
@@ -1648,8 +1627,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.cycles
             );
             println!(
-                "Registers: A: {:04X}, B: {:04X}, C: {:04X}, D: {:04X}, \
-                E: {:04X}, H: {:04X}, L: {:04X}, M: {:04X}",
+                "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
+                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
                 self.registers.reg_a,
                 self.registers.reg_b,
                 self.registers.reg_c,
