@@ -1,5 +1,4 @@
 #![feature(inclusive_range,inclusive_range_syntax)]
-#![feature(ascii_ctype)]
 
 extern crate minifb;
 extern crate byteorder;
@@ -39,7 +38,7 @@ fn main() {
         // CPU execution
         ExecutionContext::new(&mut interconnect.memory, &mut interconnect.registers).step(1);
 
-        // display.render_vram(&mut memory);
+        interconnect.display.render_vram(&mut interconnect.memory);
         // display.window.update_with_buffer(&display.raster).unwrap();
 
         //if display.window.is_key_down(Key::Escape) {

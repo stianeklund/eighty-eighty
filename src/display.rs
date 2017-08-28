@@ -65,14 +65,14 @@ impl Display {
         }
     }
     pub fn render_vram(&mut self, mut memory: &mut Memory) {
-        // 0x2400 is the beginning of VRAM
-        let mut base: u16 = 0x2400;
-
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
         // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scan line.
-        // We simply iterate over the entirety of the size of the video hardware
+        // Iterate over the entirety of the size of the video hardware
         // & iterate over the 8 pixels per byte.
+
+        // 0x2400 is the beginning of VRAM
+        let mut base: u16 = 0x2400;
 
         for offset in 0...(256 * 244 / 8) {
             let mut x: usize = 0;
