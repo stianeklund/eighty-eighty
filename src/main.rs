@@ -6,6 +6,7 @@ extern crate byteorder;
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
 use minifb::Key;
+use display::Display;
 use std::env;
 use std::thread::sleep_ms;
 use interconnect::Interconnect;
@@ -29,6 +30,7 @@ fn main() {
     let bin = &args[1];
 
     let mut interconnect = Interconnect::new();
+    let mut display = Display::new();
 
     // load binary file
     interconnect.memory.load_bin(bin);
@@ -36,13 +38,12 @@ fn main() {
     // TODO implement break & step keyboard actions
     loop {
         // CPU execution
-        ExecutionContext::new(&mut interconnect.memory, &mut interconnect.registers).step(1);
+        interconnect.execute_cpu();
+        display.render_vram(&interconnect);
 
-        interconnect.display.render_vram(&mut interconnect.memory);
-        // display.window.update_with_buffer(&display.raster).unwrap();
 
-        //if display.window.is_key_down(Key::Escape) {
-         //   break
+        // if interconnect.display.window.is_key_down(Key::Escape) {
+         // break
         //}
         sleep_ms(1);
 

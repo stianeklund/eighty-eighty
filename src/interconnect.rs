@@ -6,9 +6,8 @@ use super::display::Display;
 use super::memory::Memory;
 
 pub struct Interconnect {
-    //pub cpu: ExecutionContext<'a>,
     pub registers: Registers,
-    pub display: Display,
+    // pub display: Display,
     pub memory: Memory,
     // pub keypad: Keypad,
 }
@@ -16,15 +15,18 @@ pub struct Interconnect {
 impl Interconnect {
     //pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
     pub fn new() -> Self {
-        // let mut memory = Memory::new();
-        // let mut registers = Registers::new();
+
+        let registers = Registers::new();
+        //let display = Display::new();
+        let memory = Memory::new();
 
         Interconnect {
-            // cpu: ExecutionContext::new(memory, registers),
-            display: Display::new(),
-            memory: Memory::new(),
-            registers: Registers::new(),
+            registers: registers,
+         //    display: display,
+            memory: memory,
         }
     }
+    pub fn execute_cpu(&mut self) {
+        ExecutionContext::new(self).step(1);
+    }
 }
-

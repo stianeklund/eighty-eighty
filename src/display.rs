@@ -4,7 +4,8 @@ use std::fmt;
 use minifb::{Key, Scale, WindowOptions, Window};
 use std::iter::Enumerate;
 
-use cpu::ExecutionContext;
+// [use cpu::ExecutionContext;
+use interconnect::Interconnect;
 use memory::Memory;
 
 pub const WIDTH: usize = 256;
@@ -47,13 +48,15 @@ impl Display {
 
 
         Display {
-            raster: vec![0x00FFFFFF; WIDTH * HEIGHT],
+            // 0x00FFFFFF;
+            raster: vec![0; WIDTH * HEIGHT],
             vblank: false,
             draw_flag: true,
             window: window,
         }
     }
-    pub fn render(&mut self, mut memory: &mut Memory) {
+    pub fn render(&mut self) {
+
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
                 let image_y = 255 - y;
@@ -64,7 +67,11 @@ impl Display {
             }
         }
     }
-    pub fn render_vram(&mut self, mut memory: &mut Memory) {
+    pub fn render_vram(&mut self, interconnect: &Interconnect) {
+        let memory = &interconnect.memory;
+        let cpu = &interconnect.registers;
+        let mut hl = (cpu.reg_h as u16) << 8 | (cpu.reg_l as u16);
+
         // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
         // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
         // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scan line.
@@ -72,17 +79,18 @@ impl Display {
         // & iterate over the 8 pixels per byte.
 
         // 0x2400 is the beginning of VRAM
-        let mut base: u16 = 0x2400;
 
-        for offset in 0...(256 * 244 / 8) {
+        for i in 0...(256 * 244 / 8) {
             let mut x: usize = 0;
             let mut y: usize = 224;
             let image_y = 224 - y;
-
+            let mut offset = 0;
             // Inner loop should split the byte into bits (8 pixels per byte)
-            for shift in 0 ... 8 {
-                if memory.memory[base as usize + offset as usize] as u16 >> shift & 1 != 0 {
+            for mut line in 0 ... 32 {
+                if hl >> line & 1 != 0 {
+                    // if memory.memory[base as usize + offset as usize] as u16 >> shift & 1 != 0 {
                     self.raster[x * WIDTH + image_y] = 0x00FFFFFF;
+                    line += 1;
                 } else {
                     self.raster[x * WIDTH + image_y] = 0x00000000;
                 }
@@ -91,7 +99,11 @@ impl Display {
                     y = 255;
                 }
                 x += 1;
+                hl += 1;
+                offset += 1;
+                line = 0;
             }
         }
+        self.window.update_with_buffer(&self.raster);
     }
 }

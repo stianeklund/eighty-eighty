@@ -3,6 +3,7 @@ use std::path::Path;
 use byteorder::{ByteOrder, LittleEndian};
 use opcode::{Instruction, Register, RegisterPair};
 use memory::Memory;
+use interconnect::Interconnect;
 
 const DEBUG: bool = true;
 
@@ -99,10 +100,13 @@ pub struct ExecutionContext<'a> {
     pub memory: &'a mut Memory,
 }
 impl <'a> ExecutionContext<'a> {
-    pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
+    // pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
+    pub fn new(interconnect: &'a mut Interconnect) -> ExecutionContext<'a> {
         ExecutionContext {
-            registers: registers,
-            memory: memory,
+            registers: &mut interconnect.registers,
+            memory: &mut interconnect.memory,
+            // registers: &mut registers,
+            // memory: &mut memory,
         }
     }
 
