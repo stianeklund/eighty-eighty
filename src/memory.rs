@@ -4,7 +4,8 @@ use std::path::Path;
 use std::fmt;
 
 pub struct Memory {
-    pub memory: [u8; 65536],
+    // pub memory: [u8; 65536],
+    pub memory: Vec<u8>,
 }
 
 impl fmt::Debug for Memory {
@@ -23,7 +24,7 @@ impl fmt::UpperHex for Memory {
 
 impl Memory {
     pub fn new() -> Memory {
-        Memory { memory: [0; 65536] }
+        Memory { memory: vec![0; 0x10000] }
     }
 
     pub fn read_byte(&mut self, addr: u16) -> u8 {
@@ -95,5 +96,17 @@ impl Memory {
             self.memory[i] = buf[i];
         }
         println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
+    }
+    pub fn load_tests(&mut self, file: &str) {
+        let path = Path::new(file);
+        let mut file = File::open(&path).expect("Couldn't load binary");
+        let mut buf = Vec::new();
+
+        file.read_to_end(&mut buf).expect("Failed to read binary");
+        let buf_len = buf.len();
+        for i in 0..buf_len {
+            self.memory[i + 0x0100] = buf[i];
+        }
+        println!("Test loaded: {:?} Bytes: {:?}", path, buf_len);
     }
 }

@@ -27,6 +27,7 @@ fn main() {
         return;
     }
 
+
     let bin = &args[1];
 
     let mut interconnect = Interconnect::new();
@@ -39,13 +40,15 @@ fn main() {
     loop {
         // CPU execution
         interconnect.execute_cpu();
-        display.render_vram(&interconnect);
+        // display.render_vram(&interconnect);
+        display.draw_pixel(&interconnect);
+        sleep_ms(5);
+        display.window.update_with_buffer(&display.raster).unwrap();
 
 
         // if interconnect.display.window.is_key_down(Key::Escape) {
          // break
         //}
-        sleep_ms(1);
 
 
     }

@@ -3,18 +3,18 @@ use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 use std::fmt;
 use minifb::{Key, Scale, WindowOptions, Window};
 use std::iter::Enumerate;
+use std::thread::sleep_ms;
 
-// [use cpu::ExecutionContext;
+
+use cpu::ExecutionContext;
 use interconnect::Interconnect;
 use memory::Memory;
 
-pub const WIDTH: usize = 256;
-pub const HEIGHT: usize = 224;
+pub const WIDTH: u32 = 224;
+pub const HEIGHT: u32 = 256;
 
 pub struct Display {
-    pub raster: Vec<(u32)>,
-    vblank: bool,
-    draw_flag: bool,
+    pub raster: Vec<u32>,
     pub window: Window,
 }
 
@@ -37,8 +37,8 @@ impl Display {
     pub fn new() -> Display {
         let mut window = Window::new(
             "Eighty Eighty",
-            WIDTH,
-            HEIGHT,
+            WIDTH as usize,
+            HEIGHT as usize,
             WindowOptions {
                 resize: true,
                 scale: Scale::X2,
@@ -49,61 +49,43 @@ impl Display {
 
         Display {
             // 0x00FFFFFF;
-            raster: vec![0; WIDTH * HEIGHT],
-            vblank: false,
-            draw_flag: true,
+            raster: vec![0x00FFFFFF; (HEIGHT as usize * WIDTH as usize) * 4],
             window: window,
         }
     }
     pub fn render(&mut self) {
-
         for x in 0..WIDTH {
             for y in 0..HEIGHT {
                 let image_y = 255 - y;
                 let offset = (WIDTH * image_y) + x;
                 let frame_offset = (WIDTH * y) + x;
-                // self.raster[frame_offset] = memory.memory[offset] as u32;
+                // self.raster[frame_offset] = sprite_sheet[offset] as u32;
                 // self.raster[x + (y * WIDTH)] = ((x + (y * HEIGHT) & 0xFF) * 1) as u32;
             }
         }
     }
-    pub fn render_vram(&mut self, interconnect: &Interconnect) {
-        let memory = &interconnect.memory;
-        let cpu = &interconnect.registers;
-        let mut hl = (cpu.reg_h as u16) << 8 | (cpu.reg_l as u16);
 
-        // Iterate over all the memory locations in the VRAM memory map $2400 - $3FFF.
-        // We want to read this into a buffer & point to the byte (8 bits) of the current memory loc
-        // The video hardware is 7168 bytes (1bpp bitmap), 32 bytes per scan line.
-        // Iterate over the entirety of the size of the video hardware
-        // & iterate over the 8 pixels per byte.
+    pub fn draw_pixel(&mut self, interconnect: &Interconnect) {
+        let memory = &interconnect.memory.memory;
 
-        // 0x2400 is the beginning of VRAM
+        for (i, byte) in (memory[0x2400..0x4000]).iter().enumerate() {
+            let y = i * 8 / WIDTH as usize + 1;
+            for shift in 0 ... 8 {
+                let x = ((i * 8) % WIDTH as usize) + shift as usize;
 
-        for i in 0...(256 * 244 / 8) {
-            let mut x: usize = 0;
-            let mut y: usize = 224;
-            let image_y = 224 - y;
-            let mut offset = 0;
-            // Inner loop should split the byte into bits (8 pixels per byte)
-            for mut line in 0 ... 32 {
-                if hl >> line & 1 != 0 {
-                    // if memory.memory[base as usize + offset as usize] as u16 >> shift & 1 != 0 {
-                    self.raster[x * WIDTH + image_y] = 0x00FFFFFF;
-                    line += 1;
+                let pixel = if (byte >> shift as usize) & 1 == 0 {
+                    0xFF000000 // Alpha
+                } else if x <= 63 && (x >= 15 || x <= 15 && y >= 20 && y <= 120) {
+                    0xFF00FF00 // Green
+                } else if x >= 200 && x <= 220 {
+                    0x00FF0000 // Red
                 } else {
-                    self.raster[x * WIDTH + image_y] = 0x00000000;
-                }
-                y -= 1;
-                if y <= 0 {
-                    y = 255;
-                }
-                x += 1;
-                hl += 1;
-                offset += 1;
-                line = 0;
+                    0xFFFFFFFFF // Black
+                };
+                self.raster[WIDTH as usize * y + x] = pixel;
             }
         }
-        self.window.update_with_buffer(&self.raster);
     }
 }
+
+

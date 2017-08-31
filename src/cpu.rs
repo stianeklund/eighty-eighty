@@ -57,6 +57,10 @@ pub struct Registers {
     pub half_carry: bool,
 
     pub cycles: usize,
+    pub interrupt: bool,
+    current_interrupt: u8,
+
+
 }
 
 impl Registers {
@@ -90,6 +94,8 @@ impl Registers {
             half_carry: false,
 
             cycles: 0,
+            interrupt: false,
+            current_interrupt: 0,
         }
     }
 }
@@ -292,7 +298,7 @@ impl <'a> ExecutionContext<'a> {
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         if DEBUG {
-            println!("Jumping to address: {:04X}", self.registers.pc);
+            eprintln!("Jumping to address: {:04X}", self.registers.pc);
         }
         self.adv_cycles(10);
     }
@@ -456,16 +462,29 @@ impl <'a> ExecutionContext<'a> {
 
                 // Push return address to stack
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
-                self.registers.pc = self.memory.read_imm(self.registers.pc);
             }
             _ => println!("Unknown call address: {:04X}", self.registers.opcode),
         };
 
-        // if DEBUG {
-            // println!("Subroutine call: {:04X}", self.registers.pc);
-            // println!("Return address is: {:04X}", ret);
-        // }
+        if DEBUG {
+            // For debugging
+            // Match call addr with dissasembled Space Invaders function names
+            match self.registers.pc {
+                0x1E6 => println!("{:02X}, Load DE, prepare for BlockCopy", self.registers.pc),
+                0x1EC => println!("BlockCopy"),
+                0x01D => println!("CheckHandleTilt"),
+                0x03B => println!("DrawnumCredits"),
+                1956 => println!("ClearScreen"),
+                1959 => println!("DrawScoreHead"),
+                0x8F5 => println!("DrawChar"),
+                _ => println!("Not covered"),
+            };
 
+            println!("Subroutine call: {:04X}", self.registers.pc);
+            println!("Return address is: {:04X}", ret);
+        }
+
+        self.registers.pc = self.memory.read_imm(self.registers.pc);
         self.adv_cycles(17);
     }
 
@@ -847,17 +866,20 @@ impl <'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
+    // TODO Finish implementation
     fn di(&mut self) {
-       println!("Disable Interrupt Sytem. WARNING, not implemented");
-        self.adv_pc(1);
+        self.registers.interrupt = false;
+       println!("Disable Interrupt Sytem");
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
-    // TODO
+    // TODO Finish implementation
     fn ei(&mut self) {
-        println!("Enable Interrupt System. WARNING, not implemented");
-        self.adv_pc(1);
+        println!("Enable Interrupt System");
+        self.registers.interrupt = true;
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // Rotate Accumulator Left Through Carry
@@ -1067,6 +1089,7 @@ impl <'a> ExecutionContext<'a> {
         self.adv_cycles(10);
         self.adv_pc(2);
     }
+
     fn inr(&mut self, reg: Register) {
         let mut value: u8 = 0;
         match reg {
@@ -1397,7 +1420,10 @@ impl <'a> ExecutionContext<'a> {
 
     // TODO
     fn out(&mut self) {
-        if DEBUG { println!("Not implemented, skipping"); }
+        if DEBUG {
+            println!("WATCHDOG. {:04X}", self.memory.read_imm(self.registers.pc));
+            println!("Not implemented, skipping");
+        }
         self.adv_pc(2);
         self.adv_cycles(10);
     }
@@ -1478,7 +1504,7 @@ impl <'a> ExecutionContext<'a> {
         if DEBUG {
             println!("RST called: {:02X}", value);
         }
-
+        self.registers.current_interrupt = value;
         self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
@@ -2053,5 +2079,11 @@ impl <'a> ExecutionContext<'a> {
             }
         }
         result
+    }
+    fn emulate_interrupt(&mut self) {
+        if self.registers.interrupt {
+
+        }
+
     }
 }
