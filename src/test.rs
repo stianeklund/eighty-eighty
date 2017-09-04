@@ -80,9 +80,9 @@ mod tests {
         let mut i = Interconnect::new();
 
         // CPUTEST
-        let path = Path::new("8080EXER.COM");
+        let path = Path::new("CPUTEST.COM");
         let mut file = File::open(&path).expect("Couldn't load binary");
-        let bin: &str = "8080EXER.COM";
+        let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
@@ -120,6 +120,7 @@ mod tests {
                         }
                         result.push(output as char);
                     }
+                    print!("{}", result)
                 }
             }
             if i.registers.reg_c == 2 {
@@ -133,9 +134,9 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", stack);
                 break
             }
-            // assert_ne!(i.registers.opcode, 0x00);
+            assert_ne!(i.registers.pc, 0);
+            assert_ne!(i.registers.opcode, 0x00);
         }
-        println!("{}", result)
     }
 }
 

@@ -5,11 +5,11 @@ extern crate byteorder;
 
 use debugger::{HEIGHT, WIDTH};
 use cpu::{ExecutionContext, Registers};
+use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
-use std::env;
 use std::thread::sleep_ms;
-use interconnect::Interconnect;
+
 mod cpu;
 mod opcode;
 mod display;
@@ -19,8 +19,10 @@ mod memory;
 mod keypad;
 mod test;
 
+const DEBUG: bool = true;
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         println!("[Please specify ROM as an argument]");
         return;

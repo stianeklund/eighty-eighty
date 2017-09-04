@@ -5,7 +5,7 @@ use opcode::{Instruction, Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
 
-const DEBUG: bool = true;
+use DEBUG;
 
 /// Intel 8080 Notes:
 ///
@@ -1062,9 +1062,10 @@ impl <'a> ExecutionContext<'a> {
         self.adv_pc(2);
     }
 
+    // TODO Investigate which addr value is correct
     fn lda(&mut self) {
-        // let addr = self.memory.read_imm(self.registers.pc + 3) as u8;
-        let addr = self.memory.read_imm(self.registers.pc);
+        let addr = self.memory.read_imm(self.registers.pc + 3) as u8;
+       //  let addr = self.memory.read_imm(self.registers.pc);
         self.registers.reg_a = addr as u8;
         self.adv_cycles(13);
         self.adv_pc(3);
@@ -1377,6 +1378,7 @@ impl <'a> ExecutionContext<'a> {
         self.adv_cycles(5);
     }
 
+    // TODO Investigate swap
     fn xthl(&mut self) {
         // Swap H:L with top word on stack
         self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
@@ -1439,14 +1441,18 @@ impl <'a> ExecutionContext<'a> {
     }
 
     fn ret(&mut self) {
-        let return_addr = self.memory.pop(self.registers.sp);
+        let low = self.memory.memory[self.registers.sp as usize] as u16;
+        let high = self.memory.memory[self.registers.sp as usize + 1] as u16;
+
+        // let ret = (self.memory.memory[self.registers.sp as usize] as u16) | << 8 |
+          //   (self.memory.memory[self.registers.sp as usize + 1] as u16);
+        let ret = (high << 8 | low).into();
         if DEBUG {
-            println!("Returning to: {:04X}", return_addr);
+            println!("Returning to: {:04X}", ret);
         }
         self.adv_cycles(10);
-        // self.registers.sp += 2;
         self.registers.sp = self.registers.sp.wrapping_add(2);
-        self.registers.pc = return_addr;
+        self.registers.pc = ret;
     }
 
     fn out(&mut self) {
