@@ -20,7 +20,6 @@ mod keypad;
 mod test;
 
 fn main() {
-
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("[Please specify ROM as an argument]");
@@ -30,26 +29,23 @@ fn main() {
 
     let bin = &args[1];
 
-    let mut interconnect = Interconnect::new();
+    let mut i = Interconnect::new();
     let mut display = Display::new();
 
     // load binary file
-    interconnect.memory.load_bin(bin);
+    i.memory.load_bin(bin);
 
     // TODO implement break & step keyboard actions
     loop {
         // CPU execution
-        interconnect.execute_cpu();
-        // display.render_vram(&interconnect);
-        display.draw_pixel(&interconnect);
-        sleep_ms(5);
+        i.execute_cpu();
+        display.draw_pixel(&i);
+        // sleep_ms(5);
         display.window.update_with_buffer(&display.raster).unwrap();
-
-
-        // if interconnect.display.window.is_key_down(Key::Escape) {
-         // break
-        //}
-
-
     }
 }
+
+
+            // if interconnect.display.window.is_key_down(Key::Escape) {
+            // break
+            //}

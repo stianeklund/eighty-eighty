@@ -15,14 +15,13 @@ pub struct Interconnect {
 impl Interconnect {
     //pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
     pub fn new() -> Self {
-
         let registers = Registers::new();
         //let display = Display::new();
         let memory = Memory::new();
 
         Interconnect {
             registers: registers,
-         //    display: display,
+            //    display: display,
             memory: memory,
         }
     }

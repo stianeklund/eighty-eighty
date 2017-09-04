@@ -31,7 +31,7 @@ impl Memory {
         self.memory[addr as usize & 0xFFF] & 0xFF
     }
 
-    pub fn read_next_byte(&mut self, byte: u8) -> u8 {
+    pub fn read_next_byte(&mut self, byte: u16) -> u8 {
         self.memory[byte as usize + 1]
     }
     pub fn write_byte(&mut self, addr: u16, mut byte: u16) {

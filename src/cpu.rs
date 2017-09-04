@@ -39,7 +39,7 @@ pub struct Registers {
     pub reg_e: u8,
     pub reg_h: u8,
     pub reg_l: u8,
-    pub reg_m: u8, // psuedo register
+    pub reg_m: u8,    // pseudo-register
 
     // 16-bit Register pairs
     reg_bc: u16,
@@ -50,7 +50,7 @@ pub struct Registers {
 
     // Status Register (Flags)
     pub sign: bool,
-    pub zero: bool, // If the zero bit is one = true
+    pub zero: bool,    // If the zero bit is one = true
     pub parity: bool,
 
     pub carry: bool,
@@ -58,8 +58,23 @@ pub struct Registers {
 
     pub cycles: usize,
     pub interrupt: bool,
-    current_interrupt: u8,
+    pub interrupt_addr: u8,
+    shift_offset: u8,
+    shift_0: u8,
+    shift_1: u8,
 
+    // I/O Read port
+    port_0_in: u8,    // Input port 0
+    port_1_in: u8,    // Input port 1
+    port_2_in: u8,    // Input port 2
+    port_3_in: u8,    // Bit shift register read / shift in
+
+    // I/O Write port
+    port_2_out: u8,   // Shift amount (3 bits)
+    port_3_out: u8,   // Sound bits
+    port_4_out: u8,   // Shift data
+    port_5_out: u8,   // Sound bits
+    port_6_out: u8,   // Watchdog
 
 }
 
@@ -95,7 +110,23 @@ impl Registers {
 
             cycles: 0,
             interrupt: false,
-            current_interrupt: 0,
+            interrupt_addr: 0x10,
+            // interrupt_addr: 0x08,
+
+            shift_offset: 0,
+            shift_0: 0,
+            shift_1: 0,
+
+            port_0_in: 0x0E,
+            port_1_in: 0x08,
+            port_2_in: 0x00,
+            port_3_in: 0,
+
+            port_2_out: 0,
+            port_3_out: 0,
+            port_4_out: 0,
+            port_5_out: 0,
+            port_6_out: 0,
         }
     }
 }
@@ -280,7 +311,7 @@ impl <'a> ExecutionContext<'a> {
 
     fn aci(&mut self) {
         // Add Immediate to Accumulator with Carry
-        self.registers.reg_a += self.registers.opcode;
+        self.registers.reg_a = self.memory.read_imm(self.registers.pc) as u8;
         self.registers.carry = true;
         self.adv_pc(2);
         self.adv_cycles(7);
@@ -288,9 +319,7 @@ impl <'a> ExecutionContext<'a> {
 
     fn adi(&mut self) {
         // Add Immediate to Accumulator
-
-        // I'm not sure this is correct, investigate this.
-        self.registers.reg_a += self.registers.opcode;
+        self.registers.reg_a = self.memory.read_imm(self.registers.pc) as u8;
         self.adv_pc(2);
         self.adv_cycles(7);
     }
@@ -299,6 +328,9 @@ impl <'a> ExecutionContext<'a> {
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         if DEBUG {
             println!("Jumping to address: {:04X}", self.registers.pc);
+            if self.registers.pc == 0x08F3 {
+                println!("Jumping to PrintMessage");
+            }
         }
         self.adv_cycles(10);
     }
@@ -386,7 +418,7 @@ impl <'a> ExecutionContext<'a> {
 
     // Jump to address in H:L
     fn pchl(&mut self) {
-        let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+        let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
         self.registers.pc = hl;
         if DEBUG {
             println!("Jumping to address: {:0X}", self.registers.pc);
@@ -404,6 +436,7 @@ impl <'a> ExecutionContext<'a> {
     // Load Register Pair Immediate
     // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory
     // pointer)
+    // TODO Investigate possible problem here with CPUTEST & 8080EXER
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
@@ -471,17 +504,17 @@ impl <'a> ExecutionContext<'a> {
             // Match call addr with dissasembled Space Invaders function names
             match self.registers.pc {
                 0x1E6 => println!("{:02X}, Load DE, prepare for BlockCopy", self.registers.pc),
-                0x1EC => println!("BlockCopy"),
-                0x01D => println!("CheckHandleTilt"),
-                0x03B => println!("DrawnumCredits"),
-                1956 => println!("ClearScreen"),
-                1959 => println!("DrawScoreHead"),
-                0x8F5 => println!("DrawChar"),
+                0x1EC => println!("Call BlockCopy"),
+                0x01D => println!("Call CheckHandleTilt"),
+                0x03B => println!("Call DrawnumCredits"),
+                0x18DC => println!("Call DrawStatus"),
+                0x18D9 => println!("RAM Mirror in ROM"),
+                0x1956 => println!("Call ClearScreen"),
+                0x1959 => println!("Call DrawScoreHead"),
+                0x8F5 => println!("Call DrawChar"),
+
                 _ => println!("Not covered"),
             };
-
-            println!("Subroutine call: {:04X}", self.registers.pc);
-            println!("Return address is: {:04X}", ret);
         }
 
         self.registers.pc = self.memory.read_imm(self.registers.pc);
@@ -744,9 +777,6 @@ impl <'a> ExecutionContext<'a> {
                 self.registers.carry = 0 < value as u16 & 0xFFFF0000;
             }
         }
-        self.registers.reg_h = ((value as u16) >> 8 & 0xFF) as u8;
-        self.registers.reg_l = ((value as u16) >> 8 & 0xFF) as u8;
-
         self.adv_cycles(10);
         self.adv_pc(1);
     }
@@ -862,19 +892,19 @@ impl <'a> ExecutionContext<'a> {
 
     // TODO
     fn daa(&mut self) {
-        println!("DAA, Implementation not finished");
+        if DEBUG { println!("DAA, Implementation not finished"); }
         self.adv_pc(1);
         self.adv_cycles(4);
     }
     fn di(&mut self) {
-        println!("Disabling Interrupt System");
+        if DEBUG { println!("Disabling Interrupt System"); }
         self.registers.interrupt = false;
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     fn ei(&mut self) {
-        println!("Enabling Interrupt System");
+        if DEBUG { println!("Enabling Interrupt System"); }
         self.registers.interrupt = true;
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -981,7 +1011,7 @@ impl <'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
-    // Return if positive (if zign bit is 0)
+    // Return if positive (if sign bit is 0)
     fn rp(&mut self) {
         if !self.registers.sign {
             self.ret();
@@ -1033,8 +1063,9 @@ impl <'a> ExecutionContext<'a> {
     }
 
     fn lda(&mut self) {
-        let addr = self.memory.read_imm(self.registers.pc + 3) as u8;
-        self.registers.reg_a = addr;
+        // let addr = self.memory.read_imm(self.registers.pc + 3) as u8;
+        let addr = self.memory.read_imm(self.registers.pc);
+        self.registers.reg_a = addr as u8;
         self.adv_cycles(13);
         self.adv_pc(3);
     }
@@ -1048,14 +1079,14 @@ impl <'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let addr = (self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c) as u16;
+                let addr = (self.registers.reg_b as u16)  << 8 | (self.registers.reg_c as u16);
                 self.registers.reg_a = self.memory.memory[addr as usize];
             }
 
             RegisterPair::DE => {
-                let addr = (self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e) as u16;
+                let addr = (self.registers.reg_d as u16)  << 8 | (self.registers.reg_e as u16);
                 self.registers.reg_a = self.memory.memory[addr as usize];
-                if DEBUG { println!("LDA RP Register A value: {:04X}", self.registers.reg_a) };
+                if DEBUG { println!("LDA RP Register A value: {:04X}", self.registers.reg_a); };
             }
 
             _ => println!("LDAX on invalid register"),
@@ -1073,8 +1104,8 @@ impl <'a> ExecutionContext<'a> {
         // register.
         // L <- (adr); H<-(adr+1)
 
-        self.registers.reg_l = self.memory.read_low(self.registers.pc);
-        self.registers.reg_h = self.memory.read_high(self.registers.pc);
+        self.registers.reg_l = self.memory.read_imm(self.registers.pc) as u8;
+        self.registers.reg_h = self.memory.read_imm(self.registers.pc + 1) as u8;
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1083,7 +1114,7 @@ impl <'a> ExecutionContext<'a> {
     // Read one byte from input device #0 into the accumulator
     // Instructions in this class occupy 2 bytes.
     fn input(&mut self) {
-        if DEBUG { println!("Not implemented yet, skipping"); }
+        self.registers.reg_a = self.memory.read_next_byte(self.registers.pc);
         self.adv_cycles(10);
         self.adv_pc(2);
     }
@@ -1177,9 +1208,9 @@ impl <'a> ExecutionContext<'a> {
             }
 
             Register::D => {
-                self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_d;
-                self.memory.memory[self.registers.sp as usize - 2] = self.registers.reg_e;
-                self.registers.sp = self.registers.sp - 2;
+                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = self.registers.reg_d;
+                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = self.registers.reg_e;
+                self.registers.sp = self.registers.sp.wrapping_sub(2);
             }
 
             Register::H => {
@@ -1413,21 +1444,36 @@ impl <'a> ExecutionContext<'a> {
             println!("Returning to: {:04X}", return_addr);
         }
         self.adv_cycles(10);
+        // self.registers.sp += 2;
+        self.registers.sp = self.registers.sp.wrapping_add(2);
         self.registers.pc = return_addr;
     }
 
-    // TODO
     fn out(&mut self) {
-        if DEBUG {
-            println!("WATCHDOG. {:04X}", self.memory.read_imm(self.registers.pc));
-            println!("Not implemented, skipping");
+        let port = self.memory.read_low(self.registers.pc);
+        match port {
+            // Set offset size for shift register
+            0x02 => {
+                self.registers.shift_offset = self.registers.reg_a & 0x7;
+            }
+            // sound port
+            0x03 => println!("Sound not implemented"),
+            // Set shift register values
+            0x04 => {
+                self.registers.shift_0 = self.registers.shift_1;
+                self.registers.shift_1 = self.registers.reg_a;
+            }
+            // Sound port
+            0x05 => println!("Sound not implemented"),
+            // Watchdog port
+            0x06 => println!("Watchdog timer not implemented"),
+            _ => println!("Out port does not match implementation"),
         }
         self.adv_pc(2);
         self.adv_cycles(10);
     }
     fn ora(&mut self, reg: Register) {
-        // TODO CPU Flags / Condition bits
-        println!("CPU Flags not implemented!");
+
         match reg {
             Register::A => self.registers.reg_a |= self.registers.reg_a,
             Register::B => self.registers.reg_a |= self.registers.reg_b,
@@ -1436,12 +1482,29 @@ impl <'a> ExecutionContext<'a> {
             Register::E => self.registers.reg_a |= self.registers.reg_e,
             Register::H => self.registers.reg_a |= self.registers.reg_h,
             Register::L => self.registers.reg_a |= self.registers.reg_l,
-            Register::M => self.registers.reg_a |= self.registers.reg_m,
+            Register::M => {
+                let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                self.registers.reg_a |= hl as u8;
+                self.adv_cycles(3);
+            }
         }
+        self.registers.half_carry = false;
+        self.registers.carry = false;
+        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = 0x80 == (self.registers.reg_a & 0x80);
+        self.registers.parity = self.parity(self.registers.reg_a);
 
-        if reg == Register::M {
-            self.adv_cycles(7);
-        }
+        self.adv_cycles(4);
+        self.adv_pc(1);
+    }
+        // Or Immediate with Accumulator
+        fn ori(&mut self) {
+            self.registers.reg_a |= self.memory.read_imm(self.registers.pc) as u8;
+        self.registers.half_carry = false;
+        self.registers.carry = false;
+        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = 0x80 == (self.registers.reg_a & 0x80);
+        self.registers.parity = self.parity(self.registers.reg_a);
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1484,41 +1547,27 @@ impl <'a> ExecutionContext<'a> {
     }
 
     // RESET (used for interrupt jump / calls)
-    fn rst(&mut self, value: u8) {
-        let mut rst = 0u8;
+    pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
         let ret = self.registers.pc;
-        let return_addr = self.memory.push(self.registers.sp);
-        println!("RET: {:04X}, Push ret addr: {:04X}", ret, return_addr);
-
-
-        match value {
-            0 => rst = 0x00,
-            1 => rst = 0x08,
-            2 => rst = 0x10,
-            3 => rst = 0x18,
-            4 => rst = 0x20,
-            5 => rst = 0x28,
-            6 => rst = 0x30,
-            7 => rst = 0x38,
-
-            _ => println!("RST address unknown: {:#X}", rst),
-        }
 
         if DEBUG {
-            println!("RST called: {:02X}", value);
+            println!("RST return address: {:04X}", ret);
         }
-        self.registers.current_interrupt = value;
+        self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+        self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
         self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
-        // self.registers.pc = rst as u16;
 
+        // self.registers.pc = (self.registers.pc & 0x38);
         self.registers.pc = (value & 0x38).into();
     }
 
     fn sphl(&mut self) {
         self.registers.sp = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
+        self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
     // Store H & L direct
@@ -1577,14 +1626,14 @@ impl <'a> ExecutionContext<'a> {
                 hl
             );
             println!(
-                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Current interrupt: {}",
+                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Interrupt addr: {:02X}",
                 self.registers.sign,
                 self.registers.zero,
                 self.registers.parity,
                 self.registers.carry,
                 self.registers.half_carry,
                 self.registers.interrupt,
-                self.registers.current_interrupt,
+                self.registers.interrupt_addr,
             );
             println!("Stack: {:04X}", stack as u16);
         };
@@ -1663,14 +1712,14 @@ impl <'a> ExecutionContext<'a> {
             Instruction::Rrc => self.rrc(),
             Instruction::Rim => println!("Not implemented: {:?}", instruction),
             Instruction::Rpo => self.rpo(),
-            Instruction::Rst(0) => self.rst(1),
-            Instruction::Rst(1) => self.rst(2),
-            Instruction::Rst(2) => self.rst(2),
-            Instruction::Rst(3) => self.rst(3),
-            Instruction::Rst(4) => self.rst(4),
-            Instruction::Rst(5) => self.rst(5),
-            Instruction::Rst(6) => self.rst(6),
-            Instruction::Rst(7) => self.rst(7),
+            Instruction::Rst(0) => self.rst(0x00),
+            Instruction::Rst(1) => self.rst(0x08),
+            Instruction::Rst(2) => self.rst(0x10),
+            Instruction::Rst(3) => self.rst(0x18),
+            Instruction::Rst(4) => self.rst(0x20),
+            Instruction::Rst(5) => self.rst(0x28),
+            Instruction::Rst(6) => self.rst(0x30),
+            Instruction::Rst(7) => self.rst(0x38),
 
             Instruction::Rnz => self.rnz(),
             Instruction::Rm => self.rm(),
@@ -1688,7 +1737,7 @@ impl <'a> ExecutionContext<'a> {
             Instruction::Sphl => self.sphl(),
 
             Instruction::Ora(reg) => self.ora(reg),
-            Instruction::Ori => println!("Not implemented: {:?}", instruction),
+            Instruction::Ori => self.ori(),
 
             // Jump instructions can probably use just one function?
             Instruction::Jnc => self.jnc(),
@@ -1996,7 +2045,7 @@ impl <'a> ExecutionContext<'a> {
             0xF6 => self.decode(Instruction::Ani),
             0xF7 => self.decode(Instruction::Rst(4)),
             0xF8 => self.decode(Instruction::Rm),
-            0xF9 => self.decode(Instruction::Pchl),
+            0xF9 => self.decode(Instruction::Sphl),
 
             0xFA => self.decode(Instruction::Jm),
             0xFB => self.decode(Instruction::Ei),
@@ -2014,6 +2063,7 @@ impl <'a> ExecutionContext<'a> {
         let addr = self.memory.read(self.registers.pc);
         for _ in 0..times {
             self.execute_instruction(addr);
+            self.try_interrupt();
             self.registers.pc &= 0xFFFF;
             times += 1;
         }
@@ -2087,11 +2137,31 @@ impl <'a> ExecutionContext<'a> {
             }
         }
         result
-    }
-    fn interrupt(&mut self, code: u8) {
-        // Call Reset with interrupt code
-        self.rst(code);
-        self.registers.interrupt = false;
 
     }
+    pub fn try_interrupt(&mut self) {
+        // Handle interrupts
+        if self.registers.cycles < 16667 {
+            return;
+        }
+        if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16667 {
+            self.registers.cycles -= 16667;
+            self.registers.interrupt_addr = 0x08;
+            let pc = self.registers.pc;
+            // Call Reset with interrupt code
+            if self.registers.interrupt {
+                self.rst(pc as u8);
+                self.registers.interrupt = false;
+            }
+        } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16667 {
+            self.registers.cycles -= 16667;
+            self.registers.interrupt_addr = 0x10;
+            let pc = self.registers.pc;
+            if self.registers.interrupt {
+                self.rst(pc as u8);
+                self.registers.interrupt = false;
+            }
+        }
+    }
 }
+

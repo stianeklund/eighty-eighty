@@ -80,7 +80,7 @@ impl Display {
                 } else if x >= 200 && x <= 220 {
                     0x00FF0000 // Red
                 } else {
-                    0xFFFFFFFFF // Black
+                    0xFFFFFFFF // Black
                 };
                 self.raster[WIDTH as usize * y + x] = pixel;
             }
