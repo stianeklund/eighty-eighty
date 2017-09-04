@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use cpu::{Registers, ExecutionContext};
+    use interconnect::Interconnect;
     use memory::Memory;
     use std::fs::File;
     use std::io::prelude::*;
@@ -9,57 +10,46 @@ mod tests {
     use std::thread::sleep;
     use std::thread::sleep_ms;
     use std::ascii::AsciiExt;
-    use std::str;
 
     #[test]
     fn preliminary() {
         // Standup memory & registers
-        let mut memory = Memory::new();
-        let mut registers = Registers::new();
+        let mut i = Interconnect::new();
 
         // 8080PRE
         let path = Path::new("8080PRE.COM");
         let mut file = File::open(&path).expect("Couldn't load binary");
-        let mut buf = Vec::new();
-
-
-        file.read_to_end(&mut buf).expect("Failed to read binary");
-        let buf_len = buf.len();
-        for i in 0..buf_len {
-            memory.memory[i + 0x0100] = buf[i];
-        }
-        println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
-
-        let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
+        let bin: &str = "8080PRE.COM";
+        i.memory.load_tests(bin);
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
         // If successful it should return to 0x0005.
-        cpu.memory.memory[5] = 0xC9;
+        i.memory.memory[5] = 0xC9;
 
         // i8080core sets this before init, not sure why.
-        cpu.registers.pc = 0xF800;
+        i.registers.pc = 0xF800;
 
         // All test binaries start at 0x0100.
-        cpu.registers.pc = 0x0100;
+        i.registers.pc = 0x0100;
 
         'main: loop {
-            cpu.step(1);
+            i.execute_cpu();
 
-            if cpu.registers.pc == 0x76 {
-                println!("HALT at {:#04X}", cpu.registers.pc);
+            if i.registers.pc == 0x76 {
+                println!("HALT at {:#04X}", i.registers.pc);
                 #[should_panic]
-                assert_ne!(cpu.registers.pc, 0x76);
+                assert_ne!(i.registers.pc, 0x76);
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
-            if cpu.registers.pc == 05 {
-                if cpu.registers.reg_c == 9 {
+            if i.registers.pc == 05 {
+                if i.registers.reg_c == 9 {
                     // Create register pair
-                    let mut de = (cpu.registers.reg_d as u16) << 8 | (cpu.registers.reg_e as u16);
+                    let mut de = (i.registers.reg_d as u16) << 8 | (i.registers.reg_e as u16);
                     let mut result = String::new();
                     'print: loop {
-                        let output = cpu.memory.memory[de as usize];
+                        let output = i.memory.memory[de as usize];
                         if output as char == '$' {
                             break 'print
                         } else if output as char != '$' {
@@ -70,142 +60,59 @@ mod tests {
                     println!("{}", result)
                 }
             }
-            if cpu.registers.reg_c == 2 {
-                print!("{}", cpu.registers.reg_e as char);
+            if i.registers.reg_c == 2 {
+                print!("{}", i.registers.reg_e as char);
             }
             sleep_ms(5);
 
-            if cpu.registers.pc == 0 {
-                let stack = (cpu.memory.memory[cpu.registers.sp as usize + 1] as u16) << 8 |
-                    cpu.memory.memory[cpu.registers.sp as usize] as u16;
+            if i.registers.pc == 0 {
+                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
+                    i.memory.memory[i.registers.sp as usize] as u16;
                 println!("\nJump to 0 from {:04X}", stack);
                 break
             }
-            assert_ne!(cpu.registers.opcode, 0x00);
+            assert_ne!(i.registers.opcode, 0x00);
         }
     }
-
-    #[test]
-    fn instruction_set_exerciser() {
-        // Standup memory & registers
-        let mut memory = Memory::new();
-        let mut registers = Registers::new();
-
-        let path = Path::new("8080EX1.COM");
-        let mut file = File::open(&path).expect("Couldn't load binary");
-        let mut buf = Vec::new();
-
-
-        file.read_to_end(&mut buf).expect("Failed to read binary");
-        let buf_len = buf.len();
-        for i in 0..buf_len {
-            memory.memory[i + 0x0100] = buf[i];
-        }
-        println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
-
-        let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
-
-        // Inject RET (0xC9) at 0x0005 to handle CALL 5
-        // CALL 5 is the last subroutine call in the test.
-        // If successful it should return to 0x0005.
-        cpu.memory.memory[5] = 0xC9;
-
-        // i8080core sets this before init, not sure why.
-        cpu.registers.pc = 0xF800;
-
-        // All test binaries start at 0x0100.
-        cpu.registers.pc = 0x0100;
-
-        'main: loop {
-            cpu.step(1);
-
-            if cpu.registers.pc == 0x76 {
-                println!("HALT at {:#04X}", cpu.registers.pc);
-                #[should_panic]
-                assert_ne!(cpu.registers.pc, 0x76);
-            }
-            // If PC is 5 we're at the return address we set earlier.
-            // Print out characters from rom
-            if cpu.registers.pc == 05 {
-                if cpu.registers.reg_c == 9 {
-                    // Create register pair
-                    let mut de = (cpu.registers.reg_d as u16) << 8 | (cpu.registers.reg_e as u16);
-                    let mut result = String::new();
-                    'print: loop {
-                        let output = cpu.memory.memory[de as usize];
-                        if output as char == '$' {
-                            break 'print
-                        } else if output as char != '$' {
-                            de += 1;
-                        }
-                        result.push(output as char);
-                    }
-                    println!("{}", result)
-                }
-            }
-            if cpu.registers.reg_c == 2 {
-                print!("{}", cpu.registers.reg_e as char);
-            }
-            sleep_ms(5);
-
-            if cpu.registers.pc == 0 {
-                let stack = (cpu.memory.memory[cpu.registers.sp as usize + 1] as u16) << 8 |
-                    cpu.memory.memory[cpu.registers.sp as usize] as u16;
-                println!("\nJump to 0 from {:04X}", stack);
-                break
-            }
-            assert_ne!(cpu.registers.opcode, 0x00);
-        }
-    }
-
     #[test]
     fn cpu_test() {
         // Standup memory & registers
-        let mut memory = Memory::new();
-        let mut registers = Registers::new();
+        let mut i = Interconnect::new();
 
-        let path = Path::new("8080EX1.COM");
+        // CPUTEST
+        let path = Path::new("interrupt_test.bin");
         let mut file = File::open(&path).expect("Couldn't load binary");
-        let mut buf = Vec::new();
-
-
-        file.read_to_end(&mut buf).expect("Failed to read binary");
-        let buf_len = buf.len();
-        for i in 0..buf_len {
-            memory.memory[i + 0x0100] = buf[i];
-        }
-        println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
-
-        let mut cpu = ExecutionContext::new(&mut memory, &mut registers);
+        let bin: &str = "interrupt_test.bin";
+        i.memory.load_tests(bin);
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
         // If successful it should return to 0x0005.
-        cpu.memory.memory[5] = 0xC9;
+        i.memory.memory[5] = 0xC9;
 
         // i8080core sets this before init, not sure why.
-        cpu.registers.pc = 0xF800;
+        i.registers.pc = 0xF800;
 
         // All test binaries start at 0x0100.
-        cpu.registers.pc = 0x0100;
+        i.registers.pc = 0x0100;
 
         'main: loop {
-            cpu.step(1);
+            i.execute_cpu();
 
-            if cpu.registers.pc == 0x76 {
-                println!("HALT at {:#04X}", cpu.registers.pc);
+            if i.registers.pc == 0x76 {
+                println!("HALT at {:#04X}", i.registers.pc);
                 #[should_panic]
-                assert_ne!(cpu.registers.pc, 0x76);
+                assert_ne!(i.registers.pc, 0x76);
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
-            if cpu.registers.pc == 05 {
-                if cpu.registers.reg_c == 9 {
+            if i.registers.pc == 05 {
+                if i.registers.reg_c == 9 {
                     // Create register pair
-                    let mut de = (cpu.registers.reg_d as u16) << 8 | (cpu.registers.reg_e as u16);
+                    let mut de = (i.registers.reg_d as u16) << 8 | (i.registers.reg_e as u16);
                     let mut result = String::new();
                     'print: loop {
-                        let output = cpu.memory.memory[de as usize];
+                        let output = i.memory.memory[de as usize];
                         if output as char == '$' {
                             break 'print
                         } else if output as char != '$' {
@@ -216,20 +123,19 @@ mod tests {
                     println!("{}", result)
                 }
             }
-            if cpu.registers.reg_c == 2 {
-                print!("{}", cpu.registers.reg_e as char);
+            if i.registers.reg_c == 2 {
+                print!("{}", i.registers.reg_e as char);
             }
             sleep_ms(5);
 
-            if cpu.registers.pc == 0 {
-                let stack = (cpu.memory.memory[cpu.registers.sp as usize + 1] as u16) << 8 |
-                    cpu.memory.memory[cpu.registers.sp as usize] as u16;
+            if i.registers.pc == 0 {
+                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
+                    i.memory.memory[i.registers.sp as usize] as u16;
                 println!("\nJump to 0 from {:04X}", stack);
                 break
             }
-            if cpu.registers.opcode == 0x00 {
-               panic!();
-            }
+            assert_ne!(i.registers.opcode, 0x00);
         }
     }
 }
+

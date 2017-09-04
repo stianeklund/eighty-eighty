@@ -298,7 +298,7 @@ impl <'a> ExecutionContext<'a> {
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         if DEBUG {
-            eprintln!("Jumping to address: {:04X}", self.registers.pc);
+            println!("Jumping to address: {:04X}", self.registers.pc);
         }
         self.adv_cycles(10);
     }
@@ -866,17 +866,15 @@ impl <'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
-    // TODO Finish implementation
     fn di(&mut self) {
+        println!("Disabling Interrupt System");
         self.registers.interrupt = false;
-       println!("Disable Interrupt Sytem");
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
-    // TODO Finish implementation
     fn ei(&mut self) {
-        println!("Enable Interrupt System");
+        println!("Enabling Interrupt System");
         self.registers.interrupt = true;
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1485,8 +1483,14 @@ impl <'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
+    // RESET (used for interrupt jump / calls)
     fn rst(&mut self, value: u8) {
         let mut rst = 0u8;
+        // Address to return to after interrupt is finished.
+        let ret = self.registers.pc;
+        let return_addr = self.memory.push(self.registers.sp);
+        println!("RET: {:04X}, Push ret addr: {:04X}", ret, return_addr);
+
 
         match value {
             0 => rst = 0x00,
@@ -1508,7 +1512,9 @@ impl <'a> ExecutionContext<'a> {
         self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
-        self.registers.pc = rst as u16;
+        // self.registers.pc = rst as u16;
+
+        self.registers.pc = (value & 0x38).into();
     }
 
     fn sphl(&mut self) {
@@ -1533,7 +1539,7 @@ impl <'a> ExecutionContext<'a> {
 
     pub fn decode(&mut self, instruction: Instruction) {
         if DEBUG {
-            println!("Opcode:{:#02X} Instruction: {:?},", self.registers.opcode, instruction);
+            println!("Opcode: {:#02X} Instruction: {:?},", self.registers.opcode, instruction);
         }
         if DEBUG {
             println!(
@@ -1571,12 +1577,14 @@ impl <'a> ExecutionContext<'a> {
                 hl
             );
             println!(
-                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}",
+                "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Current interrupt: {}",
                 self.registers.sign,
                 self.registers.zero,
                 self.registers.parity,
                 self.registers.carry,
-                self.registers.half_carry
+                self.registers.half_carry,
+                self.registers.interrupt,
+                self.registers.current_interrupt,
             );
             println!("Stack: {:04X}", stack as u16);
         };
@@ -1982,7 +1990,7 @@ impl <'a> ExecutionContext<'a> {
             0xF0 => self.decode(Instruction::Rp),
             0xF1 => self.decode(Instruction::PopPsw(A)),
             0xF2 => self.decode(Instruction::Jp),
-            0xF3 => self.decode(Instruction::Xthl),
+            0xF3 => self.decode(Instruction::Di),
             0xF4 => self.decode(Instruction::Cp(0xF4)),
             0xF5 => self.decode(Instruction::Push(H)),
             0xF6 => self.decode(Instruction::Ani),
@@ -1991,7 +1999,7 @@ impl <'a> ExecutionContext<'a> {
             0xF9 => self.decode(Instruction::Pchl),
 
             0xFA => self.decode(Instruction::Jm),
-            0xFB => self.decode(Instruction::Xchg),
+            0xFB => self.decode(Instruction::Ei),
             0xFC => self.decode(Instruction::Cm(0xFC)),
             0xFD => self.decode(Instruction::Call(0xFD)),
             0xFE => self.decode(Instruction::Cpi),
@@ -2080,10 +2088,10 @@ impl <'a> ExecutionContext<'a> {
         }
         result
     }
-    fn emulate_interrupt(&mut self) {
-        if self.registers.interrupt {
-
-        }
+    fn interrupt(&mut self, code: u8) {
+        // Call Reset with interrupt code
+        self.rst(code);
+        self.registers.interrupt = false;
 
     }
 }
