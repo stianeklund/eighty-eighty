@@ -73,7 +73,7 @@ mod tests {
         // Standup memory & registers
         let mut i = Interconnect::new();
 
-        let duration = Duration::from_millis(2);
+        let duration = Duration::from_millis(1);
         let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
@@ -121,9 +121,10 @@ mod tests {
                     println!("\nJump to 0 from {:04X}", stack);
                     break
                 }
-                assert_ne!(i.registers.pc, 0);
-                assert_ne!(i.registers.opcode, 0x00);
+
             }
+            assert_ne!(i.registers.pc, 0);
+            // assert_ne!(i.registers.opcode, 0x00);
         }
     }
       #[test]
@@ -179,9 +180,8 @@ mod tests {
                     println!("\nJump to 0 from {:04X}", stack);
                     break
                 }
-                assert_ne!(i.registers.pc, 0);
-                assert_ne!(i.registers.opcode, 0x00);
             }
+            assert_ne!(i.registers.opcode, 0x00);
         }
     }
 }

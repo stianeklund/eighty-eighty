@@ -441,6 +441,7 @@ impl <'a> ExecutionContext<'a> {
             RegisterPair::BC => {
                 let low = self.memory.read_low(self.registers.pc);
                 let high = self.memory.read_high(self.registers.pc);
+
                 self.registers.reg_b = high;
                 self.registers.reg_c = low;
             }
@@ -513,7 +514,7 @@ impl <'a> ExecutionContext<'a> {
                 0x1959 => println!("Call DrawScoreHead"),
                 0x8F5 => println!("Call DrawChar"),
 
-                _ => return
+                _ => println!(),
             };
         }
 
@@ -928,7 +929,7 @@ impl <'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.carry as u8) << 7;
+        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a as u8) << 7;
         // self.registers.carry = self.registers.reg_a & 0x08 != 0;
         self.registers.carry = self.registers.reg_a & 0x1 != 0;
 
@@ -1228,8 +1229,13 @@ impl <'a> ExecutionContext<'a> {
     }
     fn push_psw(&mut self) {
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
-        self.memory.memory[self.registers.sp as usize - 2];
+        let psw = (self.registers.zero | self.registers.sign |
+            self.registers.parity | self.registers.carry | self.registers.half_carry);
+
+        self.memory.memory[self.registers.sp as usize - 2] = psw as u8;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
+        self.adv_cycles(11);
+        self.adv_pc(1);
     }
 
     // Store the contents of the accumulator addressed by registers B, C
@@ -1697,6 +1703,7 @@ impl <'a> ExecutionContext<'a> {
             Instruction::Pop(reg) => self.pop(reg),
             Instruction::PopPsw(reg) => self.pop_psw(),
             Instruction::Push(reg) => self.push(reg),
+            Instruction::PushPsw() => self.push_psw(),
 
             Instruction::In => self.input(),
             Instruction::Inr(reg) => self.inr(reg),
@@ -2048,7 +2055,7 @@ impl <'a> ExecutionContext<'a> {
             0xF2 => self.decode(Instruction::Jp),
             0xF3 => self.decode(Instruction::Di),
             0xF4 => self.decode(Instruction::Cp(0xF4)),
-            0xF5 => self.decode(Instruction::Push(H)),
+            0xF5 => self.decode(Instruction::PushPsw()),
             0xF6 => self.decode(Instruction::Ani),
             0xF7 => self.decode(Instruction::Rst(4)),
             0xF8 => self.decode(Instruction::Rm),

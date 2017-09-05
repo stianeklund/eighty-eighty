@@ -18,7 +18,7 @@ mod memory;
 mod keypad;
 mod test;
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

@@ -109,6 +109,7 @@ pub enum Instruction {
     Stax(RegisterPair),
     Pop(RegisterPair),
     Push(Register),
+    PushPsw(),
     Xra(Register),
     Ora(Register),
     Out,
