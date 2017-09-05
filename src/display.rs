@@ -3,7 +3,8 @@ use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 use std::fmt;
 use minifb::{Key, Scale, WindowOptions, Window};
 use std::iter::Enumerate;
-use std::thread::sleep_ms;
+use std::thread::sleep;
+use std::time::Duration;
 
 
 use cpu::ExecutionContext;
@@ -70,7 +71,7 @@ impl Display {
 
         for (i, byte) in (memory[0x2400..0x4000]).iter().enumerate() {
             let y = i * 8 / WIDTH as usize + 1;
-            for shift in 0 ... 8 {
+            for shift in 0..(8 + 1) {
                 let x = ((i * 8) % WIDTH as usize) + shift as usize;
 
                 let pixel = if (byte >> shift as usize) & 1 == 0 {

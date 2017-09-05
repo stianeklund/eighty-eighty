@@ -111,7 +111,6 @@ impl Registers {
             cycles: 0,
             interrupt: false,
             interrupt_addr: 0x10,
-            // interrupt_addr: 0x08,
 
             shift_offset: 0,
             shift_0: 0,
@@ -189,7 +188,7 @@ impl <'a> ExecutionContext<'a> {
     }
 
     fn adv_pc(&mut self, t: u16) {
-        self.registers.pc += t;
+        self.registers.pc = self.registers.pc.wrapping_add(t);
     }
 
     fn adv_cycles(&mut self, t: usize) {
@@ -509,11 +508,12 @@ impl <'a> ExecutionContext<'a> {
                 0x03B => println!("Call DrawnumCredits"),
                 0x18DC => println!("Call DrawStatus"),
                 0x18D9 => println!("RAM Mirror in ROM"),
+                0x1928 => println!("DrawScore"),
                 0x1956 => println!("Call ClearScreen"),
                 0x1959 => println!("Call DrawScoreHead"),
                 0x8F5 => println!("Call DrawChar"),
 
-                _ => println!("Not covered"),
+                _ => return
             };
         }
 
@@ -928,11 +928,12 @@ impl <'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a << 7);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.carry as u8) << 7;
+        // self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        self.registers.carry = self.registers.reg_a & 0x1 != 0;
 
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // Rotate Accumulator Left
@@ -2146,14 +2147,16 @@ impl <'a> ExecutionContext<'a> {
 
     }
     pub fn try_interrupt(&mut self) {
-        // Handle interrupts
+
         if self.registers.cycles < 16667 {
             return;
         }
         if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16667 {
             self.registers.cycles -= 16667;
             self.registers.interrupt_addr = 0x08;
+
             let pc = self.registers.pc;
+
             // Call Reset with interrupt code
             if self.registers.interrupt {
                 self.rst(pc as u8);
@@ -2162,11 +2165,13 @@ impl <'a> ExecutionContext<'a> {
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16667 {
             self.registers.cycles -= 16667;
             self.registers.interrupt_addr = 0x10;
+
             let pc = self.registers.pc;
+
             if self.registers.interrupt {
                 self.rst(pc as u8);
                 self.registers.interrupt = false;
-            }
+           }
         }
     }
 }

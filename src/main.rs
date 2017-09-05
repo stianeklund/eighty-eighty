@@ -1,5 +1,3 @@
-#![feature(inclusive_range,inclusive_range_syntax)]
-
 extern crate minifb;
 extern crate byteorder;
 
@@ -8,7 +6,8 @@ use cpu::{ExecutionContext, Registers};
 use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
-use std::thread::sleep_ms;
+use std::thread::sleep;
+use std::time::Duration;
 
 mod cpu;
 mod opcode;

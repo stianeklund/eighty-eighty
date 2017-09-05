@@ -1,6 +1,4 @@
 use super::minifb::{Key, Scale, WindowOptions, Window};
-use std::env;
-
 use super::cpu::{ExecutionContext, Registers};
 use super::display::Display;
 use super::memory::Memory;

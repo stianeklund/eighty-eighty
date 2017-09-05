@@ -11,7 +11,6 @@ use std::path::Path;
 use display::Display;
 use cpu::{ExecutionContext, Registers};
 use memory::Memory;
-use std::thread;
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
