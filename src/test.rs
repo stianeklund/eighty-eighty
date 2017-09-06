@@ -73,7 +73,7 @@ mod tests {
         // Standup memory & registers
         let mut i = Interconnect::new();
 
-        let duration = Duration::from_millis(1);
+        let duration = Duration::new(0, 15120);
         let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
@@ -90,7 +90,6 @@ mod tests {
 
         'main: loop {
             i.execute_cpu();
-
             if i.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", i.registers.pc);
                 assert_ne!(i.registers.pc, 0x76);
@@ -124,7 +123,7 @@ mod tests {
 
             }
             assert_ne!(i.registers.pc, 0);
-            // assert_ne!(i.registers.opcode, 0x00);
+            assert_ne!(i.registers.opcode, 0x00);
         }
     }
       #[test]

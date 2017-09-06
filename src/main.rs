@@ -18,7 +18,23 @@ mod memory;
 mod keypad;
 mod test;
 
-const DEBUG: bool = false;
+pub struct Debug {
+    state: bool
+}
+impl Debug {
+    pub fn on() -> bool {
+        Debug {
+            state: true
+        };
+        return true;
+    }
+    pub fn off() -> bool {
+        Debug {
+            state: false
+        };
+        return false;
+    }
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -43,10 +59,15 @@ fn main() {
         display.draw_pixel(&i);
         // sleep_ms(5);
         display.window.update_with_buffer(&display.raster).unwrap();
+        if display.window.is_key_down(Key::D) {
+            Debug::on();
+        } else if display.window.is_key_down(Key::E) {
+            Debug::off();
+        } else if display.window.is_key_down(Key::Escape) {
+            break
+        }
     }
 }
 
 
-            // if interconnect.display.window.is_key_down(Key::Escape) {
-            // break
-            //}
+
