@@ -71,8 +71,8 @@ mod tests {
 
     #[test]
     fn cpu_test() {
-        let mut debug =  Debug::new();
-        debug.state = false;
+        let mut debug = Debug::new();
+        debug.state = true;
         // Standup memory & registers
         let mut i = Interconnect::new();
 

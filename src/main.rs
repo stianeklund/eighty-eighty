@@ -18,9 +18,9 @@ mod memory;
 mod keypad;
 mod test;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Debug {
-    state: bool
+    pub state: bool
 }
 impl Debug {
     pub fn new() -> Debug {
@@ -28,6 +28,13 @@ impl Debug {
             state: false
         }
     }
+    pub fn off(&mut self) {
+        self.state = false
+    }
+    pub fn on(&mut self) {
+        self.state = true
+    }
+
 }
 
 fn main() {
@@ -45,8 +52,8 @@ fn main() {
 
     // load binary file
     i.memory.load_bin(bin);
-
     let mut debug = Debug::new();
+
     // TODO implement break & step keyboard actions
     loop {
         // CPU execution
@@ -56,6 +63,7 @@ fn main() {
         display.window.update_with_buffer(&display.raster).unwrap();
         if display.window.is_key_down(Key::D) {
             debug.state = true;
+
 
         } else if display.window.is_key_down(Key::E) {
             debug.state = false;

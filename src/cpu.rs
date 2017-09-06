@@ -80,9 +80,12 @@ pub struct Registers {
 
 impl Registers {
     pub fn new() -> Registers {
+
+        let mut debug = Debug::new();
+
         Registers {
             opcode: 0,
-            debug: Debug::new(),
+            debug: debug,
 
             pc: 0,
             sp: 0,
