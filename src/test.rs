@@ -6,12 +6,13 @@ mod tests {
     use std::time::Duration;
     use std::path::Path;
     use std::thread::sleep;
+    use Debug;
 
     #[test]
     fn preliminary() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        let duration = Duration::from_millis(2);
+        let duration = Duration::new(0, 15120);
 
         // 8080PRE
         let bin: &str = "8080PRE.COM";
@@ -70,6 +71,8 @@ mod tests {
 
     #[test]
     fn cpu_test() {
+        let mut debug =  Debug::new();
+        debug.state = false;
         // Standup memory & registers
         let mut i = Interconnect::new();
 
@@ -126,12 +129,11 @@ mod tests {
             assert_ne!(i.registers.opcode, 0x00);
         }
     }
-      #[test]
+    #[test]
     fn cpu_ex1() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-
-        let duration = Duration::from_millis(2);
+        let duration = Duration::new(0, 15120);
         let bin: &str = "8080EX1.COM";
         i.memory.load_tests(bin);
 

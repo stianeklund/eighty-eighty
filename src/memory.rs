@@ -28,7 +28,7 @@ impl Memory {
     }
 
     pub fn read_byte(&mut self, addr: u16) -> u8 {
-        self.memory[addr as usize & 0xFFF] & 0xFF
+        self.memory[addr as usize & 0xFFFF]
     }
 
     pub fn read_next_byte(&mut self, byte: u16) -> u8 {

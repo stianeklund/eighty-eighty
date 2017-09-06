@@ -26,6 +26,7 @@ use Debug;
 #[derive(Debug, Copy, Clone)]
 pub struct Registers {
     pub opcode: u8,
+    debug: Debug,
 
     pub pc: u16,
     pub sp: u16,
@@ -81,6 +82,7 @@ impl Registers {
     pub fn new() -> Registers {
         Registers {
             opcode: 0,
+            debug: Debug::new(),
 
             pc: 0,
             sp: 0,
@@ -245,7 +247,7 @@ impl <'a> ExecutionContext<'a> {
 
             Register::B => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) & 0x08 != 0;
-                if Debug::on() {
+                if self.registers.debug.state {
                     println!("Setting half carry flag for ANA: {}", self.registers.half_carry);
                 }
                 self.registers.reg_a &= self.registers.reg_b;
@@ -253,7 +255,7 @@ impl <'a> ExecutionContext<'a> {
 
             Register::C => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) & 0x08 != 0;
-                if Debug::on() {
+                if self.registers.debug.state {
                     println!("Setting half carry flag for ANA: {}", self.registers.half_carry);
                 }
                 self.registers.reg_a &= self.registers.reg_c;
@@ -261,7 +263,7 @@ impl <'a> ExecutionContext<'a> {
 
             Register::D => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) & 0x08 != 0;
-                if Debug::on() {
+                if self.registers.debug.state {
                     println!("Setting half carry flag for ANA: {}", self.registers.half_carry);
                 }
                 self.registers.reg_a &= self.registers.reg_d;
@@ -324,7 +326,7 @@ impl <'a> ExecutionContext<'a> {
 
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_imm(self.registers.pc);
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Jumping to address: {:04X}", self.registers.pc);
             if self.registers.pc == 0x08F3 {
                 println!("Jumping to PrintMessage");
@@ -418,7 +420,7 @@ impl <'a> ExecutionContext<'a> {
     fn pchl(&mut self) {
         let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
         self.registers.pc = hl;
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Jumping to address: {:0X}", self.registers.pc);
         };
         self.adv_cycles(5);
@@ -468,13 +470,9 @@ impl <'a> ExecutionContext<'a> {
 
     // Store Accumulator direct
     fn sta(&mut self) {
-        let reg_a = self.registers.reg_a;
+        let addr = self.memory.read_imm(self.registers.pc);
 
-        let value = self.memory.read_imm(self.registers.pc);
-
-        let addr = value + 2 << 8 | value + 1;
-        self.memory.write_byte(reg_a as u16, addr);
-
+        self.memory.memory[addr as usize] = self.registers.reg_a;
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -498,7 +496,7 @@ impl <'a> ExecutionContext<'a> {
             _ => println!("Unknown call address: {:04X}", self.registers.opcode),
         };
 
-        if Debug::on() {
+        if self.registers.debug.state {
             // For debugging
             // Match call addr with dissasembled Space Invaders function names
             match self.registers.pc {
@@ -512,6 +510,7 @@ impl <'a> ExecutionContext<'a> {
                 0x1956 => println!("Call ClearScreen"),
                 0x1959 => println!("Call DrawScoreHead"),
                 0x8F5 => println!("Call DrawChar"),
+                0x214F => println!("Call $214F"),
 
                 _ => println!(),
             };
@@ -694,13 +693,13 @@ impl <'a> ExecutionContext<'a> {
 
         // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Value: {:02X}", value);
             println!("A reg: {:02X}", self.registers.reg_a);
         }
 
         let result = self.registers.reg_a.wrapping_sub(value);
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Result: {:X}", result);
             println!("Zero result: {:X}", result & 0xFF);
         }
@@ -892,20 +891,20 @@ impl <'a> ExecutionContext<'a> {
 
     // TODO
     fn daa(&mut self) {
-        if Debug::on() { println!("DAA, Implementation not finished"); }
+        if self.registers.debug.state {}
         panic!("DAA");
         self.adv_pc(1);
         self.adv_cycles(4);
     }
     fn di(&mut self) {
-        if Debug::on() { println!("Disabling Interrupt System"); }
+        if self.registers.debug.state {}
         self.registers.interrupt = false;
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     fn ei(&mut self) {
-        if Debug::on() { println!("Enabling Interrupt System"); }
+        if self.registers.debug.state {}
         self.registers.interrupt = true;
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1044,7 +1043,7 @@ impl <'a> ExecutionContext<'a> {
         // TODO: Look into endianess here, and or rewrite the write_memory function to write the
         // correct value to register.
         let mut value = self.memory.read(self.registers.pc + 1);
-        if Debug::on() { println!("Value: {:04X}", value); }
+        if self.registers.debug.state {}
         // let value = self.memory.read(self.registers.pc) >> 2 & 0x80;
         // println!("Value: {:04X}", value);
         match reg {
@@ -1089,7 +1088,7 @@ impl <'a> ExecutionContext<'a> {
             RegisterPair::DE => {
                 let addr = (self.registers.reg_d as u16)  << 8 | (self.registers.reg_e as u16);
                 self.registers.reg_a = self.memory.memory[addr as usize];
-                if Debug::on() { println!("LDA RP Register A value: {:04X}", self.registers.reg_a); };
+                if self.registers.debug.state {}
             }
 
             _ => println!("LDAX on invalid register"),
@@ -1333,6 +1332,8 @@ impl <'a> ExecutionContext<'a> {
 
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
+
+
         match reg {
             Register::A => self.registers.reg_a ^= self.registers.reg_a,
             Register::B => self.registers.reg_a ^= self.registers.reg_b,
@@ -1347,6 +1348,7 @@ impl <'a> ExecutionContext<'a> {
                 self.adv_cycles(3);
             }
         }
+
         self.registers.half_carry = false;
         self.registers.carry = false;
         self.registers.zero = self.registers.reg_a == 0;
@@ -1440,7 +1442,7 @@ impl <'a> ExecutionContext<'a> {
 
     fn pop_stack(&mut self) -> u16 {
         let sp = self.memory.read_word(self.registers.sp);
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Popping stack. SP value: {:04X}", sp);
         }
         self.registers.sp += 2;
@@ -1454,7 +1456,7 @@ impl <'a> ExecutionContext<'a> {
         // let ret = (self.memory.memory[self.registers.sp as usize] as u16) | << 8 |
           //   (self.memory.memory[self.registers.sp as usize + 1] as u16);
         let ret = (high << 8 | low).into();
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Returning to: {:04X}", ret);
         }
         self.adv_cycles(10);
@@ -1527,10 +1529,11 @@ impl <'a> ExecutionContext<'a> {
         match dst {
             Register::A => {
                 if src == Register::M {
-                    let addr: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                    let val = self.memory.memory[addr as usize];
-                    if Debug::on() { println!("Value:{:X}", val); }
-                    self.write_reg(dst, val);
+                    let hl: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                    let val = self.memory.read_byte(hl);
+
+                    if self.registers.debug.state {}
+                    self.write_reg(dst, val as u8);
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value)
@@ -1545,14 +1548,15 @@ impl <'a> ExecutionContext<'a> {
             Register::H => self.write_reg(dst, value),
             Register::M => {
                 let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                let val = self.memory.memory[addr as usize];
-                if Debug::on() { println!("Value:{:X}", val); }
+                let val = self.memory.memory[addr as usize & 0xFFFF];
+                if self.registers.debug.state {
+                }
                 self.write_reg(dst, val);
                 self.adv_cycles(2);
             }
         }
 
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
         self.adv_cycles(5);
@@ -1564,7 +1568,7 @@ impl <'a> ExecutionContext<'a> {
         // Address to return to after interrupt is finished.
         let ret = self.registers.pc;
 
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("RST return address: {:04X}", ret);
         }
         self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
@@ -1585,11 +1589,11 @@ impl <'a> ExecutionContext<'a> {
 
     // Store H & L direct
     fn shld(&mut self) {
-        let reg_a = self.registers.reg_a;
         let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
-        self.memory.write_word(reg_a as u16, hl);
+        self.memory.memory[hl as usize + 1] = self.registers.reg_h;
+        self.memory.memory[hl as usize] = self.registers.reg_l;
 
-        self.adv_cycles(13);
+        self.adv_cycles(16);
         self.adv_pc(3);
     }
 
@@ -1600,10 +1604,10 @@ impl <'a> ExecutionContext<'a> {
 
 
     pub fn decode(&mut self, instruction: Instruction) {
-        if Debug::on() {
+        if self.registers.debug.state {
             println!("Opcode: {:#02X} Instruction: {:?},", self.registers.opcode, instruction);
         }
-        if Debug::on() {
+        if self.registers.debug.state {
             println!(
                 "PC: {:02X}, SP: {:X}, Cycles: {}",
                 self.registers.pc,
