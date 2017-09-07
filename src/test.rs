@@ -74,7 +74,7 @@ mod tests {
         let mut i = Interconnect::new();
         i.registers.debug = true;
 
-        let duration = Duration::new(0, 15120);
+        let duration = Duration::new(0, 500);
         let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
@@ -88,6 +88,7 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
+        let mut nop = 0;
 
         'main: loop {
             i.execute_cpu();
@@ -124,7 +125,12 @@ mod tests {
 
             }
             assert_ne!(i.registers.pc, 0);
-            assert_ne!(i.registers.opcode, 0x00);
+            if i.registers.opcode == 0x0 {
+                nop += 1;
+            }
+            if nop >= 6 {
+                panic!("Too many Nop instructions");
+            }
         }
     }
     #[test]

@@ -1526,33 +1526,80 @@ impl<'a> ExecutionContext<'a> {
     }
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
+        let addr: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+
         match dst {
             Register::A => {
                 if src == Register::M {
-                    let hl: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                    let val = self.memory.read_byte(hl);
-
-                    self.write_reg(dst, val as u8);
+                    self.registers.reg_a = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value)
                 }
             }
-            Register::B => self.write_reg(dst, value),
-            Register::C => self.write_reg(dst, value),
-            Register::D => self.write_reg(dst, value),
-            Register::E => self.write_reg(dst, value),
-            Register::H => self.write_reg(dst, value),
-            Register::L => self.write_reg(dst, value),
-            Register::H => self.write_reg(dst, value),
-            Register::M => {
-                let addr = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                let val = self.memory.memory[addr as usize & 0xFFFF];
-                self.write_reg(dst, val);
-                self.adv_cycles(2);
+            Register::B => {
+                if src == Register::M {
+                    self.registers.reg_b = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                    self.write_reg(dst, value);
+                }
             }
-        }
+            Register::C => {
+                if src == Register::M {
+                    self.registers.reg_c = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                    self.write_reg(dst, value);
+                }
+            }
+            Register::D => {
+                if src == Register::M {
+                    self.registers.reg_d = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                    self.write_reg(dst, value) ;
+                }
+            }
+            Register::E => {
+                if src == Register::M {
+                    self.registers.reg_e = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                    self.write_reg(dst, value);
+                }
+            }
+            Register::H => {
+                if src == Register::M {
+                    self.registers.reg_h = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                self.write_reg(dst, value);
+                }
+            }
+            Register::L => {
+                if src == Register::M {
+                    self.registers.reg_l = self.memory.memory[addr as usize];
+                    self.adv_cycles(2);
+                } else {
+                self.write_reg(dst, value);
+                }
+            }
+            Register::M => {
+                match src {
+                    Register::A => self.memory.memory[addr as usize] = self.registers.reg_a,
+                    Register::B => self.memory.memory[addr as usize] = self.registers.reg_b,
+                    Register::C => self.memory.memory[addr as usize] = self.registers.reg_c,
+                    Register::D => self.memory.memory[addr as usize] = self.registers.reg_d,
+                    Register::E => self.memory.memory[addr as usize] = self.registers.reg_e,
+                    Register::H => self.memory.memory[addr as usize] = self.registers.reg_h,
+                    Register::L => self.memory.memory[addr as usize] = self.registers.reg_l,
+                    Register::M => self.memory.memory[addr as usize] = self.registers.reg_m,
+                }
+                self.adv_cycles(2);
 
+                }
+            }
         if self.registers.debug {
             println!("MOV, Source: {:?}, Destination: {:?}", src, dst);
         }
