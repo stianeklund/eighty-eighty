@@ -770,7 +770,7 @@ impl<'a> ExecutionContext<'a> {
 
             RegisterPair::HL => {
                 value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                value += (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
                 self.registers.carry = 0 < value as u16 & 0xFFFF0000;
             }
             // DAD SP
@@ -946,11 +946,11 @@ impl<'a> ExecutionContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        self.registers.reg_a.rotate_left(1);
+        self.registers.reg_a = self.registers.reg_a.rotate_left(1);
         self.registers.carry = self.registers.reg_a & 0x08 != 0;
 
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     fn rrc(&mut self) {
@@ -1129,7 +1129,7 @@ impl<'a> ExecutionContext<'a> {
         let mut value: u8 = 0;
         match reg {
             Register::A => {
-                self.registers.reg_a += 1;
+                self.registers.reg_a.wrapping_add(1); // += 1;
                 value = self.registers.reg_a;
             }
             Register::B => {
@@ -1388,13 +1388,15 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(5);
     }
 
-    // TODO Investigate swap
     fn xthl(&mut self) {
         // Swap H:L with top word on stack
+        let h = self.registers.reg_h;
+        let l = self.registers.reg_l;
+
         self.registers.reg_l = self.memory.memory[self.registers.sp as usize + 0];
         self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
-        self.memory.memory[self.registers.sp as usize + 0] = self.registers.reg_l;
-        self.memory.memory[self.registers.sp as usize + 1] = self.registers.reg_h;
+        self.memory.memory[self.registers.sp as usize + 0] = l;
+        self.memory.memory[self.registers.sp as usize + 1] = h;
 
         self.adv_cycles(18);
         self.adv_pc(1);
@@ -1426,7 +1428,6 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
 
-    // TODO Investigate conditional flags (especially carry)
     fn pop_psw(&mut self) {
         self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
         self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 != 0;
@@ -1453,16 +1454,14 @@ impl<'a> ExecutionContext<'a> {
     fn ret(&mut self) {
         let low = self.memory.memory[self.registers.sp as usize] as u16;
         let high = self.memory.memory[self.registers.sp as usize + 1] as u16;
+        let ret: u16 = (high as u16) << 8 | (low as u16);
 
-        // let ret = (self.memory.memory[self.registers.sp as usize] as u16) | << 8 |
-        //   (self.memory.memory[self.registers.sp as usize + 1] as u16);
-        let ret = (high << 8 | low).into();
         if self.registers.debug {
             println!("Returning to: {:04X}", ret);
         }
         self.adv_cycles(10);
         self.registers.sp = self.registers.sp.wrapping_add(2);
-        self.registers.pc = ret;
+        self.registers.pc = ret & 0xFFFF;
     }
 
     fn out(&mut self) {
@@ -1608,21 +1607,32 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // RESET (used for interrupt jump / calls)
+    // TODO Investigate RST(5)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc;
 
-        if self.registers.debug {
-            println!("RST return address: {:04X}", ret);
-        }
-        self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
-        self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
-        self.registers.sp.wrapping_sub(2);
+        let ret = self.registers.pc;
+        if self.registers.debug {  println!("RST return address: {:04X}", ret); }
+
+        self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
+        self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
+
+
+        self.registers.sp -= 2;
+        match value {
+            0 => self.registers.pc = 0x0000,
+            1 => self.registers.pc = 0x0008,
+            2 => self.registers.pc = 0x0010,
+            3 => self.registers.pc = 0x0018,
+            4 => self.registers.pc = 0x0020,
+            5 => self.registers.pc = 0x0028,
+            6 => self.registers.pc = 0x0030,
+            7 => self.registers.pc = 0x0038,
+            _ => println!("Couldn't match RST value, {:04X}", value)
+        };
 
         self.adv_cycles(11);
 
-        // self.registers.pc = (self.registers.pc & 0x38);
-        self.registers.pc = (value & 0x38).into();
     }
 
     fn sphl(&mut self) {
@@ -1657,7 +1667,7 @@ impl<'a> ExecutionContext<'a> {
         }
         if self.registers.debug {
             println!(
-                "PC: {:02X}, SP: {:X}, Cycles: {}",
+                "PC: {:04X}, SP: {:X}, Cycles: {}",
                 self.registers.pc,
                 self.registers.sp,
                 self.registers.cycles
@@ -1778,23 +1788,20 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Rrc => self.rrc(),
             Instruction::Rim => println!("Not implemented: {:?}", instruction),
             Instruction::Rpo => self.rpo(),
-            Instruction::Rst(0) => self.rst(0x00),
-            Instruction::Rst(1) => self.rst(0x08),
-            Instruction::Rst(2) => self.rst(0x10),
-            Instruction::Rst(3) => self.rst(0x18),
-            Instruction::Rst(4) => self.rst(0x20),
-            Instruction::Rst(5) => self.rst(0x28),
-            Instruction::Rst(6) => self.rst(0x30),
-            Instruction::Rst(7) => self.rst(0x38),
+            Instruction::Rst(0) => self.rst(0),
+            Instruction::Rst(1) => self.rst(1),
+            Instruction::Rst(2) => self.rst(2),
+            Instruction::Rst(3) => self.rst(3),
+            Instruction::Rst(4) => self.rst(4),
+            Instruction::Rst(5) => self.rst(5),
+            Instruction::Rst(6) => self.rst(6),
+            Instruction::Rst(7) => self.rst(7),
 
             Instruction::Rnz => self.rnz(),
             Instruction::Rm => self.rm(),
             Instruction::Rz => self.rz(),
 
-            Instruction::Hlt => {
-                println!("HLT instruction called, resetting instead");
-                self.reset();
-            }
+            Instruction::Hlt => self.hlt(),
 
             Instruction::Sim => println!("Not implemented: {:?}", instruction),
 
@@ -2166,6 +2173,12 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
+    fn hlt(&mut self) {
+        self.adv_cycles(7);
+        self.adv_pc(1);
+        println!("HALT: Should wait for interrupt to happen.. This is not implemented");
+
+    }
     fn half_carry_add(&self, mut value: u16) -> u16 {
         let mut add = [0, 0, 1, 0, 1, 0, 1, 1];
         let a = (self.registers.reg_a & 0xFF) as u16;
@@ -2212,21 +2225,25 @@ impl<'a> ExecutionContext<'a> {
             self.registers.cycles -= 16667;
             self.registers.interrupt_addr = 0x08;
 
-            let pc = self.registers.pc;
+            let pc = self.registers.pc as u8;
 
             // Call Reset with interrupt code
             if self.registers.interrupt {
-                self.rst(pc as u8);
+                // if self.registers.debug {
+                    println!("Interrupt enabled, resetting PC to {:04X}", pc);
+                // }
+                self.rst(pc);
                 self.registers.interrupt = false;
             }
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16667 {
             self.registers.cycles -= 16667;
             self.registers.interrupt_addr = 0x10;
 
-            let pc = self.registers.pc;
+            let pc = self.registers.pc as u8;
 
             if self.registers.interrupt {
-                self.rst(pc as u8);
+                println!("Interrupt enabled, resetting PC to {:04X}", pc);
+                self.rst(pc);
                 self.registers.interrupt = false;
             }
         }

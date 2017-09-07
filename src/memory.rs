@@ -82,8 +82,8 @@ impl Memory {
     pub fn read(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize] as u8
     }
-    pub fn write(&mut self, addr: usize, val: u8) {
-        self.memory[addr] = val;
+    pub fn write(&mut self, addr: u16, val: u8) {
+        self.memory[addr as usize] = val;
     }
 
     pub fn read_or(&mut self, reg: usize) -> u8 {
