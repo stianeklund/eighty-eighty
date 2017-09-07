@@ -28,7 +28,7 @@ pub enum RegisterPair {
     BC,
     DE,
     HL,
-    SP
+    SP,
 }
 
 impl fmt::UpperHex for Register {

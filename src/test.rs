@@ -6,7 +6,6 @@ mod tests {
     use std::time::Duration;
     use std::path::Path;
     use std::thread::sleep;
-    use Debug;
 
     #[test]
     fn preliminary() {
@@ -17,6 +16,7 @@ mod tests {
         // 8080PRE
         let bin: &str = "8080PRE.COM";
         i.memory.load_tests(bin);
+        i.registers.debug = true;
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
@@ -46,7 +46,7 @@ mod tests {
                     'print: loop {
                         let output = i.memory.memory[de as usize];
                         if output as char == '$' {
-                            break 'print
+                            break 'print;
                         } else if output as char != '$' {
                             de += 1;
                         }
@@ -59,10 +59,9 @@ mod tests {
             }
 
             if i.registers.pc == 0 {
-                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
-                    i.memory.memory[i.registers.sp as usize] as u16;
+                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 | i.memory.memory[i.registers.sp as usize] as u16;
                 println!("\nJump to 0 from {:04X}", stack);
-                break
+                break;
             }
             sleep(duration);
             assert_ne!(i.registers.opcode, 0x00);
@@ -71,10 +70,9 @@ mod tests {
 
     #[test]
     fn cpu_test() {
-        let mut debug = Debug::new();
-        debug.state = true;
         // Standup memory & registers
         let mut i = Interconnect::new();
+        i.registers.debug = true;
 
         let duration = Duration::new(0, 15120);
         let bin: &str = "CPUTEST.COM";
@@ -106,7 +104,7 @@ mod tests {
                     'print: loop {
                         let output = i.memory.memory[de as usize];
                         if output as char == '$' {
-                            break 'print
+                            break 'print;
                         } else if output as char != '$' {
                             de += 1;
                         }
@@ -121,7 +119,7 @@ mod tests {
                     let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
                         i.memory.memory[i.registers.sp as usize] as u16;
                     println!("\nJump to 0 from {:04X}", stack);
-                    break
+                    break;
                 }
 
             }
@@ -164,7 +162,7 @@ mod tests {
                     'print: loop {
                         let output = i.memory.memory[de as usize];
                         if output as char == '$' {
-                            break 'print
+                            break 'print;
                         } else if output as char != '$' {
                             de += 1;
                         }
@@ -179,12 +177,10 @@ mod tests {
                     let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
                         i.memory.memory[i.registers.sp as usize] as u16;
                     println!("\nJump to 0 from {:04X}", stack);
-                    break
+                    break;
                 }
             }
             assert_ne!(i.registers.opcode, 0x00);
         }
     }
 }
-
-

@@ -18,32 +18,12 @@ mod memory;
 mod keypad;
 mod test;
 
-#[derive(Debug, Copy, Clone)]
-pub struct Debug {
-    pub state: bool
-}
-impl Debug {
-    pub fn new() -> Debug {
-        Debug {
-            state: false
-        }
-    }
-    pub fn off(&mut self) {
-        self.state = false
-    }
-    pub fn on(&mut self) {
-        self.state = true
-    }
-
-}
-
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() != 2 {
         println!("[Please specify ROM as an argument]");
         return;
     }
-
 
     let bin = &args[1];
 
@@ -52,26 +32,21 @@ fn main() {
 
     // load binary file
     i.memory.load_bin(bin);
-    let mut debug = Debug::new();
 
     // TODO implement break & step keyboard actions
     loop {
         // CPU execution
         i.execute_cpu();
         display.draw_pixel(&i);
-        // sleep_ms(5);
         display.window.update_with_buffer(&display.raster).unwrap();
-        if display.window.is_key_down(Key::D) {
-            debug.state = true;
 
+        if display.window.is_key_down(Key::D) {
+            i.registers.debug = true;
 
         } else if display.window.is_key_down(Key::E) {
-            debug.state = false;
+            i.registers.debug = false;
         } else if display.window.is_key_down(Key::Escape) {
-            break
+            break;
         }
     }
 }
-
-
-

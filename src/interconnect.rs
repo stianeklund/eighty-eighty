@@ -11,10 +11,10 @@ pub struct Interconnect {
 }
 
 impl Interconnect {
-    //pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
+    // pub fn new(memory: &'a mut Memory, registers: &'a mut Registers) -> Self {
     pub fn new() -> Self {
         let registers = Registers::new();
-        //let display = Display::new();
+        // let display = Display::new();
         let memory = Memory::new();
 
         Interconnect {
@@ -25,5 +25,6 @@ impl Interconnect {
     }
     pub fn execute_cpu(&mut self) {
         ExecutionContext::new(self).step(1);
+
     }
 }

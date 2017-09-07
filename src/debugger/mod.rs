@@ -74,7 +74,8 @@ impl Debugger {
 
     // Cursor wraps another type & provides it with a Seek implementation which
     // calls that closure on each element.
-    // We need a chunk size of 3 because 8 * 3 = 24 and we need a 24bit integer to present
+    // We need a chunk size of 3 because 8 * 3 = 24 and we need a 24bit integer to
+    // present
     // Create a temporary buffer & convert our bitmap values to be presented
     pub fn create_fb(&mut self) -> Vec<u32> {
         let mut buffer: Vec<u32> = self.font
@@ -237,4 +238,3 @@ impl Debugger {
         }
     }
 }
-
