@@ -24,7 +24,7 @@ impl fmt::UpperHex for Memory {
 
 impl Memory {
     pub fn new() -> Memory {
-        Memory { memory: vec![0; 0x10000] }
+        Memory { memory: vec![0; 0x1_0000] }
     }
 
     pub fn read_byte(&mut self, addr: u16) -> u8 {
@@ -53,7 +53,7 @@ impl Memory {
         (self.memory[addr as usize - 1] as u16) >> 8 | (self.memory[addr as usize - 2] as u16)
     }
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        return (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[(addr as usize)] as u16);
+        (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[(addr as usize)] as u16)
     }
     pub fn write_memory(&mut self, addr: u16) {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16);

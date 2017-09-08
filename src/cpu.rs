@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::path::Path;
-use byteorder::{ByteOrder, LittleEndian};
 use opcode::{Instruction, Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
@@ -191,25 +188,52 @@ impl<'a> ExecutionContext<'a> {
         self.registers.cycles += t;
     }
 
-    // TODO Read page 18 of 8080 Programmers Manual
     fn adc(&mut self, reg: Register) {
-        let mut a = self.registers.reg_a;
+        let mut value = 0;
+        let mut w16 = (self.registers.reg_a) + value + (self.registers.carry as u8);
 
         match reg {
             Register::A => {
-                if self.registers.carry == true {
-                    a += self.registers.reg_a;
-                }
+                value = self.registers.reg_a + self.registers.reg_a + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
             }
+            Register::B => {
+                value = self.registers.reg_a + self.registers.reg_b + (self.registers.carry as u8);
+            },
+            Register::C => {
+                value = self.registers.reg_a + self.registers.reg_c + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
+            }
+            Register::D => {
+                value = self.registers.reg_a + self.registers.reg_d + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
+            }
+            Register::E => {
+                value = self.registers.reg_a + self.registers.reg_e + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
+            }
+            Register::H => {
+                value = self.registers.reg_a + self.registers.reg_h + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
+            }
+            Register::L => {
+                value = self.registers.reg_a + self.registers.reg_l + (self.registers.carry as u8);
+                self.registers.reg_a = value as u8 & 0xFF;
+            }
+            Register::M => {
+                let hl = (self.registers.reg_h as u16) << 8 |
+                    (self.registers.reg_l as u16) + (self.registers.carry as u16);
+                value = hl as u8;
+                self.registers.reg_a = value as u8 & 0xFF;
 
-            Register::B => a += self.registers.reg_b,
-            Register::C => a += self.registers.reg_c,
-            Register::D => a += self.registers.reg_d,
-            Register::E => a += self.registers.reg_e,
-            Register::H => a += self.registers.reg_h,
-            Register::L => a += self.registers.reg_l,
-            Register::M => a += self.registers.reg_m,
+                self.adv_cycles(3);
+            }
         }
+        self.registers.zero = value & 0xFF == 0;
+        self.registers.sign = value & 0x80 != 0;
+        self.registers.carry = (w16 & 0x0_1000) != 0;
+        self.registers.parity = self.parity(value as u8 & 0xFF);
+        self.registers.half_carry = self.half_carry_add(value as u16) == 0;
     }
 
     fn add(&mut self, reg: Register) {
@@ -707,7 +731,6 @@ impl<'a> ExecutionContext<'a> {
             println!("Result: {:X}", result);
             println!("Zero result: {:X}", result & 0xFF);
         }
-
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
         self.registers.half_carry = !self.half_carry_sub(value as u16) != 0;
@@ -753,31 +776,30 @@ impl<'a> ExecutionContext<'a> {
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
 
-        let mut value = 0;
 
         match reg {
             RegisterPair::BC => {
-                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 value += (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
-                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
+                self.registers.carry = 0 < value as u16 & 0xFFFF_0000;
             }
 
             RegisterPair::DE => {
-                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 value += (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
-                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
+                self.registers.carry = 0 < value as u16 & 0xFFFF_0000;
             }
 
             RegisterPair::HL => {
-                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
-                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
+                self.registers.carry = 0 < value as u16 & 0xFFFF_0000;
             }
             // DAD SP
             _ => {
-                value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 value += self.registers.sp as u16;
-                self.registers.carry = 0 < value as u16 & 0xFFFF0000;
+                self.registers.carry = 0 < value as u16 & 0xFFFF_0000;
             }
         }
         self.adv_cycles(10);
@@ -1125,6 +1147,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(2);
     }
 
+    // TODO Variable value is unused (figure out how to handle flags or handle flags per register?)
     fn inr(&mut self, reg: Register) {
         let mut value: u8 = 0;
         match reg {
@@ -2142,11 +2165,6 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 
-    pub fn read_instruction(&mut self, instruction: &mut Instruction) {
-        let addr = self.memory.read(self.registers.pc);
-        self.execute_instruction(addr);
-    }
-
     pub fn reset(&mut self) {
         println!("Resetting emulator");
 
@@ -2218,11 +2236,11 @@ impl<'a> ExecutionContext<'a> {
         result
     }
     pub fn try_interrupt(&mut self) {
-        if self.registers.cycles < 16667 {
+        if self.registers.cycles < 16_667 {
             return;
         }
-        if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16667 {
-            self.registers.cycles -= 16667;
+        if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16_667 {
+            self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x08;
 
             let pc = self.registers.pc as u8;
@@ -2235,8 +2253,8 @@ impl<'a> ExecutionContext<'a> {
                 self.rst(pc);
                 self.registers.interrupt = false;
             }
-        } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16667 {
-            self.registers.cycles -= 16667;
+        } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
+            self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x10;
 
             let pc = self.registers.pc as u8;

@@ -1,16 +1,13 @@
-use minifb::{Key, Scale, WindowOptions, Window};
-use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
+use minifb::{Scale, WindowOptions, Window};
+use byteorder::{LittleEndian, ReadBytesExt};
 
 use std::char;
-use std::io::prelude;
 use std::io::*;
 use std::io::Cursor;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
-use display::Display;
-use cpu::{ExecutionContext, Registers};
-use memory::Memory;
+use cpu::{Registers};
 
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 256;
@@ -66,9 +63,9 @@ impl Debugger {
         Debugger {
             buffer: vec![0; WIDTH * HEIGHT],
             font: DebugFont::new(),
-            window: window,
+            window,
             fb: vec![0; WIDTH * HEIGHT],
-            memory_page: vec![0; 65536],
+            memory_page: vec![0; 65_536],
         }
     }
 
@@ -89,7 +86,7 @@ impl Debugger {
         buffer
     }
 
-    pub fn draw_cpu_registers(&mut self, reg: Registers) {
+    pub fn draw_cpu_registers(&mut self) {
         self.draw_text("Reg A:", 0, 65);
     }
     pub fn draw_cpu_status(&mut self, reg: Registers) {

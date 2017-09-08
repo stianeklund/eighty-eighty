@@ -1,15 +1,6 @@
-use std::io::Cursor;
-use byteorder::{ByteOrder, LittleEndian, BigEndian, ReadBytesExt};
 use std::fmt;
-use minifb::{Key, Scale, WindowOptions, Window};
-use std::iter::Enumerate;
-use std::thread::sleep;
-use std::time::Duration;
-
-
-use cpu::ExecutionContext;
+use minifb::{Scale, WindowOptions, Window};
 use interconnect::Interconnect;
-use memory::Memory;
 
 pub const WIDTH: u32 = 224;
 pub const HEIGHT: u32 = 256;
@@ -33,7 +24,6 @@ impl fmt::UpperHex for Display {
     }
 }
 
-
 impl Display {
     pub fn new() -> Display {
         let mut window = Window::new(
@@ -49,23 +39,10 @@ impl Display {
 
 
         Display {
-            // 0x00FFFFFF;
-            raster: vec![0x00FFFFFF; (HEIGHT as usize * WIDTH as usize) * 4],
-            window: window,
+            raster: vec![0x00FF_FFFF; (HEIGHT as usize * WIDTH as usize) * 4],
+            window,
         }
     }
-    pub fn render(&mut self) {
-        for x in 0..WIDTH {
-            for y in 0..HEIGHT {
-                let image_y = 255 - y;
-                let offset = (WIDTH * image_y) + x;
-                let frame_offset = (WIDTH * y) + x;
-                // self.raster[frame_offset] = sprite_sheet[offset] as u32;
-                // self.raster[x + (y * WIDTH)] = ((x + (y * HEIGHT) & 0xFF) * 1) as u32;
-            }
-        }
-    }
-
     pub fn draw_pixel(&mut self, interconnect: &Interconnect) {
         let memory = &interconnect.memory.memory;
 
@@ -75,13 +52,13 @@ impl Display {
                 let x = ((i * 8) % WIDTH as usize) + shift as usize;
 
                 let pixel = if (byte >> shift as usize) & 1 == 0 {
-                    0xFF000000 // Alpha
+                    0xFF00_0000 // Alpha
                 } else if x <= 63 && (x >= 15 || x <= 15 && y >= 20 && y <= 120) {
-                    0xFF00FF00 // Green
+                    0xFF00_FF00 // Green
                 } else if x >= 200 && x <= 220 {
-                    0x00FF0000 // Red
+                    0x00FF_0000 // Red
                 } else {
-                    0xFFFFFFFF // Black
+                    0xFFFF_FFFF // Black
                 };
                 self.raster[WIDTH as usize * y + x] = pixel;
             }

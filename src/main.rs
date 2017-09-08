@@ -1,13 +1,9 @@
 extern crate minifb;
 extern crate byteorder;
 
-use debugger::{HEIGHT, WIDTH};
-use cpu::{ExecutionContext, Registers};
 use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
-use std::thread::sleep;
-use std::time::Duration;
 
 mod cpu;
 mod opcode;

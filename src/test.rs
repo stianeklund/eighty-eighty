@@ -1,10 +1,7 @@
 #[cfg(test)]
 mod tests {
     use interconnect::Interconnect;
-    use std::fs::File;
-    use std::io::{self, Write};
     use std::time::Duration;
-    use std::path::Path;
     use std::thread::sleep;
 
     #[test]
