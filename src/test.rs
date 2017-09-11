@@ -13,7 +13,7 @@ mod tests {
         // 8080PRE
         let bin: &str = "8080PRE.COM";
         i.memory.load_tests(bin);
-        i.registers.debug = true;
+        i.registers.debug = false;
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
