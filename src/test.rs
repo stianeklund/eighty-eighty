@@ -3,6 +3,7 @@ mod tests {
     use interconnect::Interconnect;
     use std::time::Duration;
     use std::thread::sleep;
+    use std::ascii::AsciiExt;
 
     #[test]
     fn preliminary() {
@@ -50,9 +51,9 @@ mod tests {
                         print!("{}", output as char);
                     }
                 }
-            }
-            if i.registers.reg_c == 2 {
-                print!("{}", i.registers.reg_e as char);
+                if i.registers.reg_c == 2 {
+                    print!("{}", i.registers.reg_e as char);
+                }
             }
 
             if i.registers.pc == 0 {
@@ -107,9 +108,9 @@ mod tests {
                         }
                         print!("{}", output as char);
                     }
-                }
-                if i.registers.reg_c == 2 {
-                    print!("{}", i.registers.reg_e as char);
+                    if i.registers.reg_c == 2 {
+                        print!("{}", i.registers.reg_e as char);
+                    }
                 }
                 sleep(duration);
                 if i.registers.pc == 0 {
@@ -170,9 +171,9 @@ mod tests {
                         }
                         print!("{}", output as char);
                     }
-                }
-                if i.registers.reg_c == 2 {
-                    print!("{}", i.registers.reg_e as char);
+                    if i.registers.reg_c == 2 {
+                        print!("{}", i.registers.reg_e as char);
+                    }
                 }
                 sleep(duration);
                 if i.registers.pc == 0 {
