@@ -944,9 +944,10 @@ impl<'a> ExecutionContext<'a> {
 
     fn ei(&mut self) {
         if self.registers.debug {
-            println!("Disabling interrupts");
+            println!("Enabling interrupts");
         }
         self.registers.interrupt = true;
+
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -1696,6 +1697,7 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.sp -= 2;
+        self.registers.pc = (value & 0x38).into();
         self.adv_cycles(11);
 
     }
@@ -2235,8 +2237,9 @@ impl<'a> ExecutionContext<'a> {
 
     fn hlt(&mut self) {
         self.adv_cycles(7);
-        self.adv_pc(1);
-        println!("HALT: Should wait for interrupt to happen.. This is not implemented");
+        println!("Halting CPU");
+        ::std::process::exit(0);
+        //println!("HALT: Should wait for interrupt to happen.. This is not implemented");
 
     }
     fn half_carry_add(&self, mut value: u16) -> u16 {
@@ -2277,6 +2280,17 @@ impl<'a> ExecutionContext<'a> {
         }
         result
     }
+    fn emulate_interrupt(&mut self) {
+        if self.registers.interrupt {
+            let ret = self.registers.pc;
+            self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
+            self.registers.sp -= 2;
+
+            self.registers.pc = self.registers.interrupt_addr as u16;
+        }
+
+    }
     pub fn try_interrupt(&mut self) {
         if self.registers.cycles < 16_667 {
             return;
@@ -2285,25 +2299,22 @@ impl<'a> ExecutionContext<'a> {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x08;
 
-            let pc = self.registers.pc as u8;
-
             // Call Reset with interrupt code
             if self.registers.interrupt {
-                // if self.registers.debug {
-                    println!("Interrupt enabled, resetting PC to {:04X}", pc);
-                // }
-                self.rst(pc);
+                    println!("Interrupt enabled");
+                // Emulate interrupt
+                self.emulate_interrupt();
+                // self.rst(8);
                 self.registers.interrupt = false;
             }
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x10;
 
-            let pc = self.registers.pc as u8;
 
             if self.registers.interrupt {
-                println!("Interrupt enabled, resetting PC to {:04X}", pc);
-                self.rst(pc);
+                println!("Interrupt enabled");
+                // self.rst(16);
                 self.registers.interrupt = false;
             }
         }
