@@ -1295,13 +1295,19 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(11);
         self.adv_pc(1);
     }
-    // TODO flags
+
     fn push_psw(&mut self) {
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
-        let psw = self.registers.zero | self.registers.sign | self.registers.parity | self.registers.carry | self.registers.half_carry;
+        self.memory.memory[self.registers.sp as usize - 2] =
+           if self.registers.zero { 0x40 } else { 0x0 } |
+           if self.registers.sign { 0x80 } else { 0x0 } |
+           if self.registers.parity { 0x04 } else { 0x0 } |
+           if self.registers.carry { 0x01 } else { 0x0 } |
+           if self.registers.half_carry { 0x10 } else { 0x0 } |
+           0x02;
 
-        self.memory.memory[self.registers.sp as usize - 2] = psw as u8;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
+
         self.adv_cycles(11);
         self.adv_pc(1);
     }
