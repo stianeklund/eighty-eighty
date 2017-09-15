@@ -69,7 +69,7 @@ mod tests {
     fn cpu_test() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        i.registers.debug = true;
+        i.registers.debug = false;
 
         let duration = Duration::new(0, 2000);
         let bin: &str = "CPUTEST.COM";

@@ -173,10 +173,10 @@ impl<'a> ExecutionContext<'a> {
 
     fn write_rp(&mut self, reg: RegisterPair, value: u8) {
         match reg {
-            RegisterPair::BC => self.registers.reg_bc = value as u16,
-            RegisterPair::DE => self.registers.reg_de = value as u16,
-            RegisterPair::HL => self.registers.reg_hl = value as u16,
-            RegisterPair::SP => self.registers.sp = value as u16,
+            RegisterPair::BC => self.registers.reg_bc = u16::from(value),
+            RegisterPair::DE => self.registers.reg_de = u16::from(value),
+            RegisterPair::HL => self.registers.reg_hl = u16::from(value),
+            RegisterPair::SP => self.registers.sp = u16::from(value),
         }
     }
 
@@ -190,7 +190,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn adc(&mut self, reg: Register) {
         let mut value = 0;
-        let mut w16 = (self.registers.reg_a) + value + (self.registers.carry as u8);
+        let w16 = (self.registers.reg_a) + value + (self.registers.carry as u8);
 
         match reg {
             Register::A => {
@@ -221,8 +221,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_a = value as u8 & 0xFF;
             }
             Register::M => {
-                let hl = (self.registers.reg_h as u16) << 8 |
-                    (self.registers.reg_l as u16) + (self.registers.carry as u16);
+                let hl: u16 = (u16::from(self.registers.reg_h)) << 8 |
+                    (u16::from(self.registers.reg_l)) + (self.registers.carry as u16);
                 value = hl as u8;
                 self.registers.reg_a = value as u8 & 0xFF;
 
@@ -233,25 +233,95 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = value & 0x80 != 0;
         self.registers.carry = (w16 & 0x0_1000) != 0;
         self.registers.parity = self.parity(value as u8 & 0xFF);
-        self.registers.half_carry = self.half_carry_add(value as u16) == 0;
+        self.registers.half_carry = self.half_carry_add(u16::from(value)) == 0;
     }
 
     fn add(&mut self, reg: Register) {
-        let mut reg_a = self.registers.reg_a;
 
         match reg {
-            Register::A => reg_a += self.registers.reg_a,
-            Register::B => reg_a += self.registers.reg_b,
-            Register::C => reg_a += self.registers.reg_c,
-            Register::D => reg_a += self.registers.reg_d,
-            Register::E => reg_a += self.registers.reg_e,
-            Register::H => reg_a += self.registers.reg_h,
-            Register::L => reg_a += self.registers.reg_l,
-            Register::M => reg_a += self.registers.reg_m,
+            Register::A => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_a;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                // TODO Check if this is correct
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::B => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_b;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::C => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_c;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::D => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_d;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::E => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_e;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::H => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_h;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::L => {
+                let mut value = self.registers.reg_a;
+                value += self.registers.reg_l;
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value & 0xFF);
+            },
+            Register::M => {
+                let mut value = self.registers.reg_a as u16;
+                value += (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+
+                self.registers.zero = value & 0xFF == 0;
+                self.registers.sign = value & 0x80 != 0;
+                self.registers.half_carry = self.half_carry_add(u16::from(value)) != 0;
+                self.registers.carry = value > 0xFF;
+                self.registers.parity = self.parity(value as u8 & 0xFF);
+            },
         }
-        self.registers.half_carry = self.half_carry_add(reg_a as u16) == 0;
-        self.registers.carry = reg_a > 0xFF;
-        self.registers.parity = self.parity(reg_a);
+
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -612,16 +682,16 @@ impl<'a> ExecutionContext<'a> {
     fn cmp(&mut self, reg: Register) {
         // Compare Register or Memory With Accumulator
 
-        let mut result = self.registers.reg_a;
+        let result = self.registers.reg_a;
         match reg {
-            Register::A => {
+
+        Register::A => {
                 if result < self.registers.reg_a {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_a {
+                } else if result == self.registers.reg_a {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_a {
+                else if result > self.registers.reg_a {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
@@ -629,23 +699,21 @@ impl<'a> ExecutionContext<'a> {
             Register::B => {
                 if result < self.registers.reg_b {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_b {
+                } else if result == self.registers.reg_b {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_b {
+                else if result > self.registers.reg_b {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
             }
             Register::C => {
-                if result < self.registers.reg_c {
+               if result < self.registers.reg_c {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_c {
+                } else if result == self.registers.reg_c {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_c {
+                else if result > self.registers.reg_c {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
@@ -653,11 +721,10 @@ impl<'a> ExecutionContext<'a> {
             Register::D => {
                 if result < self.registers.reg_d {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_d {
+                } else if result == self.registers.reg_d {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_d {
+                else if result > self.registers.reg_d {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
@@ -665,11 +732,10 @@ impl<'a> ExecutionContext<'a> {
             Register::E => {
                 if result < self.registers.reg_e {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_e {
+                } else if result == self.registers.reg_e {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_e {
+                else if result > self.registers.reg_e {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
@@ -677,35 +743,33 @@ impl<'a> ExecutionContext<'a> {
             Register::H => {
                 if result < self.registers.reg_h {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_h {
+                } else if result == self.registers.reg_h {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_h {
+                else if result > self.registers.reg_h {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
             }
             Register::L => {
-                if result < self.registers.reg_l {
+               if result < self.registers.reg_l {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_l {
+                } else if result == self.registers.reg_l {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_l {
+                else if result > self.registers.reg_l {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
             }
             Register::M => {
-                if result < self.registers.reg_m {
+                let hl =  (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                if result < hl as u8 {
                     self.registers.carry = true;
-                }
-                if result == self.registers.reg_m {
+                } else if result == hl as u8 {
                     self.registers.zero = true;
                 }
-                if result > self.registers.reg_m {
+                else if result > hl as u8 {
                     self.registers.carry = true;
                     self.registers.zero = true;
                 }
@@ -1476,7 +1540,6 @@ impl<'a> ExecutionContext<'a> {
 
 
     fn pop(&mut self, reg: RegisterPair) {
-        let mut sp = self.registers.sp as usize;
         match reg {
             RegisterPair::BC => {
                 self.registers.reg_c = self.memory.memory[(self.registers.sp as usize + 0) & 0xFFFF];
