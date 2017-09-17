@@ -67,9 +67,8 @@ mod tests {
 
     #[test]
     fn cpu_test() {
-        // Standup memory & registers
         let mut i = Interconnect::new();
-        i.registers.debug = false;
+        i.registers.debug = true;
 
         let duration = Duration::new(0, 2000);
         let bin: &str = "CPUTEST.COM";
@@ -85,7 +84,6 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
-        let mut nop = 0;
 
         'main: loop {
             i.execute_cpu();
@@ -120,6 +118,7 @@ mod tests {
                 }
 
             }
+            assert_ne!(i.registers.opcode, 0x0);
         }
     }
     #[test]

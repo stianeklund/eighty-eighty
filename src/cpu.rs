@@ -41,7 +41,6 @@ pub struct Registers {
     reg_de: u16,
     reg_hl: u16,
 
-    pub reg_psw: u16,
 
     // Status Register (Flags)
     pub sign: bool,
@@ -65,11 +64,12 @@ pub struct Registers {
     port_3_in: u8, // Bit shift register read / shift in
 
     // I/O Write port
-    port_2_out: u8, // Shift amount (3 bits)
-    port_3_out: u8, // Sound bits
-    port_4_out: u8, // Shift data
-    port_5_out: u8, // Sound bits
-    port_6_out: u8, // Watchdog
+    port_2_out: u8,      // Shift amount (3 bits)
+    port_3_out: u8,      // Sound bits
+    port_4_out_high: u8, // Shift data port high
+    port_4_out_low: u8,  // Shift data port low
+    port_5_out: u8,      // Sound bits
+    port_6_out: u8,      // Watchdog (read or write to reset)
 }
 
 impl Registers {
@@ -95,8 +95,6 @@ impl Registers {
             reg_de: 0,
             reg_hl: 0,
 
-            reg_psw: 0,
-
             sign: false,
             zero: false,
             parity: false,
@@ -119,7 +117,8 @@ impl Registers {
 
             port_2_out: 0,
             port_3_out: 0,
-            port_4_out: 0,
+            port_4_out_high: 0,
+            port_4_out_low: 0,
             port_5_out: 0,
             port_6_out: 0,
         }
@@ -1215,15 +1214,28 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
-    // Read one byte from input device #0 into the accumulator
-    // Instructions in this class occupy 2 bytes.
     fn input(&mut self) {
-        self.registers.reg_a = self.memory.read_next_byte(self.registers.pc);
+        let port = self.memory.read_next_byte(self.registers.pc);
+
+        let mut result: u16 = 0;
+        match port {
+            1 => {
+                result = u16::from(self.registers.port_1_in);
+                self.registers.port_1_in &= 0xFE;
+            },
+            2 => result = u16::from(self.registers.port_2_in & 0x8F | self.registers.port_2_in & 0x70),
+            3 => result = u16::from((self.registers.port_4_out_high as u16) << 8) |
+                u16::from(self.registers.port_4_out_low) << u16::from((self.registers.port_2_out as u16) >> 8) & 0xFF,
+
+            _ => println!("Input port not covered, {:04X}", port),
+        }
+
+        println!("Input port: {}, Result: {:04X}", port, result);
+        self.registers.reg_a = result as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
     }
 
-    // TODO Variable value is unused (figure out how to handle flags or handle flags per register?)
     fn inr(&mut self, reg: Register) {
         match reg {
             Register::A => {
@@ -1327,7 +1339,7 @@ impl<'a> ExecutionContext<'a> {
             }
             RegisterPair::SP => {
                 self.registers.sp += 1;
-                self.adv_pc(1);
+                // self.adv_pc(1);
             }
         };
         self.adv_cycles(5);
@@ -1600,22 +1612,31 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn out(&mut self) {
-        let port = self.memory.read_low(self.registers.pc);
-        match port {
+        let value = self.memory.read(self.registers.pc + 1);
+        match value {
             // Set offset size for shift register
             0x02 => {
                 self.registers.shift_offset = self.registers.reg_a & 0x7;
+                self.registers.port_2_out = value;
             }
             // sound port
-            0x03 | 0x05 => println!("Sound not implemented"),
+            0x03 => self.registers.port_3_out = value,
+
             // Set shift register values
             0x04 => {
                 self.registers.shift_0 = self.registers.shift_1;
                 self.registers.shift_1 = self.registers.reg_a;
+                if self.registers.debug {
+                    println!("Setting shift register values: {:04X}, {:04X}", self.registers.shift_0, self.registers.shift_1);
+                }
             }
+            0x05 => self.registers.port_5_out = value,
             // Watchdog port
-            0x06 => println!("Watchdog timer not implemented"),
-            _ => println!("Out port does not match implementation"),
+            0x06 => {
+                self.registers.port_6_out = value;
+                println!("Watchdog, read or write to reset");
+            },
+            _ => println!("Port: {:04X}, does not match implementation", value),
         }
         self.adv_pc(2);
         self.adv_cycles(10);
@@ -1764,6 +1785,7 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.sp -= 2;
+        println!("Value: {:04X}", value);
         self.registers.pc = (value & 0x38).into();
         self.adv_cycles(11);
 
@@ -2296,7 +2318,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.parity = false;
         self.registers.carry = false;
         self.registers.half_carry = false;
-        self.registers.reg_psw = 0;
 
         self.adv_pc(1);
     }
