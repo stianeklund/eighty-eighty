@@ -53,9 +53,6 @@ pub struct Registers {
     pub cycles: usize,
     pub interrupt: bool,
     pub interrupt_addr: u8,
-    shift_offset: u8,
-    shift_0: u8,
-    shift_1: u8,
 
     // I/O Read port
     port_0_in: u8, // Input port 0
@@ -105,10 +102,6 @@ impl Registers {
             cycles: 0,
             interrupt: false,
             interrupt_addr: 0x10,
-
-            shift_offset: 0,
-            shift_0: 0,
-            shift_1: 0,
 
             port_0_in: 0x0E,
             port_1_in: 0x08,
@@ -1219,18 +1212,21 @@ impl<'a> ExecutionContext<'a> {
 
         let mut result: u16 = 0;
         match port {
+            0 => {
+                result = u16::from(self.registers.port_0_in);
+            }
             1 => {
                 result = u16::from(self.registers.port_1_in);
                 self.registers.port_1_in &= 0xFE;
             },
             2 => result = u16::from(self.registers.port_2_in & 0x8F | self.registers.port_2_in & 0x70),
             3 => result = u16::from((self.registers.port_4_out_high as u16) << 8) |
-                u16::from(self.registers.port_4_out_low) << u16::from((self.registers.port_2_out as u16) >> 8) & 0xFF,
+                (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
 
             _ => println!("Input port not covered, {:04X}", port),
         }
 
-        println!("Input port: {}, Result: {:04X}", port, result);
+        if self.registers.debug { println!("Input port: {}, Result: {:04X}", port, result);}
         self.registers.reg_a = result as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
@@ -1611,32 +1607,42 @@ impl<'a> ExecutionContext<'a> {
         self.registers.pc = ret;
     }
 
-    fn out(&mut self) {
-        let value = self.memory.read(self.registers.pc + 1);
-        match value {
-            // Set offset size for shift register
+    // TODO Generalize
+    fn output(&mut self) {
+        let port = self.memory.read(self.registers.pc + 1);
+        match port {
+            // Sets the offset size for shift register
             0x02 => {
-                self.registers.shift_offset = self.registers.reg_a & 0x7;
-                self.registers.port_2_out = value;
-            }
-            // sound port
-            0x03 => self.registers.port_3_out = value,
-
-            // Set shift register values
-            0x04 => {
-                self.registers.shift_0 = self.registers.shift_1;
-                self.registers.shift_1 = self.registers.reg_a;
+                self.registers.port_2_out = self.registers.reg_a & 0x7;
                 if self.registers.debug {
-                    println!("Setting shift register values: {:04X}, {:04X}", self.registers.shift_0, self.registers.shift_1);
+                    println!("Out port 2: {:04X}", self.registers.port_2_out);
                 }
             }
-            0x05 => self.registers.port_5_out = value,
+            // Sound port
+            0x03 => {
+                self.registers.port_3_out = self.registers.reg_a;
+                if self.registers.debug {
+                    println!("Port 3: {:04X}", self.registers.port_3_out);
+                }
+            },
+
+            // Sets shift register values
+            0x04 => {
+                self.registers.port_4_out_low = self.registers.port_4_out_high;
+                self.registers.port_4_out_high = self.registers.reg_a;
+                if self.registers.debug {
+                    println!("Setting shift register values");
+                    println!("High: {:04X} Low: {:04X}", self.registers.port_4_out_high, self.registers.port_4_out_low);
+                }
+            },
+            // Sound port
+            0x05 => self.registers.port_5_out = self.registers.reg_a,
             // Watchdog port
             0x06 => {
-                self.registers.port_6_out = value;
-                println!("Watchdog, read or write to reset");
+                self.registers.port_6_out = self.registers.reg_a;
+                println!("Watchdog, value: {:04X}", self.registers.port_6_out);
             },
-            _ => println!("Port: {:04X}, does not match implementation", value),
+            _ => println!("Port: {:04X}, does not match implementation", port),
         }
         self.adv_pc(2);
         self.adv_cycles(10);
@@ -1927,7 +1933,7 @@ impl<'a> ExecutionContext<'a> {
             Instruction::Inr(reg) => self.inr(reg),
             Instruction::Inx(reg) => self.inx(reg),
             Instruction::InxSp(reg) => self.inx(reg),
-            Instruction::Out => self.out(),
+            Instruction::Out => self.output(),
 
             Instruction::Sta => self.sta(),
             Instruction::Stax(reg) => self.stax(reg),
