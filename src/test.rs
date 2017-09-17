@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn cpu_test() {
         let mut i = Interconnect::new();
-        i.registers.debug = true;
+        i.registers.debug = false;
 
         let duration = Duration::new(0, 2000);
         let bin: &str = "CPUTEST.COM";
@@ -91,10 +91,8 @@ mod tests {
                 assert_ne!(i.registers.pc, 0x76);
             }
             // If PC is 5 we're at the return address we set earlier.
-            // Print out characters from rom
             if i.registers.pc == 05 {
                 if i.registers.reg_c == 9 {
-                    // Create register pair
                     let mut de = (i.registers.reg_d as u16) << 8 | (i.registers.reg_e as u16);
                     'print: loop {
                         let output = i.memory.memory[de as usize];
@@ -105,20 +103,19 @@ mod tests {
                         }
                         print!("{}", output as char);
                     }
-                    if i.registers.reg_c == 2 {
-                        print!("{}", i.registers.reg_e as char);
-                    }
                 }
-                sleep(duration);
-                if i.registers.pc == 0 {
-                    let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
-                        i.memory.memory[i.registers.sp as usize] as u16;
-                    println!("\nJump to 0 from {:04X}", stack);
-                    break;
+                if i.registers.reg_c == 2 {
+                    print!("{}", i.registers.reg_e as char);
                 }
-
             }
-            // assert_ne!(i.registers.opcode, 0x0);
+            sleep(duration);
+            if i.registers.pc == 0 {
+                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
+                    i.memory.memory[i.registers.sp as usize] as u16;
+                println!("\nJump to 0 from {:04X}", stack);
+                break;
+            }
+
         }
     }
     #[test]
@@ -161,17 +158,17 @@ mod tests {
                         }
                         print!("{}", output as char);
                     }
-                    if i.registers.reg_c == 2 {
-                        print!("{}", i.registers.reg_e as char);
-                    }
                 }
-                sleep(duration);
-                if i.registers.pc == 0 {
-                    let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
-                        i.memory.memory[i.registers.sp as usize] as u16;
-                    println!("\nJump to 0 from {:04X}", stack);
-                    break;
+                if i.registers.reg_c == 2 {
+                    print!("{}", i.registers.reg_e as char);
                 }
+            }
+            sleep(duration);
+            if i.registers.pc == 0 {
+                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
+                    i.memory.memory[i.registers.sp as usize] as u16;
+                println!("\nJump to 0 from {:04X}", stack);
+                break;
             }
         }
     }

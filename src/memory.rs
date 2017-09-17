@@ -39,7 +39,7 @@ impl Memory {
     }
     // Read immediate value
     pub fn read_imm(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
+        (self.memory[addr as usize + 2] as u16) << 8 | self.memory[addr as usize + 1] as u16
     }
     // Create register pair
     pub fn create_rp(&mut self, reg1: u8, reg2: u8) -> u16 {

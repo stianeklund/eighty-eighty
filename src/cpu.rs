@@ -2331,8 +2331,8 @@ impl<'a> ExecutionContext<'a> {
     // TODO Handle interrupts?
     fn hlt(&mut self) {
         println!("Halting CPU");
-        ::std::process::exit(1);
         self.adv_cycles(7);
+        ::std::process::exit(1);
 
     }
     fn half_carry_add(&self, mut value: u16) -> u16 {
