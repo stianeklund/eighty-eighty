@@ -2328,11 +2328,11 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
+    // TODO Handle interrupts?
     fn hlt(&mut self) {
-        self.adv_cycles(7);
         println!("Halting CPU");
-        ::std::process::exit(0);
-        //println!("HALT: Should wait for interrupt to happen.. This is not implemented");
+        ::std::process::exit(1);
+        self.adv_cycles(7);
 
     }
     fn half_carry_add(&self, mut value: u16) -> u16 {
@@ -2360,13 +2360,13 @@ impl<'a> ExecutionContext<'a> {
         let mut bits = 0;
         let mut result: bool = false;
         for i in 0..8 {
-            if b & 1 << i == 1 {
+            if (b & (1 << i)) == 1 {
                 bits += 1;
             }
             if bits & 1 != 0 {
-                result = true;
+                result = false ;
             } else {
-                result = false;
+                result = true;
             }
         }
         result
