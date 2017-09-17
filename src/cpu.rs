@@ -1,3 +1,4 @@
+use std::fmt;
 use opcode::{Instruction, Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
@@ -18,7 +19,8 @@ use interconnect::Interconnect;
 /// or SP can be loaded with an immediate 16-bit value (using LXI).
 /// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
-#[derive(Debug, Copy, Clone)]
+
+#[derive(Copy, Clone)]
 pub struct Registers {
     pub opcode: u8,
     pub debug: bool,
@@ -115,6 +117,47 @@ impl Registers {
             port_5_out: 0,
             port_6_out: 0,
         }
+    }
+}
+
+impl fmt::Debug for Registers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            write!(f, "PC: {:04X}, SP: {:X}, Cycles: {} ",
+                self.pc,
+                self.sp,
+                self.cycles
+            );
+            write!(f, "A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
+                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X} ",
+                    self.reg_a,
+                    self.reg_b,
+                    self.reg_c,
+                    self.reg_d,
+                    self.reg_e,
+                    self.reg_h,
+                    self.reg_l,
+                    self.reg_m,
+                );
+
+
+            let bc = u16::from(self.reg_b) << 8 | u16::from(self.reg_c);
+            let de = u16::from(self.reg_d) << 8 | u16::from(self.reg_e);
+            let hl = u16::from(self.reg_h) << 8 | u16::from(self.reg_l);
+
+            write!(f, "BC: {:04X}, DE: {:04X}, HL: {:04X} ",
+                bc,
+                de,
+                hl
+            );
+            write!(f, "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Intr addr: {:02X}",
+                    self.sign,
+                    self.zero,
+                    self.parity,
+                    self.carry,
+                    self.half_carry,
+                    self.interrupt,
+                    self.interrupt_addr,
+                )
     }
 }
 
@@ -328,34 +371,16 @@ impl<'a> ExecutionContext<'a> {
 
             Register::B => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_b) & 0x08 != 0;
-                if self.registers.debug {
-                    println!(
-                        "Setting half carry flag for ANA: {}",
-                        self.registers.half_carry
-                    );
-                }
                 self.registers.reg_a &= self.registers.reg_b;
             }
 
             Register::C => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_c) & 0x08 != 0;
-                if self.registers.debug {
-                    println!(
-                        "Setting half carry flag for ANA: {}",
-                        self.registers.half_carry
-                    );
-                }
                 self.registers.reg_a &= self.registers.reg_c;
             }
 
             Register::D => {
                 self.registers.half_carry = (self.registers.reg_a | self.registers.reg_d) & 0x08 != 0;
-                if self.registers.debug {
-                    println!(
-                        "Setting half carry flag for ANA: {}",
-                        self.registers.half_carry
-                    );
-                }
                 self.registers.reg_a &= self.registers.reg_d;
             }
 
@@ -416,12 +441,6 @@ impl<'a> ExecutionContext<'a> {
 
     fn jmp(&mut self) {
         self.registers.pc = self.memory.read_imm(self.registers.pc);
-        if self.registers.debug {
-            println!("Jumping to address: {:04X}", self.registers.pc);
-            if self.registers.pc == 0x08F3 {
-                println!("Jumping to PrintMessage");
-            }
-        }
         self.adv_cycles(10);
     }
 
@@ -510,9 +529,6 @@ impl<'a> ExecutionContext<'a> {
     fn pchl(&mut self) {
         let hl = u16::from(self.registers.reg_h) << 8 | u16::from(self.registers.reg_l as u16);
         self.registers.pc = hl;
-        if self.registers.debug {
-            println!("Jumping to address: {:0X}", self.registers.pc);
-        };
         self.adv_cycles(5);
     }
 
@@ -779,16 +795,7 @@ impl<'a> ExecutionContext<'a> {
 
         // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
-        if self.registers.debug {
-            println!("Value: {:02X}", value);
-            println!("A reg: {:02X}", self.registers.reg_a);
-        }
-
         let result = self.registers.reg_a.wrapping_sub(value);
-        if self.registers.debug {
-            println!("Result: {:X}", result);
-            println!("Zero result: {:X}", result & 0xFF);
-        }
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
         self.registers.half_carry = !self.half_carry_sub(u16::from(value)) != 0;
@@ -1820,60 +1827,6 @@ impl<'a> ExecutionContext<'a> {
 
 
     pub fn decode(&mut self, instruction: Instruction) {
-        if self.registers.debug {
-            println!(
-                "Opcode: {:#02X} Instruction: {:?},",
-                self.registers.opcode,
-                instruction
-            );
-        }
-        if self.registers.debug {
-            println!(
-                "PC: {:04X}, SP: {:X}, Cycles: {}",
-                self.registers.pc,
-                self.registers.sp,
-                self.registers.cycles
-            );
-            println!(
-                    "Registers: A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
-                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X}",
-                    self.registers.reg_a,
-                    self.registers.reg_b,
-                    self.registers.reg_c,
-                    self.registers.reg_d,
-                    self.registers.reg_e,
-                    self.registers.reg_h,
-                    self.registers.reg_l,
-                    self.registers.reg_m,
-                );
-
-
-            let bc = u16::from(self.registers.reg_b) << 8 | u16::from(self.registers.reg_c);
-            let de = u16::from(self.registers.reg_d) << 8 | u16::from(self.registers.reg_e);
-            let hl = u16::from(self.registers.reg_h) << 8 | u16::from(self.registers.reg_l);
-
-            let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 |
-                self.memory.memory[self.registers.sp as usize] as u16;
-
-
-            println!(
-                "Register Pairs: BC: {:04X}, DE: {:04X}, HL: {:04X}",
-                bc,
-                de,
-                hl
-            );
-            println!(
-                    "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Interrupt addr: {:02X}",
-                    self.registers.sign,
-                    self.registers.zero,
-                    self.registers.parity,
-                    self.registers.carry,
-                    self.registers.half_carry,
-                    self.registers.interrupt,
-                    self.registers.interrupt_addr,
-                );
-            println!("Stack: {:04X}", stack as u16);
-        };
 
         match instruction {
             Instruction::Nop => self.nop(),

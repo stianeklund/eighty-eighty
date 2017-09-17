@@ -87,13 +87,14 @@ mod tests {
 
         'main: loop {
             i.execute_cpu();
+            println!("{:?}", i.registers);
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
             // If PC is 5 we're at the return address we set earlier.
             if i.registers.pc == 05 {
                 if i.registers.reg_c == 9 {
-                    let mut de = (i.registers.reg_d as u16) << 8 | (i.registers.reg_e as u16);
+                    let mut de = u16::from(i.registers.reg_d) << 8 | u16::from(i.registers.reg_e);
                     'print: loop {
                         let output = i.memory.memory[de as usize];
                         if output as char == '$' {
@@ -108,7 +109,9 @@ mod tests {
                     print!("{}", i.registers.reg_e as char);
                 }
             }
+
             sleep(duration);
+
             if i.registers.pc == 0 {
                 let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
                     i.memory.memory[i.registers.sp as usize] as u16;
