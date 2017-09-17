@@ -96,11 +96,10 @@ impl Memory {
         let mut buf = Vec::new();
 
         file.read_to_end(&mut buf).expect("Failed to read binary");
-        let buf_len = buf.len();
-        for i in 0..buf_len {
+        for i in 0..buf.len() {
             self.memory[i] = buf[i];
         }
-        println!("Loaded: {:?} Bytes: {:?}", path, buf_len);
+        println!("Loaded: {:?} Bytes: {:?}", path, buf.len());
     }
     pub fn load_tests(&mut self, file: &str) {
         let path = Path::new(file);
@@ -108,10 +107,9 @@ impl Memory {
         let mut buf = Vec::new();
 
         file.read_to_end(&mut buf).expect("Failed to read binary");
-        let buf_len = buf.len();
-        for i in 0..buf_len {
+        for i in 0..buf.len() {
             self.memory[i + 0x0100] = buf[i];
         }
-        println!("Test loaded: {:?} Bytes: {:?}", path, buf_len);
+        println!("Test loaded: {:?} Bytes: {:?}", path, buf.len());
     }
 }

@@ -120,13 +120,6 @@ mod tests {
                 }
 
             }
-            // assert_ne!(i.registers.pc, 0);
-            /* if i.registers.opcode == 0x0 {
-                nop += 1;
-            }
-            if nop >= 20{
-                panic!("Too many Nop instructions");
-            } */
         }
     }
     #[test]
@@ -152,8 +145,7 @@ mod tests {
             i.execute_cpu();
 
             if i.registers.pc == 0x76 {
-                println!("HALT at {:#04X}", i.registers.pc);
-                break
+                panic!("HALT at {:#04X}", i.registers.pc);
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
@@ -182,7 +174,6 @@ mod tests {
                     break;
                 }
             }
-            // assert_ne!(i.registers.opcode, 0x00);
         }
     }
 }
