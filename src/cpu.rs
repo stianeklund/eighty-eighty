@@ -20,9 +20,10 @@ use interconnect::Interconnect;
 /// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
-#[derive(Copy, Clone)]
+// #[derive(Copy, Clone)]
 pub struct Registers {
     pub opcode: u8,
+    pub current_instruction: String,
     pub debug: bool,
 
     pub pc: u16,
@@ -76,6 +77,7 @@ impl Registers {
 
         Registers {
             opcode: 0,
+            current_instruction: String::new(),
             debug: false,
 
             pc: 0,
@@ -122,42 +124,42 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "PC: {:04X}, SP: {:X}, Cycles: {} ",
-                self.pc,
-                self.sp,
-                self.cycles
-            );
-            write!(f, "A: {:02X}, B: {:02X}, C: {:02X}, D: {:02X}, \
-                E: {:02X}, H: {:02X}, L: {:02X}, M: {:02X} ",
-                    self.reg_a,
-                    self.reg_b,
-                    self.reg_c,
-                    self.reg_d,
-                    self.reg_e,
-                    self.reg_h,
-                    self.reg_l,
-                    self.reg_m,
-                );
+        write!(f, "Instruction: {} Opcode: {:04X} PC: {:04X} SP: {:X}, Cycles: {} ",
+               self.current_instruction,
+               self.opcode,
+               self.pc,
+               self.sp,
+               self.cycles
+        );
+        write!(f, "A:{:02X} B:{:02X} C:{:02X} D:{:02X} E:{:02X} H:{:02X} L:{:02X} M:{:02X}",
+               self.reg_a,
+               self.reg_b,
+               self.reg_c,
+               self.reg_d,
+               self.reg_e,
+               self.reg_h,
+               self.reg_l,
+               self.reg_m,
+        );
 
 
-            let bc = u16::from(self.reg_b) << 8 | u16::from(self.reg_c);
-            let de = u16::from(self.reg_d) << 8 | u16::from(self.reg_e);
-            let hl = u16::from(self.reg_h) << 8 | u16::from(self.reg_l);
+        let bc = u16::from(self.reg_b) << 8 | u16::from(self.reg_c);
+        let de = u16::from(self.reg_d) << 8 | u16::from(self.reg_e);
+        let hl = u16::from(self.reg_h) << 8 | u16::from(self.reg_l);
 
-            write!(f, "BC: {:04X}, DE: {:04X}, HL: {:04X} ",
-                bc,
-                de,
-                hl
-            );
-            write!(f, "Flags: S: {}, Z: {}, P: {}, C: {}, AC: {}, Interrupt: {}, Intr addr: {:02X}",
-                    self.sign,
-                    self.zero,
-                    self.parity,
-                    self.carry,
-                    self.half_carry,
-                    self.interrupt,
-                    self.interrupt_addr,
-                )
+        write!(f, " BC:{:04X} DE:{:04X} HL:{:04X} ",
+               bc,
+               de,
+               hl
+        );
+        write!(f, "Flags: S: {} Z: {} P: {} C: {} AC: {} Interrupt: {}",
+               self.sign,
+               self.zero,
+               self.parity,
+               self.carry,
+               self.half_carry,
+               self.interrupt
+        )
     }
 }
 
@@ -1940,6 +1942,7 @@ impl<'a> ExecutionContext<'a> {
 
             _ => println!("Unknown instruction {:#X}", self.registers.opcode),
         }
+        self.registers.current_instruction = format!("{:?}", instruction);
     }
 
     pub fn execute_instruction(&mut self, instruction: u8) {

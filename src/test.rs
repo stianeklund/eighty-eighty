@@ -86,8 +86,10 @@ mod tests {
         i.registers.pc = 0x0100;
 
         'main: loop {
-            i.execute_cpu();
-            println!("{:?}", i.registers);
+            // i.execute_cpu();
+
+            // Step instructions
+            i.step_cpu();
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
