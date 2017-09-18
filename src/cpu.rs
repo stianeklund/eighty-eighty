@@ -996,7 +996,7 @@ impl<'a> ExecutionContext<'a> {
     fn daa(&mut self) {
         self.adv_pc(1);
         self.adv_cycles(4);
-        panic!("DAA");
+       // panic!("DAA");
     }
     fn di(&mut self) {
         if self.registers.debug {
@@ -1800,7 +1800,7 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.sp -= 2;
-        println!("Value: {:04X}", value);
+        if self.registers.debug { println!("Value: {:04X}", value); }
         self.registers.pc = (value & 0x38).into();
         self.adv_cycles(11);
 
