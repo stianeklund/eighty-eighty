@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn cpu_test() {
         let mut i = Interconnect::new();
-        i.registers.debug = false;
+        // i.registers.debug = false;
 
         let duration = Duration::new(0, 2000);
         let bin: &str = "CPUTEST.COM";
@@ -86,9 +86,8 @@ mod tests {
         i.registers.pc = 0x0100;
 
         'main: loop {
-            // i.execute_cpu();
 
-            // Step instructions
+            // i.execute_cpu();
             i.step_cpu();
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
@@ -146,7 +145,7 @@ mod tests {
             i.execute_cpu();
 
             if i.registers.pc == 0x76 {
-                panic!("HALT at {:#04X}", i.registers.pc);
+                assert_ne!(i.registers.pc, 0x76);
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
