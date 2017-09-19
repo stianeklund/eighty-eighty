@@ -51,7 +51,8 @@ impl Display {
             for shift in 0..(7 + 1) {
                 let x = ((i * 8) % WIDTH as usize) + shift as usize;
 
-                let pixel = if (byte >> shift as usize) & 1 == 0 {
+                // let pixel = if (byte >> shift as usize) & 1 == 0 {
+                let pixel = if byte.wrapping_shr(shift) & 1 == 0 {
                     0xFF00_0000 // Alpha
                 } else if x <= 63 && (x >= 15 || x <= 15 && y >= 20 && y <= 120) {
                     0xFF00_FF00 // Green

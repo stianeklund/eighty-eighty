@@ -3,6 +3,7 @@ extern crate byteorder;
 use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
+use std::io;
 
 mod cpu;
 mod opcode;
@@ -37,10 +38,15 @@ fn main() {
 
         if display.window.is_key_down(Key::D) {
             i.registers.debug = true;
-
+        } else if display.window.is_key_down(Key::B) {
+            i.registers.breakpoint = true;
+            i.registers.debug = true;
         } else if display.window.is_key_down(Key::E) {
             i.registers.debug = false;
+            i.registers.breakpoint = false;
         } else if display.window.is_key_down(Key::Escape) {
+            i.registers.breakpoint = false;
+            i.registers.debug = false;
             break;
         }
     }

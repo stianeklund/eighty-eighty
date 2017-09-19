@@ -2,7 +2,8 @@ use std::fmt;
 use opcode::{Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
-
+use std::io;
+use display::Display;
 /// Intel 8080 Notes:
 ///
 /// The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
@@ -24,6 +25,7 @@ use interconnect::Interconnect;
 pub struct Registers {
     pub opcode: u8,
     pub current_instruction: String,
+    pub breakpoint: bool,
     pub debug: bool,
 
     pub pc: u16,
@@ -79,6 +81,7 @@ impl Registers {
             opcode: 0,
             current_instruction: String::new(),
             debug: false,
+            breakpoint: false,
 
             pc: 0,
             sp: 0,
@@ -249,7 +252,7 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::M => {
                 let hl: u16 = (self.registers.reg_h as u16) << 8 |
-                    (self.registers.reg_la as u16) + (self.registers.carry as u16);
+                    (self.registers.reg_l as u16) + (self.registers.carry as u16);
                 value = hl as u8;
                 self.registers.reg_a = value as u8 & 0xFF;
 
@@ -790,8 +793,8 @@ impl<'a> ExecutionContext<'a> {
         let result = self.registers.reg_a.wrapping_sub(value);
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
-        self.registers.half_carry = !self.half_carry_sub(value as u16) != 0;
-        self.registers.carry = self.registers.reg_a < (value as u16);
+        self.registers.half_carry = !self.half_carry_sub(u16::from(value)) != 0;
+        self.registers.carry = self.registers.reg_a < (u16::from(value) as u8);
         self.registers.parity = self.parity(result as u8);
 
         self.adv_pc(2);
@@ -2130,10 +2133,17 @@ impl<'a> ExecutionContext<'a> {
     // Step one instruction
     pub fn step(&mut self, times: u8) {
         let addr = self.memory.read(self.registers.pc);
+
         for _ in 0..times {
             self.execute_instruction();
             self.try_interrupt();
-
+            if self.registers.debug {
+                println!("{:?}", self.registers);
+                if self.registers.breakpoint {
+                    // TODO Use is_key_down from display perhaps to listen for key events?
+                    io::stdin().read_line(&mut String::new()).unwrap();
+                }
+            }
         }
     }
 
@@ -2171,7 +2181,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn half_carry_add(&self, mut value: u16) -> u16 {
         let mut add = [0, 0, 1, 0, 1, 0, 1, 1];
-        let a = (self.registers.reg_a & 0xFF as u16);
+        let a = u16::from(self.registers.reg_a & 0xFF);
         // Immediate value
         value &= 0xFF;
         // u16 word value (allow wrapping)
