@@ -1,6 +1,5 @@
 extern crate minifb;
 extern crate byteorder;
-
 use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
