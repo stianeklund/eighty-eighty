@@ -3,8 +3,8 @@ use opcode::{Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
 use std::io;
-use display::Display;
-/// Intel 8080 Notes:
+
+// Intel 8080 Notes:
 ///
 /// The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
 /// The A register is the primary 8-bit accumulator.
@@ -1163,8 +1163,7 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO Investigate which addr value is correct
     fn lda(&mut self) {
-        let addr = self.memory.read_imm(self.registers.pc + 3) as u16;
-        self.registers.reg_a = addr as u8;
+        self.registers.reg_a = self.memory.read_imm(self.registers.pc) as u8;
         self.adv_cycles(13);
         self.adv_pc(3);
     }
@@ -2132,11 +2131,11 @@ impl<'a> ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, times: u8) {
-        let addr = self.memory.read(self.registers.pc);
 
         for _ in 0..times {
             self.execute_instruction();
             self.try_interrupt();
+
             if self.registers.debug {
                 println!("{:?}", self.registers);
                 if self.registers.breakpoint {
