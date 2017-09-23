@@ -145,7 +145,7 @@ impl fmt::Debug for Registers {
                self.reg_m,
         );
 
-        write!(f, " | Flags: S: {} Z: {} P: {} C: {} AC: {} Interrupt: {}",
+        write!(f, "  S:{} Z:{} P:{} C:{} AC:{} Interrupt:{}",
                self.sign,
                self.zero,
                self.parity,
@@ -588,9 +588,9 @@ impl<'a> ExecutionContext<'a> {
         match addr {
             0xCC | 0xCD | 0xC4 | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFC => {
                 // High order byte
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8 & 0xFF) as u8;
+                self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
                 // Low order byte
-                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8 & 0xFF;
+                self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
 
                 // Push return address to stack
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
@@ -1161,9 +1161,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(2);
     }
 
-    // TODO Investigate which addr value is correct
     fn lda(&mut self) {
-        self.registers.reg_a = self.memory.read_imm(self.registers.pc) as u8;
+        let value = self.memory.read_imm(self.registers.pc);
+        self.registers.reg_a = value as u8;
         self.adv_cycles(13);
         self.adv_pc(3);
     }
@@ -1841,7 +1841,7 @@ impl<'a> ExecutionContext<'a> {
             0x0A => self.ldax(BC),
             0x0B => self.dcx(BC),
             0x0C => self.inr(C),
-            0x0D => self.dcr(D),
+            0x0D => self.dcr(C),
             0x0E => self.mvi(C),
             0x0F => self.rrc(),
 

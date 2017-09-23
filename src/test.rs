@@ -68,7 +68,6 @@ mod tests {
     #[test]
     fn cpu_test() {
         let mut i = Interconnect::new();
-        i.registers.debug = false;
 
         let duration = Duration::new(0, 2000);
         let bin: &str = "CPUTEST.COM";
@@ -85,10 +84,14 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
+        i.registers.debug = false;
         'main: loop {
 
-            i.execute_cpu();
-            // i.step_cpu();
+            if i.registers.debug {
+                i.step_cpu();
+            } else {
+                i.execute_cpu();
+            }
 
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
