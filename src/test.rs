@@ -8,12 +8,11 @@ mod tests {
     fn preliminary() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        let duration = Duration::new(0, 15120);
-
+        let duration = Duration::new(0, 2000);
+        i.registers.debug = true;
         // 8080PRE
         let bin: &str = "8080PRE.COM";
         i.memory.load_tests(bin);
-        i.registers.debug = false;
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
         // CALL 5 is the last subroutine call in the test.
@@ -38,7 +37,6 @@ mod tests {
             // Print out characters from rom
             if i.registers.pc == 05 {
                 if i.registers.reg_c == 9 {
-                    // Create register pair
                     let mut de = (i.registers.reg_d as u16) << 8 | (i.registers.reg_e as u16);
                     'print: loop {
                         let output = i.memory.memory[de as usize];
@@ -144,12 +142,14 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
+        i.registers.debug = true;
 
         'main: loop {
             i.execute_cpu();
 
             if i.registers.pc == 0x76 {
-                assert_ne!(i.registers.pc, 0x76);
+                panic!("Halting");
+
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom

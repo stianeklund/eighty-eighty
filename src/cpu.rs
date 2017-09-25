@@ -516,15 +516,13 @@ impl<'a> ExecutionContext<'a> {
     }
 
     // Load Register Pair Immediate
-    // E.g: LXI H, 2000H (2000H is stored in the HL reg pair and acts as as memory
-    // pointer)
+    // LXI H, 2000H (2000H is stored in HL & acts as as memory pointer)
     // TODO Investigate possible problem here with CPUTEST & 8080EXER
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
                 let low = self.memory.read_low(self.registers.pc);
                 let high = self.memory.read_high(self.registers.pc);
-
 
                 self.registers.reg_b = high;
                 self.registers.reg_c = low;
@@ -569,9 +567,9 @@ impl<'a> ExecutionContext<'a> {
         match addr {
             0xCC | 0xCD | 0xC4 | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFC => {
                 // High order byte
-                self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
+                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8) as u8;
                 // Low order byte
-                self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
+                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = ret as u8;
 
                 // Push return address to stack
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
@@ -1142,7 +1140,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn lda(&mut self) {
-        let value = self.memory.read_imm(self.registers.pc);
+        let value = self.memory.read_imm(self.registers.pc + 3);
         self.registers.reg_a = value as u8;
         self.adv_cycles(13);
         self.adv_pc(3);
@@ -1772,9 +1770,6 @@ impl<'a> ExecutionContext<'a> {
 
                 }
             }
-        if self.registers.debug {
-            println!("MOV, Source: {:?}, Destination: {:?}, Value: {:04X}", src, dst, value);;
-        }
         self.adv_cycles(5);
         self.adv_pc(1);
     }
