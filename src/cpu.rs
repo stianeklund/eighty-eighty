@@ -41,12 +41,6 @@ pub struct Registers {
     pub reg_l: u8,
     pub reg_m: u8, // pseudo-register
 
-    // 16-bit Register pairs
-    reg_bc: u16,
-    reg_de: u16,
-    reg_hl: u16,
-
-
     // Status Register (Flags)
     pub sign: bool,
     pub zero: bool, // If the zero bit is one = true
@@ -94,10 +88,6 @@ impl Registers {
             reg_h: 0,
             reg_l: 0,
             reg_m: 0,
-
-            reg_bc: 0,
-            reg_de: 0,
-            reg_hl: 0,
 
             sign: false,
             zero: false,
@@ -198,15 +188,6 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_h = value,
             Register::L => self.registers.reg_l = value,
             Register::M => self.registers.reg_m = value,
-        }
-    }
-
-    fn write_rp(&mut self, reg: RegisterPair, value: u8) {
-        match reg {
-            RegisterPair::BC => self.registers.reg_bc = value as u16,
-            RegisterPair::DE => self.registers.reg_de = value as u16,
-            RegisterPair::HL => self.registers.reg_hl = value as u16,
-            RegisterPair::SP => self.registers.sp = value as u16,
         }
     }
 
@@ -985,11 +966,10 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
-    // TODO
+    // Double precision add
     fn daa(&mut self) {
-        self.adv_pc(1);
-        self.adv_cycles(4);
-       // panic!("DAA");
+       panic!("Not implemented");
+
     }
     fn di(&mut self) {
         if self.registers.debug {
@@ -1440,6 +1420,21 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
+    // Subtract Immediate with Borrow
+    fn sbi(&mut self) {
+            let mut imm = self.memory.read_imm(self.registers.pc);
+        let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
+
+        self.registers.reg_a = value as u8;
+        self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
+        self.registers.parity = self.parity(value as u8);
+        self.registers.zero = value == 0;
+        self.registers.sign = value & 0x80 != 0;
+        self.registers.carry = value & 0x0100 != 0;
+
+        self.adv_cycles(7);
+        self.adv_pc(2);
+    }
 
     // SUB Subtract Register or Memory From Accumulator
     fn sub(&mut self, reg: Register) {
@@ -1469,6 +1464,22 @@ impl<'a> ExecutionContext<'a> {
 
         self.adv_cycles(4);
         self.adv_pc(1);
+    }
+
+    // SUB Subtract Immediate From Accumulator
+    fn sui(&mut self) {
+        let mut imm = self.memory.read_imm(self.registers.pc);
+        let value = self.registers.reg_a as u16 - imm;
+
+        self.registers.reg_a = value as u8;
+        self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
+        self.registers.parity = self.parity(value as u8);
+        self.registers.zero = value == 0;
+        self.registers.sign = value & 0x80 != 0;
+        self.registers.carry = value & 0x0100 != 0;
+
+        self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     // Set Carry (set carry bit to 0)
@@ -1649,14 +1660,15 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
     fn ora(&mut self, reg: Register) {
+        let mut value = self.registers.reg_a;
         match reg {
-            Register::A => self.registers.reg_a |= self.registers.reg_a,
-            Register::B => self.registers.reg_a |= self.registers.reg_b,
-            Register::C => self.registers.reg_a |= self.registers.reg_c,
-            Register::D => self.registers.reg_a |= self.registers.reg_d,
-            Register::E => self.registers.reg_a |= self.registers.reg_e,
-            Register::H => self.registers.reg_a |= self.registers.reg_h,
-            Register::L => self.registers.reg_a |= self.registers.reg_l,
+            Register::A => value |= self.registers.reg_a,
+            Register::B => value |= self.registers.reg_b,
+            Register::C => value |= self.registers.reg_c,
+            Register::D => value |= self.registers.reg_d,
+            Register::E => value |= self.registers.reg_e,
+            Register::H => value |= self.registers.reg_h,
+            Register::L => value |= self.registers.reg_l,
             Register::M => {
                 let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 self.registers.reg_a |= hl as u8;
@@ -2073,7 +2085,7 @@ impl<'a> ExecutionContext<'a> {
             0xD3 => self.output(),
             0xD4 => self.call(0xD4),
             0xD5 => self.push(D),
-            0xD6 => println!("SUI not implemented"), //self.sui(),
+            0xD6 => self.sui(),
             0xD7 => self.rst(2),
             0xD8 => self.rc(),
             0xD9 => self.ret(),
@@ -2082,7 +2094,7 @@ impl<'a> ExecutionContext<'a> {
             0xDB => self.input(),
             0xDC => self.cc(0xDC),
             0xDD => self.call(0xDD),
-            0xDE => println!("SBI not implemented"),  // self.sbi(),
+            0xDE => self.sbi(),
             0xDF => self.rst(3),
 
             0xE0 => self.rpo(),
@@ -2156,10 +2168,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_e = 0;
         self.registers.reg_h = 0;
         self.registers.reg_l = 0;
-
-        self.registers.reg_bc = 0;
-        self.registers.reg_de = 0;
-        self.registers.reg_hl = 0;
 
         // Reset flag conditions
         self.registers.sign = false;
