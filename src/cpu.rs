@@ -1140,10 +1140,13 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn lda(&mut self) {
-        let value = self.memory.read_imm(self.registers.pc + 3);
-        self.registers.reg_a = value as u8;
+        let imm = self.memory.read_imm((self.registers.pc));
+        let memory_value = u8::from(self.memory.memory[imm as usize]);
+        self.registers.reg_a = memory_value;
+
         self.adv_cycles(13);
         self.adv_pc(3);
+
     }
 
     fn ldax(&mut self, reg: RegisterPair) {

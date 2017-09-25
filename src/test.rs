@@ -9,7 +9,7 @@ mod tests {
         // Standup memory & registers
         let mut i = Interconnect::new();
         let duration = Duration::new(0, 2000);
-        i.registers.debug = true;
+
         // 8080PRE
         let bin: &str = "8080PRE.COM";
         i.memory.load_tests(bin);
@@ -142,7 +142,6 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
-        i.registers.debug = true;
 
         'main: loop {
             i.execute_cpu();
