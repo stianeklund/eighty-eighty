@@ -401,12 +401,21 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(7);
     }
 
+    // Does more or less what ADC does?
+    // Add Immediate to Accumulator with Carry
     fn aci(&mut self) {
-        // Add Immediate to Accumulator with Carry
-        self.registers.reg_a = self.memory.read_imm(self.registers.pc) as u8;
-        self.registers.carry = true;
-        self.adv_pc(2);
+        let imm = self.memory.read_imm(self.registers.pc);
+        let result = imm as u8 + (self.registers.carry as u8);
+        self.registers.reg_a = result & 0xFF;
+
+        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.half_carry = self.half_carry_add(imm) != 0;
+        self.registers.carry = result & 0x0100 != 0;
+        self.registers.parity = self.parity(self.registers.reg_a);
+
         self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     fn adi(&mut self) {
