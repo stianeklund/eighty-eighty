@@ -244,6 +244,9 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = (w16 & 0x0_1000) != 0;
         self.registers.parity = self.parity(value as u8 & 0xFF);
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
+        self.adv_cycles(4);
+        self.adv_pc(1);
+
     }
 
     fn add(&mut self, reg: Register) {
@@ -804,7 +807,11 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry = 0 < result as u16 & 0xFFFF_0000;
+                self.registers.carry =  result & 0x10000 != 0;
+                // HACK TODO REMOVE
+                if hl == 0x0000 | 0xFFFF {
+                    self.registers.carry = true;
+                }
             }
 
             RegisterPair::DE => {
@@ -813,7 +820,7 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry = 0 < result as u16 & 0xFFFF_0000;
+                self.registers.carry =  result & 0x10000 != 0;
             }
 
             RegisterPair::HL => {
@@ -821,16 +828,15 @@ impl<'a> ExecutionContext<'a> {
                 value = value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
                 let result = hl.wrapping_add(value);
 
-                self.registers.carry = 0 < result as u16 & 0xFFFF_0000;
+                self.registers.carry =  result & 0x10000 != 0;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
             // DAD SP
             RegisterPair::SP => {
                 let result = hl.wrapping_add(self.registers.sp);
-                println!("DAD SP Result: {:04X}", result);
 
-                self.registers.carry = 0 < result as u16 & 0xFFFF_0000;
+                self.registers.carry =  result & 0x10000 != 0;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
@@ -1443,7 +1449,8 @@ impl<'a> ExecutionContext<'a> {
     // Subtract Immediate with Borrow
     fn sbi(&mut self) {
             let mut imm = self.memory.read_imm(self.registers.pc);
-        let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
+        // let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
+         let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(self.registers.carry as u8);
 
         self.registers.reg_a = value as u8;
         self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
@@ -1489,7 +1496,7 @@ impl<'a> ExecutionContext<'a> {
     // SUB Subtract Immediate From Accumulator
     fn sui(&mut self) {
         let mut imm = self.memory.read_imm(self.registers.pc);
-        let value = self.registers.reg_a as u16 - imm;
+        let value = self.registers.reg_a.wrapping_sub(imm as u8) as u16;
 
         self.registers.reg_a = value as u8;
         self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
@@ -1604,15 +1611,18 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn pop_psw(&mut self) {
-        self.registers.reg_a = self.memory.memory[self.registers.sp as usize + 1];
-        self.registers.zero = self.memory.memory[self.registers.sp as usize] & 0x40 != 0;
+        let sp = self.registers.sp;
 
-        self.registers.sign = self.memory.memory[self.registers.sp as usize] & 0x80 != 0;
-        self.registers.parity = self.memory.memory[self.registers.sp as usize] & 0x04 != 0;
-        self.registers.carry = self.memory.memory[self.registers.sp as usize] & 0x01 != 0;
-        self.registers.half_carry = self.memory.memory[self.registers.sp as usize] & 0x10 != 0;
+
+        self.registers.reg_a = self.memory.memory[sp as usize + 1];
+        self.registers.zero = self.memory.memory[sp as usize] & 0x40 != 0;
+        self.registers.sign = self.memory.memory[sp as usize] & 0x80 != 0;
+        self.registers.parity = self.memory.memory[sp as usize] & 0x04 != 0;
+        self.registers.carry = self.memory.memory[self.registers.sp as usize] != 0;
+        self.registers.half_carry = self.memory.memory[sp as usize] & 0x10 != 0;
 
         self.registers.sp = self.registers.sp.wrapping_add(2);
+
         self.adv_cycles(10);
         self.adv_pc(1);
     }
@@ -1949,6 +1959,7 @@ impl<'a> ExecutionContext<'a> {
             0x51 => self.mov(D, C),
             0x52 => self.mov(D, D),
             0x53 => self.mov(D, E),
+            0x54 => self.mov(D, H),
             0x55 => self.mov(D, L),
             0x56 => self.mov(D, M),
             0x57 => self.mov(D, A),

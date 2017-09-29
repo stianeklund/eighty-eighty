@@ -3,6 +3,7 @@ mod tests {
     use interconnect::Interconnect;
     use std::time::Duration;
     use std::thread::sleep;
+    use std::convert::TryFrom;
 
     #[test]
     fn preliminary() {
@@ -58,7 +59,7 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", stack);
                 break;
             }
-            sleep(duration);
+            // sleep(duration);
             assert_ne!(i.registers.opcode, 0x00);
         }
     }
@@ -83,13 +84,10 @@ mod tests {
         i.registers.pc = 0x0100;
 
         i.registers.debug = false;
+        let mut cycles = 0;
         'main: loop {
-
-            if i.registers.debug {
-                i.step_cpu();
-            } else {
-                i.execute_cpu();
-            }
+            // i.step_cpu();
+            i.execute_cpu();
 
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
@@ -112,8 +110,18 @@ mod tests {
                     print!("{}", i.registers.reg_e as char);
                 }
             }
-
-            sleep(duration);
+           // sleep(duration);
+            /* let hl = (i.registers.reg_h as u16) << 8 | (i.registers.reg_l as u16);
+            if hl >= 0xFFFE {
+                i.registers.debug = true;
+                cycles += 1;
+            }
+            if cycles != 0 && hl == 0x0002 {
+                panic!()
+            }
+            if cycles == 3000 {
+                panic!();
+            }*/
 
             if i.registers.pc == 0 {
                 let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
