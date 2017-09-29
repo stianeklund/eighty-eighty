@@ -388,7 +388,6 @@ impl<'a> ExecutionContext<'a> {
 
     fn ani(&mut self) {
         // The byte of immediate data is ANDed with the contents of the accumulator
-        // (reg_a).
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
@@ -408,9 +407,9 @@ impl<'a> ExecutionContext<'a> {
         let result = imm as u8 + (self.registers.carry as u8);
         self.registers.reg_a = result & 0xFF;
 
-        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-        self.registers.half_carry = self.half_carry_add(imm) != 0;
+        self.registers.half_carry = self.half_carry_add(imm) == 0;
         self.registers.carry = result & 0x0100 != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
 
