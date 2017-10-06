@@ -79,8 +79,8 @@ impl Memory {
     }
 
     // Useful to read values out of memory to assign to 8 bit registers
-    pub fn read(&mut self, addr: u16) -> u8 {
-        self.memory[addr as usize] as u8
+    pub fn read(&mut self, addr: u16) -> u16 {
+        self.memory[addr as usize] as u16
     }
     pub fn write(&mut self, addr: u16, val: u8) {
         self.memory[addr as usize] = val;

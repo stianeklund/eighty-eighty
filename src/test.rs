@@ -26,6 +26,8 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
+        i.registers.debug = true;
+
         'main: loop {
             i.execute_cpu();
 

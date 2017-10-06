@@ -29,6 +29,7 @@ pub struct Registers {
     pub debug: bool,
 
     pub pc: u16,
+    pub prev_pc: u16,
     pub sp: u16,
 
     // 8-bit Registers
@@ -78,6 +79,7 @@ impl Registers {
             breakpoint: false,
 
             pc: 0,
+            prev_pc: 0,
             sp: 0,
 
             reg_a: 0,
@@ -117,14 +119,13 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "   {} Opcode:{:04X} PC:{:04X} SP: {:X} Cycles:{} ",
+        write!(f, "   {} Opcode:{:04X} PC:{:04X} Cycles:{} ",
                self.current_instruction,
                self.opcode,
-               self.pc,
-               self.sp,
+               self.prev_pc,
                self.cycles
         );
-        write!(f, "A:{:02X} BC:{:02X}{:02X} DE:{:02X}{:02X} HL:{:02X}{:02X}",
+        write!(f, "A:{:02X} BC:{:02X}{:02X} DE:{:02X}{:02X} HL:{:02X}{:02X} SP:{:04X}",
                self.reg_a,
                self.reg_b,
                self.reg_c,
@@ -132,6 +133,7 @@ impl fmt::Debug for Registers {
                self.reg_e,
                self.reg_h,
                self.reg_l,
+               self.sp,
         );
 
         write!(f, " S:{} Z:{} P:{} C:{} AC:{} Interrupt:{}",
@@ -191,6 +193,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn adv_pc(&mut self, t: u16) {
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = self.registers.pc.wrapping_add(t);
     }
 
@@ -246,7 +249,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
         self.adv_cycles(4);
         self.adv_pc(1);
-
     }
 
     fn add(&mut self, reg: Register) {
@@ -758,15 +760,15 @@ impl<'a> ExecutionContext<'a> {
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let value = self.memory.read(self.registers.pc + 1);
+        let byte = self.memory.read_next_byte(self.registers.pc);
 
-        // Compare is done with subtraction.
         // Compare the result of the accumulator with the immediate address.
-        let result = self.registers.reg_a.wrapping_sub(value);
+        let result = (self.registers.reg_a).wrapping_sub(byte as u8);
+
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result & 0xFF == 0;
-        self.registers.half_carry = !self.half_carry_sub(u16::from(value)) != 0;
-        self.registers.carry = self.registers.reg_a < (u16::from(value) as u8);
+        self.registers.half_carry = !self.half_carry_sub(byte as u16) != 0;
+        self.registers.carry = self.registers.reg_a < (byte as u8);
         self.registers.parity = self.parity(result as u8);
 
         self.adv_pc(2);
@@ -815,11 +817,11 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry =  result & 0x10000 != 0;
-                // HACK TODO REMOVE
-                if hl == 0x0000 | 0xFFFF {
-                    self.registers.carry = true;
-                }
+                self.registers.carry = result & 0x10000 != 0;
+                // HACK
+                /* if hl == 0x0000 | 0xFFFF {
+                     self.registers.carry = true;
+                 }*/
             }
 
             RegisterPair::DE => {
@@ -828,7 +830,7 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry =  result & 0x10000 != 0;
+                self.registers.carry = result & 0x10000 != 0;
             }
 
             RegisterPair::HL => {
@@ -836,7 +838,7 @@ impl<'a> ExecutionContext<'a> {
                 value = value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
                 let result = hl.wrapping_add(value);
 
-                self.registers.carry =  result & 0x10000 != 0;
+                self.registers.carry = result & 0x10000 != 0;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
@@ -844,7 +846,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::SP => {
                 let result = hl.wrapping_add(self.registers.sp);
 
-                self.registers.carry =  result & 0x10000 != 0;
+                self.registers.carry = result & 0x10000 != 0;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
@@ -974,7 +976,6 @@ impl<'a> ExecutionContext<'a> {
 
     // Double precision add
     fn daa(&mut self) {
-
         let carry = self.registers.carry;
         let mut add = 0;
         let mut result = 0;
@@ -1148,11 +1149,7 @@ impl<'a> ExecutionContext<'a> {
         // The MVI instruction uses a 8-bit data quantity, as opposed to
         // LXI which uses a 16-bit data quantity.
 
-        // First MVI instruction is:
-        // Address  Bytes    Operand  Exp       Comment
-        // 18D7:    06 00    LD       B,$00    ; Count 256 bytes
-        // In our case we get 0006 with self.memory.read, but it's stored as 06.
-        let mut value = self.memory.read(self.registers.pc + 1);
+        let mut value = self.memory.read_next_byte(self.registers.pc);
 
         match reg {
             Register::A => self.registers.reg_a = value,
@@ -1172,13 +1169,11 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn lda(&mut self) {
-        let imm = self.memory.read_imm((self.registers.pc));
-        let memory_value = u8::from(self.memory.memory[imm as usize]);
-        self.registers.reg_a = memory_value;
+        let addr = self.memory.read_imm(self.registers.pc);
+        self.registers.reg_a = self.memory.memory[addr as usize] as u8;
 
         self.adv_cycles(13);
         self.adv_pc(3);
-
     }
 
     fn ldax(&mut self, reg: RegisterPair) {
@@ -1240,7 +1235,7 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Input port not covered, {:04X}", port),
         }
 
-        if self.registers.debug { println!("Input port: {}, Result: {:04X}", port, result);}
+        if self.registers.debug { println!("Input port: {}, Result: {:04X}", port, result); }
         self.registers.reg_a = result as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
@@ -1384,15 +1379,16 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push_psw(&mut self) {
-        self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
-        self.memory.memory[self.registers.sp as usize - 2] =
-           if self.registers.zero { 0x40 } else { 0x0 } |
-           if self.registers.sign { 0x80 } else { 0x0 } |
-           if self.registers.parity { 0x04 } else { 0x0 } |
-           if self.registers.carry { 0x01 } else { 0x0 } |
-           if self.registers.half_carry { 0x10 } else { 0x0 } |
-           0x02;
+        let psw =
+            if self.registers.zero { 0x40 } else { 0x0 } |
+                if self.registers.sign { 0x80 } else { 0x0 } |
+                if self.registers.parity { 0x04 } else { 0x0 } |
+                if self.registers.carry { 0x01 } else { 0x0 } |
+                if self.registers.half_carry { 0x10 } else { 0x0 } |
+                0x02;
 
+        self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
+        self.memory.memory[self.registers.sp as usize - 2] = psw as u8;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
@@ -1456,9 +1452,9 @@ impl<'a> ExecutionContext<'a> {
     }
     // Subtract Immediate with Borrow
     fn sbi(&mut self) {
-            let mut imm = self.memory.read_imm(self.registers.pc);
+        let mut imm = self.memory.read_imm(self.registers.pc);
         // let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
-         let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(self.registers.carry as u8);
+        let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(self.registers.carry as u8);
 
         self.registers.reg_a = value as u8;
         self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
@@ -1597,18 +1593,18 @@ impl<'a> ExecutionContext<'a> {
     fn pop(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_c = self.memory.memory[(self.registers.sp as usize) & 0xFFFF];
-                self.registers.reg_b = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
+                self.registers.reg_c = self.memory.memory[self.registers.sp as usize];
+                self.registers.reg_b = self.memory.memory[self.registers.sp as usize + 1];
             }
 
             RegisterPair::DE => {
-                self.registers.reg_e = self.memory.memory[(self.registers.sp as usize) & 0xFFFF];
-                self.registers.reg_d = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
+                self.registers.reg_e = self.memory.memory[self.registers.sp as usize];
+                self.registers.reg_d = self.memory.memory[self.registers.sp as usize + 1];
             }
 
             RegisterPair::HL => {
-                self.registers.reg_l = self.memory.memory[(self.registers.sp as usize) & 0xFFFF];
-                self.registers.reg_h = self.memory.memory[(self.registers.sp as usize + 1) & 0xFFFF];
+                self.registers.reg_l = self.memory.memory[self.registers.sp as usize];
+                self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
             }
             RegisterPair::SP => println!("POP SP called at POP instruction, please fix"),
         }
@@ -1619,24 +1615,22 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn pop_psw(&mut self) {
-        let sp = self.registers.sp;
+        let sp = self.registers.sp as usize;
+        self.registers.reg_a = self.memory.memory[sp + 1];
+        self.registers.zero = self.memory.memory[sp] & 0x40 != 0;
+        self.registers.sign = self.memory.memory[sp] & 0x80 != 0;
+        self.registers.parity = self.memory.memory[sp] & 0x04 != 0;
+        self.registers.carry = self.memory.memory[sp] != 0;
+        self.registers.half_carry = self.memory.memory[sp] & 0x10 != 0;
 
+        self.registers.sp = sp.wrapping_add(2) as u16;
 
-        self.registers.reg_a = self.memory.memory[sp as usize + 1];
-        self.registers.zero = self.memory.memory[sp as usize] & 0x40 != 0;
-        self.registers.sign = self.memory.memory[sp as usize] & 0x80 != 0;
-        self.registers.parity = self.memory.memory[sp as usize] & 0x04 != 0;
-        self.registers.carry = self.memory.memory[self.registers.sp as usize] != 0;
-        self.registers.half_carry = self.memory.memory[sp as usize] & 0x10 != 0;
-
-        self.registers.sp = self.registers.sp.wrapping_add(2);
-
-        self.adv_cycles(10);
+        self.adv_cycles(11);
         self.adv_pc(1);
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_word(self.registers.sp);
+        let sp = self.memory.read_imm(self.registers.sp);
         if self.registers.debug {
             println!("Popping stack. SP value: {:04X}", sp);
         }
@@ -1725,7 +1719,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = false;
         self.registers.carry = false;
         self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = (self.registers.reg_a & 0x80) !=0;
+        self.registers.sign = (self.registers.reg_a & 0x80) != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
 
         self.adv_cycles(4);
@@ -1765,7 +1759,7 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.reg_d = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
-                    self.write_reg(dst, value) ;
+                    self.write_reg(dst, value);
                 }
             }
             Register::E => {
@@ -1781,7 +1775,7 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.reg_h = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
-                self.write_reg(dst, value);
+                    self.write_reg(dst, value);
                 }
             }
             Register::L => {
@@ -1789,7 +1783,7 @@ impl<'a> ExecutionContext<'a> {
                     self.registers.reg_l = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
-                self.write_reg(dst, value);
+                    self.write_reg(dst, value);
                 }
             }
             Register::M => {
@@ -1804,9 +1798,8 @@ impl<'a> ExecutionContext<'a> {
                     Register::M => self.memory.memory[addr as usize] = self.registers.reg_m,
                 }
                 self.adv_cycles(2);
-
-                }
             }
+        }
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -1817,7 +1810,7 @@ impl<'a> ExecutionContext<'a> {
         // Address to return to after interrupt is finished.
 
         let ret = self.registers.pc;
-        if self.registers.debug {  println!("RST return address: {:04X}", ret); }
+        if self.registers.debug { println!("RST return address: {:04X}", ret); }
 
         self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
         self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
@@ -1839,7 +1832,6 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.debug { println!("Value: {:04X}", value); }
         self.registers.pc = (value & 0x38).into();
         self.adv_cycles(11);
-
     }
 
     fn sphl(&mut self) {
@@ -1868,11 +1860,10 @@ impl<'a> ExecutionContext<'a> {
         use self::RegisterPair::*;
 
 
-        let pc = self.registers.pc;
-        let opcode = self.memory.memory[pc as usize];
+        let opcode = self.memory.memory[self.registers.pc as usize];
 
         match opcode {
-            0x00 => self.nop(),
+            0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 => self.nop(),
             0x01 => self.lxi(BC),
             0x02 => self.stax(BC),
             0x03 => self.inx(BC),
@@ -1880,7 +1871,6 @@ impl<'a> ExecutionContext<'a> {
             0x05 => self.dcr(B),
             0x06 => self.mvi(B),
             0x07 => self.rlc(),
-            0x08 => self.nop(),
             0x09 => self.dad(BC),
 
             0x0A => self.ldax(BC),
@@ -1890,7 +1880,6 @@ impl<'a> ExecutionContext<'a> {
             0x0E => self.mvi(C),
             0x0F => self.rrc(),
 
-            0x10 => self.nop(),
             0x11 => self.lxi(DE),
             0x12 => self.stax(DE),
             0x13 => self.inx(DE),
@@ -1898,7 +1887,6 @@ impl<'a> ExecutionContext<'a> {
             0x15 => self.dcr(D),
             0x16 => self.mvi(D),
             0x17 => self.ral(),
-            0x18 => self.nop(),
             0x19 => self.dad(DE),
 
             0x1A => self.ldax(DE),
@@ -1908,7 +1896,6 @@ impl<'a> ExecutionContext<'a> {
             0x1E => self.mvi(E),
             0x1F => self.rar(),
 
-            0x20 => self.nop(),
             0x21 => self.lxi(HL),
             0x22 => self.shld(),
             0x23 => self.inx(HL),
@@ -1916,7 +1903,6 @@ impl<'a> ExecutionContext<'a> {
             0x25 => self.dcr(H),
             0x26 => self.mvi(H),
             0x27 => self.daa(),
-            0x28 => self.nop(),
             0x29 => self.dad(HL),
 
             0x2A => self.lhld(),
@@ -1926,7 +1912,6 @@ impl<'a> ExecutionContext<'a> {
             0x2E => self.mvi(L),
             0x2F => self.cma(),
 
-            0x30 => self.nop(),
             0x31 => self.lxi(SP),
             0x32 => self.sta(),
             0x33 => self.inx(SP),
@@ -1934,7 +1919,6 @@ impl<'a> ExecutionContext<'a> {
             0x35 => self.dcr(M),
             0x36 => self.mvi(M),
             0x37 => self.stc(),
-            0x38 => self.nop(),
             0x39 => self.dad(SP),
 
             0x3A => self.lda(),
@@ -2178,7 +2162,6 @@ impl<'a> ExecutionContext<'a> {
 
     // Step one instruction
     pub fn step(&mut self, times: u8) {
-
         for _ in 0..times {
             self.execute_instruction();
             self.try_interrupt();
@@ -2219,7 +2202,6 @@ impl<'a> ExecutionContext<'a> {
         println!("Halting CPU");
         self.adv_cycles(7);
         ::std::process::exit(1);
-
     }
     fn half_carry_add(&self, mut value: u16) -> u16 {
         let mut add = [0, 0, 1, 0, 1, 0, 1, 1];
@@ -2276,7 +2258,6 @@ impl<'a> ExecutionContext<'a> {
 
             self.registers.pc = self.registers.interrupt_addr as u16;
         }
-
     }
     pub fn try_interrupt(&mut self) {
         if self.registers.cycles < 16_667 {
@@ -2288,7 +2269,7 @@ impl<'a> ExecutionContext<'a> {
 
             // Call Reset with interrupt code
             if self.registers.interrupt {
-                    println!("Interrupt enabled");
+                println!("Interrupt enabled");
                 // Emulate interrupt
                 self.emulate_interrupt();
                 // self.rst(8);
@@ -2307,3 +2288,4 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 }
+
