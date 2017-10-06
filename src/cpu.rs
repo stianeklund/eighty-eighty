@@ -1620,7 +1620,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = self.memory.memory[sp] & 0x40 != 0;
         self.registers.sign = self.memory.memory[sp] & 0x80 != 0;
         self.registers.parity = self.memory.memory[sp] & 0x04 != 0;
-        self.registers.carry = self.memory.memory[sp] != 0;
+        self.registers.carry = self.memory.memory[sp] & 0x01 != 0;
         self.registers.half_carry = self.memory.memory[sp] & 0x10 != 0;
 
         self.registers.sp = sp.wrapping_add(2) as u16;

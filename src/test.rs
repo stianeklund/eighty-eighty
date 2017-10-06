@@ -26,11 +26,9 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
-
+        i.registers.debug = false;
         'main: loop {
             i.execute_cpu();
-
             if i.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", i.registers.pc);
                 #[should_panic]
