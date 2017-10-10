@@ -109,19 +109,8 @@ mod tests {
                 if i.registers.reg_c == 2 {
                     print!("{}", i.registers.reg_e as char);
                 }
+                // sleep(duration);
             }
-           // sleep(duration);
-            /* let hl = (i.registers.reg_h as u16) << 8 | (i.registers.reg_l as u16);
-            if hl >= 0xFFFE {
-                i.registers.debug = true;
-                cycles += 1;
-            }
-            if cycles != 0 && hl == 0x0002 {
-                panic!()
-            }
-            if cycles == 3000 {
-                panic!();
-            }*/
 
             if i.registers.pc == 0 {
                 let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |

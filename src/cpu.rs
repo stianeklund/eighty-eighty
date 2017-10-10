@@ -817,11 +817,8 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry = result & 0x10000 != 0;
-                // HACK
-                /* if hl == 0x0000 | 0xFFFF {
-                     self.registers.carry = true;
-                 }*/
+                // self.registers.carry = result & 0x10000 != 0;
+                self.registers.carry = result > 0xFF;
             }
 
             RegisterPair::DE => {
@@ -830,7 +827,7 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry = result & 0x10000 != 0;
+                self.registers.carry = result > 0xFF;
             }
 
             RegisterPair::HL => {
@@ -838,7 +835,7 @@ impl<'a> ExecutionContext<'a> {
                 value = value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
                 let result = hl.wrapping_add(value);
 
-                self.registers.carry = result & 0x10000 != 0;
+                self.registers.carry = result > 0xFF;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
@@ -846,7 +843,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::SP => {
                 let result = hl.wrapping_add(self.registers.sp);
 
-                self.registers.carry = result & 0x10000 != 0;
+                self.registers.carry = result > 0xFF;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
             }
@@ -2165,16 +2162,12 @@ impl<'a> ExecutionContext<'a> {
         for _ in 0..times {
             self.execute_instruction();
             self.try_interrupt();
-
             if self.registers.debug {
                 println!("{:?}", self.registers);
-                if self.registers.breakpoint {
-                    // TODO Use is_key_down from display perhaps to listen for key events?
-                    io::stdin().read_line(&mut String::new()).unwrap();
-                }
             }
         }
     }
+
 
     pub fn reset(&mut self) {
         println!("Resetting emulator");
