@@ -521,7 +521,6 @@ impl<'a> ExecutionContext<'a> {
 
     // Load Register Pair Immediate
     // LXI H, 2000H (2000H is stored in HL & acts as as memory pointer)
-    // TODO Investigate possible problem here with CPUTEST & 8080EXER
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
@@ -949,19 +948,19 @@ impl<'a> ExecutionContext<'a> {
         match reg {
             RegisterPair::BC => {
                 let mut bc = self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c;
-                bc.wrapping_sub(1);
+                bc = bc.wrapping_sub(1);
                 self.registers.reg_b = bc.wrapping_shl(8) & 0xFF;
                 self.registers.reg_c = bc.wrapping_shl(0) & 0xFF;
             }
             RegisterPair::DE => {
                 let mut de = self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e;
-                de.wrapping_sub(1);
+                de = de.wrapping_sub(1);
                 self.registers.reg_d = de.wrapping_shl(8) & 0xFF;
                 self.registers.reg_e = de.wrapping_shl(0) & 0xFF;
             }
             RegisterPair::HL => {
                 let mut hl = self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l;
-                hl.wrapping_sub(1);
+                hl = hl.wrapping_sub(1);
                 self.registers.reg_h = hl.wrapping_shl(8) & 0xFF;
                 self.registers.reg_l = hl.wrapping_shl(0) & 0xFF;
             }
@@ -1191,7 +1190,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_a = self.memory.memory[addr as usize];
             }
 
-            _ => println!("LDAX on invalid register"),
+            _ => eprintln!("LDAX on invalid register"),
         };
 
         self.adv_cycles(7);
@@ -1229,7 +1228,7 @@ impl<'a> ExecutionContext<'a> {
             3 => result = ((self.registers.port_4_out_high as u16) << 8) |
                 (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
 
-            _ => println!("Input port not covered, {:04X}", port),
+            _ => eprintln!("Input port not covered, {:04X}", port),
         }
 
         if self.registers.debug { println!("Input port: {}, Result: {:04X}", port, result); }
@@ -1574,6 +1573,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn xthl(&mut self) {
         // Swap H:L with top word on stack
+        let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 | self.memory.memory[self.registers.sp as usize] as u16;
         let h = self.registers.reg_h;
         let l = self.registers.reg_l;
 
@@ -1581,6 +1581,10 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
         self.memory.memory[self.registers.sp as usize] = l;
         self.memory.memory[self.registers.sp as usize + 1] = h;
+
+        if self.registers.debug {
+            println!("Swapping HL with the top word on stack: {:04X}", stack);
+        }
 
         self.adv_cycles(18);
         self.adv_pc(1);
@@ -1603,7 +1607,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = self.memory.memory[self.registers.sp as usize];
                 self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
             }
-            RegisterPair::SP => println!("POP SP called at POP instruction, please fix"),
+            RegisterPair::SP => {}
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
 
@@ -2192,7 +2196,7 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO Handle interrupts?
     fn hlt(&mut self) {
-        println!("Halting CPU");
+        eprintln!("Halting CPU");
         self.adv_cycles(7);
         ::std::process::exit(1);
     }

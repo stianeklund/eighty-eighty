@@ -3,7 +3,6 @@ mod tests {
     use interconnect::Interconnect;
     use std::time::Duration;
     use std::thread::sleep;
-    use std::convert::TryFrom;
 
     #[test]
     fn preliminary() {
@@ -83,7 +82,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = false;
+        i.registers.debug = true;
         let mut cycles = 0;
         'main: loop {
             // i.step_cpu();
