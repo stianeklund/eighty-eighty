@@ -514,9 +514,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump to address in H:L
     fn pchl(&mut self) {
-        let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-        self.registers.pc = hl;
+        let hl: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
         self.adv_cycles(5);
+        self.registers.pc = hl;
     }
 
     // Load Register Pair Immediate
@@ -1322,7 +1322,7 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::BC => {
                 self.registers.reg_c = self.registers.reg_c.wrapping_add(1);
                 if self.registers.reg_c == 0 {
-                    self.registers.reg_b += 1;
+                    self.registers.reg_d = self.registers.reg_b.wrapping_add(1);
                 }
             }
 
@@ -1336,12 +1336,11 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::HL => {
                 self.registers.reg_l = self.registers.reg_l.wrapping_add(1);
                 if self.registers.reg_l == 0 {
-                    self.registers.reg_h += 1;
+                    self.registers.reg_h = self.registers.reg_h.wrapping_add(1);
                 }
             }
             RegisterPair::SP => {
                 self.registers.sp += 1;
-                // self.adv_pc(1);
             }
         };
         self.adv_cycles(5);
@@ -1468,14 +1467,14 @@ impl<'a> ExecutionContext<'a> {
         let mut reg_a = self.registers.reg_a;
 
         match reg {
-            Register::A => reg_a -= self.registers.reg_a,
-            Register::B => reg_a -= self.registers.reg_b,
-            Register::C => reg_a -= self.registers.reg_c,
-            Register::D => reg_a -= self.registers.reg_d,
-            Register::E => reg_a -= self.registers.reg_e,
-            Register::H => reg_a -= self.registers.reg_h,
-            Register::L => reg_a -= self.registers.reg_l,
-            Register::M => reg_a -= self.registers.reg_m,
+            Register::A => reg_a.wrapping_sub(self.registers.reg_a),
+            Register::B => reg_a.wrapping_sub(self.registers.reg_b),
+            Register::C => reg_a.wrapping_sub(self.registers.reg_c),
+            Register::D => reg_a.wrapping_sub(self.registers.reg_d),
+            Register::E => reg_a.wrapping_sub(self.registers.reg_e),
+            Register::H => reg_a.wrapping_sub(self.registers.reg_h),
+            Register::L => reg_a.wrapping_sub(self.registers.reg_l),
+            Register::M => reg_a.wrapping_sub(self.registers.reg_m),
         };
 
         if reg == Register::M {
@@ -1567,24 +1566,26 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.reg_d = h;
         self.registers.reg_e = l;
-        self.adv_pc(1);
         self.adv_cycles(5);
+        self.adv_pc(1);
     }
 
     fn xthl(&mut self) {
+
         // Swap H:L with top word on stack
-        let stack = (self.memory.memory[self.registers.sp as usize + 1] as u16) << 8 | self.memory.memory[self.registers.sp as usize] as u16;
-        let h = self.registers.reg_h;
-        let l = self.registers.reg_l;
+        let old_h = self.registers.reg_h;
+        let old_l = self.registers.reg_l;
 
-        self.registers.reg_l = self.memory.memory[self.registers.sp as usize];
-        self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
-        self.memory.memory[self.registers.sp as usize] = l;
-        self.memory.memory[self.registers.sp as usize + 1] = h;
+        let new_h = self.memory.memory[self.registers.sp as usize + 1];
+        let new_l = self.memory.memory[self.registers.sp as usize];
 
-        if self.registers.debug {
-            println!("Swapping HL with the top word on stack: {:04X}", stack);
-        }
+
+        self.registers.reg_h = new_h;
+        self.registers.reg_l = new_l;
+        // Write old HL values to memory
+        self.memory.memory[self.registers.sp as usize + 1] = old_h;
+        self.memory.memory[self.registers.sp as usize] = old_l;
+
 
         self.adv_cycles(18);
         self.adv_pc(1);
@@ -1642,7 +1643,7 @@ impl<'a> ExecutionContext<'a> {
     fn ret(&mut self) {
         let low = self.memory.memory[self.registers.sp as usize] as u16;
         let high = self.memory.memory[self.registers.sp as usize + 1] as u16;
-        let ret: u16 = (high as u16) << 8 | (low as u16);
+        let mut ret: u16 = (high as u16) << 8 | (low as u16);
 
         self.adv_cycles(10);
         self.registers.sp = self.registers.sp.wrapping_add(2);
