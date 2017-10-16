@@ -82,7 +82,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
+        i.registers.debug = false;
         let mut cycles = 0;
         'main: loop {
             // i.step_cpu();

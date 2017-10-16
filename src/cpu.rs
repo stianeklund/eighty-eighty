@@ -648,9 +648,9 @@ impl<'a> ExecutionContext<'a> {
         if !self.registers.carry {
             self.call(addr);
         } else {
-            self.adv_cycles(11)
+            self.adv_cycles(11);
+            self.adv_pc(3);
         }
-        self.adv_pc(3);
     }
 
     fn cma(&mut self) {
@@ -1560,12 +1560,14 @@ impl<'a> ExecutionContext<'a> {
     fn xchg(&mut self) {
         let h = self.registers.reg_h;
         let l = self.registers.reg_l;
-
-        self.registers.reg_h = self.registers.reg_d;
-        self.registers.reg_l = self.registers.reg_e;
+        let d = self.registers.reg_d;
+        let e = self.registers.reg_e;
+        self.registers.reg_h = d;
+        self.registers.reg_l = e;
 
         self.registers.reg_d = h;
         self.registers.reg_e = l;
+
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -2104,7 +2106,7 @@ impl<'a> ExecutionContext<'a> {
             0xD1 => self.pop(DE),
             0xD2 => self.jnc(),
             0xD3 => self.output(),
-            0xD4 => self.call(0xD4),
+            0xD4 => self.cnc(0xD4),
             0xD5 => self.push(D),
             0xD6 => self.sui(),
             0xD7 => self.rst(2),
