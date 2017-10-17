@@ -82,8 +82,10 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = false;
+        i.registers.debug = true;
         let mut cycles = 0;
+        let memory_address = i.memory.memory[0xC72];
+
         'main: loop {
             // i.step_cpu();
             i.execute_cpu();
@@ -91,6 +93,7 @@ mod tests {
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
+
             // If PC is 5 we're at the return address we set earlier.
             if i.registers.pc == 05 {
                 if i.registers.reg_c == 9 {

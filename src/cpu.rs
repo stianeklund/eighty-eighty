@@ -61,12 +61,17 @@ pub struct Registers {
     port_3_in: u8, // Bit shift register read / shift in
 
     // I/O Write port
-    port_2_out: u8,      // Shift amount (3 bits)
-    port_3_out: u8,      // Sound bits
+    port_2_out: u8,
+    // Shift amount (3 bits)
+    port_3_out: u8,
+    // Sound bits
     port_4_out_high: u8, // Shift data port high
-    port_4_out_low: u8,  // Shift data port low
-    port_5_out: u8,      // Sound bits
-    port_6_out: u8,      // Watchdog (read or write to reset)
+    port_4_out_low: u8,
+    // Shift data port low
+    port_5_out: u8,
+    // Sound bits
+    port_6_out: u8,
+    // Watchdog (read or write to reset)
 }
 
 impl Registers {
@@ -119,11 +124,13 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "   {} Opcode:{:04X} PC:{:04X} Cycles:{} ",
-               self.current_instruction,
-               self.opcode,
-               self.prev_pc,
-               self.cycles
+        write!(
+            f,
+            "   {} Opcode:{:04X} PC:{:04X} Cycles:{} ",
+            self.current_instruction,
+            self.opcode,
+            self.prev_pc,
+            self.cycles
         );
         write!(f, "A:{:02X} BC:{:02X}{:02X} DE:{:02X}{:02X} HL:{:02X}{:02X} SP:{:04X}",
                self.reg_a,
@@ -136,13 +143,15 @@ impl fmt::Debug for Registers {
                self.sp,
         );
 
-        write!(f, " S:{} Z:{} P:{} C:{} AC:{} Interrupt:{}",
-               self.sign,
-               self.zero,
-               self.parity,
-               self.carry,
-               self.half_carry,
-               self.interrupt
+        write!(
+            f,
+            " S:{} Z:{} P:{} C:{} AC:{} Interrupt:{}",
+            self.sign,
+            self.zero,
+            self.parity,
+            self.carry,
+            self.half_carry,
+            self.interrupt
         )
     }
 }
@@ -212,7 +221,7 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::B => {
                 value = self.registers.reg_a + self.registers.reg_b + (self.registers.carry as u8);
-            },
+            }
             Register::C => {
                 value = self.registers.reg_a + self.registers.reg_c + (self.registers.carry as u8);
                 self.registers.reg_a = value as u8 & 0xFF;
@@ -234,8 +243,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_a = value as u8 & 0xFF;
             }
             Register::M => {
-                let hl: u16 = (self.registers.reg_h as u16) << 8 |
-                    (self.registers.reg_l as u16) + (self.registers.carry as u16);
+                let hl: u16 = ((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16) + (self.registers.carry as u16));
                 value = hl as u8;
                 self.registers.reg_a = value as u8 & 0xFF;
 
@@ -263,7 +271,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::B => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_b;
@@ -273,7 +281,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::C => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_c;
@@ -283,7 +291,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::D => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_d;
@@ -293,7 +301,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::E => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_e;
@@ -303,7 +311,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::H => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_h;
@@ -313,7 +321,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::L => {
                 let mut value = self.registers.reg_a;
                 value += self.registers.reg_l;
@@ -323,7 +331,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value & 0xFF);
-            },
+            }
             Register::M => {
                 let mut value = self.registers.reg_a as u16;
                 value += (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
@@ -333,7 +341,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.half_carry = self.half_carry_add(value as u16) != 0;
                 self.registers.carry = value & 0x0100 != 0;
                 self.registers.parity = self.parity(value as u8 & 0xFF);
-            },
+            }
         }
 
         self.adv_cycles(4);
@@ -427,6 +435,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn jmp(&mut self) {
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         self.adv_cycles(10);
     }
@@ -434,6 +443,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if carry
     fn jc(&mut self) {
         if self.registers.carry {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -444,6 +454,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if no carry
     fn jnc(&mut self) {
         if !self.registers.carry {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -455,6 +466,7 @@ impl<'a> ExecutionContext<'a> {
     // If zero = 1 jump to address
     fn jz(&mut self) {
         if self.registers.zero {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -465,6 +477,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Not Zero (if zero bit is 0 jump)
     fn jnz(&mut self) {
         if !self.registers.zero {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -475,6 +488,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Minus (If sign bit is one)
     fn jm(&mut self) {
         if self.registers.sign {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -485,6 +499,7 @@ impl<'a> ExecutionContext<'a> {
     // Jump if Positive (If sign bit is zero)
     fn jp(&mut self) {
         if !self.registers.sign {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -495,6 +510,7 @@ impl<'a> ExecutionContext<'a> {
     // If parity even (If parity bit is 1)
     fn jpe(&mut self) {
         if self.registers.parity {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -505,6 +521,7 @@ impl<'a> ExecutionContext<'a> {
     // If parity odd (If parity bit is 0)
     fn jpo(&mut self) {
         if !self.registers.parity {
+            self.registers.prev_pc = self.registers.pc;
             self.registers.pc = self.memory.read_imm(self.registers.pc);
         } else {
             self.adv_pc(3);
@@ -516,6 +533,7 @@ impl<'a> ExecutionContext<'a> {
     fn pchl(&mut self) {
         let hl: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
         self.adv_cycles(5);
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = hl;
     }
 
@@ -554,6 +572,7 @@ impl<'a> ExecutionContext<'a> {
         let addr = self.memory.read_imm(self.registers.pc);
 
         self.memory.memory[addr as usize] = self.registers.reg_a;
+
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -576,7 +595,10 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Unknown call address: {:04X}", self.registers.opcode),
         };
 
-        /*  if self.registers.debug {
+        /*
+        For debugging Space Invaders
+
+        if self.registers.debug {
             // For debugging
             // Match call addr with dissasembled Space Invaders function names
 
@@ -599,8 +621,7 @@ impl<'a> ExecutionContext<'a> {
         }
         */
 
-        /* self.registers.pc = (self.memory.memory[self.registers.pc as usize + 2] as u16) << 8 |
-            self.memory.memory[self.registers.pc as usize + 1] as u16; */
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         self.adv_cycles(17);
     }
@@ -664,10 +685,12 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
         self.adv_cycles(4);
     }
+
+    // Compare Register or Memory With Accumulator
     fn cmp(&mut self, reg: Register) {
-        // Compare Register or Memory With Accumulator
 
         let result = self.registers.reg_a;
+
         match reg {
             Register::A => {
                 if result < self.registers.reg_a {
@@ -740,7 +763,9 @@ impl<'a> ExecutionContext<'a> {
                 }
             }
             Register::M => {
-                let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let hl = u16::from(
+                    (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16),
+                );
                 if result < hl as u8 {
                     self.registers.carry = true;
                 } else if result == hl as u8 {
@@ -831,7 +856,9 @@ impl<'a> ExecutionContext<'a> {
 
             RegisterPair::HL => {
                 let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                value = value.wrapping_add((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
+                value = value.wrapping_add(
+                    (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16),
+                );
                 let result = hl.wrapping_add(value);
 
                 self.registers.carry = result > 0xFF;
@@ -981,8 +1008,7 @@ impl<'a> ExecutionContext<'a> {
             add = 0x06;
         }
 
-        if self.registers.carry || (self.registers.reg_a >> 4) > 9 ||
-            self.registers.reg_a >> 4 >= 9 && self.registers.reg_a & 0x0F > 9 {
+        if self.registers.carry || (self.registers.reg_a >> 4) > 9 || self.registers.reg_a >> 4 >= 9 && self.registers.reg_a & 0x0F > 9 {
             add |= 0x60;
             self.registers.carry = true;
         }
@@ -1164,16 +1190,17 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(2);
     }
 
+    // LDA Load Accumulator direct
     fn lda(&mut self) {
         let addr = self.memory.read_imm(self.registers.pc);
-        self.registers.reg_a = self.memory.memory[addr as usize] as u8;
-
+        self.registers.reg_a = self.memory.memory[addr as usize];
         self.adv_cycles(13);
         self.adv_pc(3);
     }
 
+
+    // LDAX(Load accumulator indirect)
     fn ldax(&mut self, reg: RegisterPair) {
-        // LDAX(Load accumulator indirect):
         // The contents of the designated register pair point to a memory location.
         // This instruction copies the contents of that memory location into the
         // accumulator. The contents of either the register pair or the
@@ -1223,15 +1250,19 @@ impl<'a> ExecutionContext<'a> {
             1 => {
                 result = self.registers.port_1_in as u16;
                 self.registers.port_1_in &= 0xFE;
-            },
+            }
             2 => result = (self.registers.port_2_in & 0x8F | self.registers.port_2_in & 0x70) as u16,
-            3 => result = ((self.registers.port_4_out_high as u16) << 8) |
-                (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
+            3 => {
+                result = ((self.registers.port_4_out_high as u16) << 8) |
+                    (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF
+            }
 
             _ => eprintln!("Input port not covered, {:04X}", port),
         }
 
-        if self.registers.debug { println!("Input port: {}, Result: {:04X}", port, result); }
+        if self.registers.debug {
+            println!("Input port: {}, Result: {:04X}", port, result);
+        }
         self.registers.reg_a = result as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
@@ -1269,7 +1300,9 @@ impl<'a> ExecutionContext<'a> {
                 let value = self.registers.reg_d.wrapping_add(1);
                 self.registers.reg_d = value & 0xFF;
                 self.registers.sign = value & 0x80 != 0;
-                if value == 0 { self.registers.zero = true };
+                if value == 0 {
+                    self.registers.zero = true
+                };
                 // self.registers.zero = value == 0;
                 self.registers.half_carry = !value & 0x0F == 0;
                 self.registers.parity = self.parity(value as u8);
@@ -1374,13 +1407,9 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn push_psw(&mut self) {
-        let psw =
-            if self.registers.zero { 0x40 } else { 0x0 } |
-                if self.registers.sign { 0x80 } else { 0x0 } |
-                if self.registers.parity { 0x04 } else { 0x0 } |
-                if self.registers.carry { 0x01 } else { 0x0 } |
-                if self.registers.half_carry { 0x10 } else { 0x0 } |
-                0x02;
+        let psw = if self.registers.zero { 0x40 } else { 0x0 } | if self.registers.sign { 0x80 } else { 0x0 } |
+            if self.registers.parity { 0x04 } else { 0x0 } | if self.registers.carry { 0x01 } else { 0x0 } |
+            if self.registers.half_carry { 0x10 } else { 0x0 } | 0x02;
 
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
         self.memory.memory[self.registers.sp as usize - 2] = psw as u8;
@@ -1449,7 +1478,9 @@ impl<'a> ExecutionContext<'a> {
     fn sbi(&mut self) {
         let mut imm = self.memory.read_imm(self.registers.pc);
         // let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
-        let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(self.registers.carry as u8);
+        let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(
+            self.registers.carry as u8,
+        );
 
         self.registers.reg_a = value as u8;
         self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
@@ -1643,12 +1674,13 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn ret(&mut self) {
-        let low = self.memory.memory[self.registers.sp as usize] as u16;
-        let high = self.memory.memory[self.registers.sp as usize + 1] as u16;
-        let mut ret: u16 = (high as u16) << 8 | (low as u16);
+        let low = u16::from(self.memory.memory[self.registers.sp as usize]);
+        let high = u16::from(self.memory.memory[self.registers.sp as usize + 1]);
+        let mut ret: u16 = u16::from((high as u16) << 8 | (low as u16));
 
-        self.adv_cycles(10);
         self.registers.sp = self.registers.sp.wrapping_add(2);
+        self.adv_cycles(10);
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = ret;
     }
 
@@ -1669,24 +1701,27 @@ impl<'a> ExecutionContext<'a> {
                 if self.registers.debug {
                     println!("Port 3: {:04X}", self.registers.port_3_out);
                 }
-            },
+            }
 
             // Sets shift register values
             0x04 => {
                 self.registers.port_4_out_low = self.registers.port_4_out_high;
                 self.registers.port_4_out_high = self.registers.reg_a;
                 if self.registers.debug {
-                    println!("Setting shift register values");
-                    println!("High: {:04X} Low: {:04X}", self.registers.port_4_out_high, self.registers.port_4_out_low);
+                    println!(
+                        "Setting shift register values, high:{:04X}, low{:04X}",
+                        self.registers.port_4_out_high,
+                        self.registers.port_4_out_low
+                    );
                 }
-            },
+            }
             // Sound port
             0x05 => self.registers.port_5_out = self.registers.reg_a,
             // Watchdog port
             0x06 => {
                 self.registers.port_6_out = self.registers.reg_a;
                 println!("Watchdog, value: {:04X}", self.registers.port_6_out);
-            },
+            }
             _ => println!("Port: {:04X}, does not match implementation", port),
         }
         self.adv_pc(2);
@@ -1694,6 +1729,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn ora(&mut self, reg: Register) {
         let mut value = self.registers.reg_a;
+
         match reg {
             Register::A => value |= self.registers.reg_a,
             Register::B => value |= self.registers.reg_b,
@@ -1708,6 +1744,7 @@ impl<'a> ExecutionContext<'a> {
                 self.adv_cycles(3);
             }
         }
+
         self.registers.half_carry = false;
         self.registers.carry = false;
         self.registers.zero = self.registers.reg_a == 0;
@@ -1717,6 +1754,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
+
     // Or Immediate with Accumulator
     fn ori(&mut self) {
         self.registers.reg_a |= self.memory.read_imm(self.registers.pc) as u8;
@@ -1814,7 +1852,9 @@ impl<'a> ExecutionContext<'a> {
         // Address to return to after interrupt is finished.
 
         let ret = self.registers.pc;
-        if self.registers.debug { println!("RST return address: {:04X}", ret); }
+        if self.registers.debug {
+            println!("RST return address: {:04X}", ret);
+        }
 
         self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
         self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
@@ -1829,11 +1869,14 @@ impl<'a> ExecutionContext<'a> {
             5 => self.registers.pc = 0x0028,
             6 => self.registers.pc = 0x0030,
             7 => self.registers.pc = 0x0038,
-            _ => println!("Couldn't match RST value, {:04X}", value)
+            _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
         self.registers.sp -= 2;
-        if self.registers.debug { println!("Value: {:04X}", value); }
+        if self.registers.debug {
+            println!("Value: {:04X}", value);
+        }
+        self.registers.prev_pc = self.registers.pc;
         self.registers.pc = (value & 0x38).into();
         self.adv_cycles(11);
     }
@@ -2206,8 +2249,10 @@ impl<'a> ExecutionContext<'a> {
     fn half_carry_add(&self, mut value: u16) -> u16 {
         let mut add = [0, 0, 1, 0, 1, 0, 1, 1];
         let a = u16::from(self.registers.reg_a & 0xFF);
+
         // Immediate value
         value &= 0xFF;
+
         // u16 word value (allow wrapping)
         let word: u16 = a.wrapping_sub(value).wrapping_add(0x100) & 0xFF;
         let row: u16 = ((a & 0x88) >> 1) | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
@@ -2226,28 +2271,264 @@ impl<'a> ExecutionContext<'a> {
     }
     fn parity(&self, mut value: u8) -> bool {
         let parity_table = [
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
-            1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
         ];
-        if parity_table[value as usize] == 1 {
-            return true
-        } else {
-            return false
-        }
+        return parity_table[value as usize] == 1;
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
@@ -2256,7 +2537,8 @@ impl<'a> ExecutionContext<'a> {
             self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
             self.registers.sp -= 2;
 
-            self.registers.pc = self.registers.interrupt_addr as u16;
+            self.registers.prev_pc = self.registers.pc;
+            self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
     }
     pub fn try_interrupt(&mut self) {
@@ -2288,4 +2570,3 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 }
-
