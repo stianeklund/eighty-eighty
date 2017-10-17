@@ -84,7 +84,6 @@ mod tests {
 
         i.registers.debug = true;
         let mut cycles = 0;
-        let memory_address = i.memory.memory[0xC72];
 
         'main: loop {
             // i.step_cpu();

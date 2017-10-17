@@ -571,8 +571,11 @@ impl<'a> ExecutionContext<'a> {
     fn sta(&mut self) {
         let addr = self.memory.read_imm(self.registers.pc);
 
-        self.memory.memory[addr as usize] = self.registers.reg_a;
 
+        self.memory.memory[addr as usize] = self.registers.reg_a;
+        if self.registers.debug {
+            println!("STA, storing accumulator in memory: {:04X}", self.memory.memory[addr as usize]);
+        }
         self.adv_pc(3);
         self.adv_cycles(13);
     }
@@ -1417,6 +1420,10 @@ impl<'a> ExecutionContext<'a> {
 
         self.adv_cycles(11);
         self.adv_pc(1);
+        if self.registers.debug {
+            println!("Push PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10..self.registers.sp as usize + 10]);
+            // println!("SP {}", self.registers.sp)
+        }
     }
 
     // Store the contents of the accumulator addressed by registers B, C
@@ -1651,6 +1658,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_psw(&mut self) {
         let sp = self.registers.sp as usize;
+
         self.registers.reg_a = self.memory.memory[sp + 1];
         self.registers.zero = self.memory.memory[sp] & 0x40 != 0;
         self.registers.sign = self.memory.memory[sp] & 0x80 != 0;
@@ -1662,6 +1670,11 @@ impl<'a> ExecutionContext<'a> {
 
         self.adv_cycles(11);
         self.adv_pc(1);
+        if self.registers.debug {
+            println!("POP PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10..self.registers.sp as usize + 10]);
+            // println!("SP {}", self.registers.sp);
+        }
+
     }
 
     fn pop_stack(&mut self) -> u16 {
