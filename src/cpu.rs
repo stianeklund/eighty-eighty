@@ -124,28 +124,23 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:>0} {:>7} {:>4} {:>8} {:>4} {:>4} {:>4} {:>4} {:>4}  {:>6}{:>6}{:>6}{:>6}{:>7}{:>7}",
+                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Intrpt");
         write!(
             f,
-            "   {} Opcode:{:04X} PC:{:04X} Cycles:{} ",
+            "{}   {:04X}     {:04X} {     }     {:02X}  {:02X}{:02x} {:02X}{:02X} {:02X}{:02X} {:04X}     {} {} {} {} {} {}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
-            self.cycles
-        );
-        write!(f, "A:{:02X} BC:{:02X}{:02X} DE:{:02X}{:02X} HL:{:02X}{:02X} SP:{:04X}",
-               self.reg_a,
-               self.reg_b,
-               self.reg_c,
-               self.reg_d,
-               self.reg_e,
-               self.reg_h,
-               self.reg_l,
-               self.sp,
-        );
-
-        write!(
-            f,
-            " S:{} Z:{} P:{} C:{} AC:{} Interrupt:{}",
+            self.cycles,
+            self.reg_a,
+            self.reg_b,
+            self.reg_c,
+            self.reg_d,
+            self.reg_e,
+            self.reg_h,
+            self.reg_l,
+            self.sp,
             self.sign,
             self.zero,
             self.parity,
@@ -574,7 +569,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.memory.memory[addr as usize] = self.registers.reg_a;
         if self.registers.debug {
-            println!("STA, storing accumulator in memory: {:04X}", self.memory.memory[addr as usize]);
+            // println!("STA, storing accumulator in memory: {:04X}", self.memory.memory[addr as usize]);
         }
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -624,6 +619,7 @@ impl<'a> ExecutionContext<'a> {
         }
         */
 
+        // println!("Stack {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
         self.registers.prev_pc = self.registers.pc;
         self.registers.pc = self.memory.read_imm(self.registers.pc);
         self.adv_cycles(17);
@@ -1407,6 +1403,8 @@ impl<'a> ExecutionContext<'a> {
         }
         self.adv_cycles(11);
         self.adv_pc(1);
+
+        // println!("Stack {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
     }
 
     fn push_psw(&mut self) {
@@ -1421,8 +1419,9 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(11);
         self.adv_pc(1);
         if self.registers.debug {
-            println!("Push PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10..self.registers.sp as usize + 10]);
+            // println!("Push PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
             // println!("SP {}", self.registers.sp)
+
         }
     }
 
@@ -1652,6 +1651,7 @@ impl<'a> ExecutionContext<'a> {
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
 
+        // println!("Stack {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
         self.adv_pc(1);
         self.adv_cycles(10);
     }
@@ -1671,7 +1671,7 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(11);
         self.adv_pc(1);
         if self.registers.debug {
-            println!("POP PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10..self.registers.sp as usize + 10]);
+            // println!("Stack {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
             // println!("SP {}", self.registers.sp);
         }
 
@@ -1895,7 +1895,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn sphl(&mut self) {
-        self.registers.sp = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16) as u16;
+        self.registers.sp = u16::from((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
         self.adv_cycles(5);
         self.adv_pc(1);
     }

@@ -119,7 +119,6 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", stack);
                 break;
             }
-
         }
     }
     #[test]
