@@ -810,6 +810,7 @@ impl<'a> ExecutionContext<'a> {
     // TODO Consolidate
     fn cpo(&mut self, addr: u16) {
         if !self.registers.parity {
+            self.registers.prev_pc = self.registers.pc;
             self.call(addr);
         } else {
             self.adv_cycles(11);
@@ -820,6 +821,7 @@ impl<'a> ExecutionContext<'a> {
     // CALL if plus (if sign bit is zero, indicating a positive result)
     fn cp(&mut self, addr: u16) {
         if !self.registers.sign {
+            self.registers.prev_pc = self.registers.pc;
             self.call(addr);
         } else {
             self.adv_cycles(11);
@@ -2223,11 +2225,13 @@ impl<'a> ExecutionContext<'a> {
     // Step one instruction
     pub fn step(&mut self, times: u8) {
         for _ in 0..times {
-            self.execute_instruction();
-            self.try_interrupt();
             if self.registers.debug {
                 println!("{:?}", self.registers);
             }
+
+            self.execute_instruction();
+            self.try_interrupt();
+
         }
     }
 
@@ -2546,10 +2550,11 @@ impl<'a> ExecutionContext<'a> {
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
             let ret = self.registers.pc;
-            self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
-            self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
-            self.registers.sp -= 2;
 
+            self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16) & 0xFF as u16) as u8;
+
+            self.registers.sp -= 2;
             self.registers.prev_pc = self.registers.pc;
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
