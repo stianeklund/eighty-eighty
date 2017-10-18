@@ -124,8 +124,8 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:>0} {:>7} {:>4} {:>8} {:>4} {:>4} {:>4} {:>4} {:>4}  {:>6}{:>6}{:>6}{:>6}{:>7}{:>7}",
-                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Intrpt");
+        writeln!(f, "{:>0} {:>7} {:>4} {:>8} {:>4} {:>4} {:>4} {:>4} {:>4}  {:>6}{:>6}{:>6}{:>6}{:>8}{:>10}",
+                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Interrupt");
         write!(
             f,
             "{}   {:04X}     {:04X} {     }     {:02X}  {:02X}{:02x} {:02X}{:02X} {:02X}{:02X} {:04X}     {} {} {} {} {} {}",
