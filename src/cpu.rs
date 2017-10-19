@@ -841,9 +841,9 @@ impl<'a> ExecutionContext<'a> {
                 let result = hl.wrapping_add(value);
 
                 self.registers.reg_h = (result >> 8) as u8;
-                self.registers.reg_l = result as u8;
-                // self.registers.carry = result & 0x10000 != 0;
-                self.registers.carry = result > 0xFF;
+                self.registers.reg_l = (result & 0xFF) as u8;
+
+                self.registers.carry = result < hl;
             }
 
             RegisterPair::DE => {
@@ -852,7 +852,7 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
-                self.registers.carry = result > 0xFF;
+                self.registers.carry = result < hl;
             }
 
             RegisterPair::HL => {
@@ -862,17 +862,17 @@ impl<'a> ExecutionContext<'a> {
                 );
                 let result = hl.wrapping_add(value);
 
-                self.registers.carry = result > 0xFF;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
+                self.registers.carry = result < hl;
             }
-            // DAD SP
+
             RegisterPair::SP => {
                 let result = hl.wrapping_add(self.registers.sp);
 
-                self.registers.carry = result > 0xFF;
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
+                self.registers.carry = result < hl;
             }
         }
         self.adv_cycles(10);
@@ -1661,12 +1661,12 @@ impl<'a> ExecutionContext<'a> {
     fn pop_psw(&mut self) {
         let sp = self.registers.sp as usize;
 
-        self.registers.reg_a = self.memory.memory[sp + 1];
-        self.registers.zero = self.memory.memory[sp] & 0x40 != 0;
-        self.registers.sign = self.memory.memory[sp] & 0x80 != 0;
-        self.registers.parity = self.memory.memory[sp] & 0x04 != 0;
-        self.registers.carry = self.memory.memory[sp] & 0x01 != 0;
-        self.registers.half_carry = self.memory.memory[sp] & 0x10 != 0;
+        self.registers.reg_a = self.memory.memory[sp as usize + 1];
+        self.registers.zero = self.memory.memory[sp as usize] & 0x40 != 0;
+        self.registers.sign = self.memory.memory[sp as usize] & 0x80 != 0;
+        self.registers.parity = self.memory.memory[sp as usize] & 0x04 != 0;
+        self.registers.carry = self.memory.memory[sp as usize] & 0x01 != 0;
+        self.registers.half_carry = self.memory.memory[sp as usize] & 0x10 != 0;
 
         self.registers.sp = sp.wrapping_add(2) as u16;
 
@@ -1698,6 +1698,9 @@ impl<'a> ExecutionContext<'a> {
 
         // Set program counter for debug output
         self.registers.prev_pc = self.registers.pc;
+        if self.registers.debug {
+            println!("Returning to {:04X}", ret);
+        }
 
         self.registers.pc = ret;
     }
@@ -1868,14 +1871,14 @@ impl<'a> ExecutionContext<'a> {
     // TODO Investigate RST(5)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-
         let ret = self.registers.pc;
+
         if self.registers.debug {
             println!("RST return address: {:04X}", ret);
         }
 
-        self.memory.memory[self.registers.sp as usize - 1] = (ret >> 8) as u8;
-        self.memory.memory[self.registers.sp as usize - 2] = ret as u8;
+        self.memory.memory[self.registers.sp as usize - 1] = (ret as u16 >> 8) as u8;
+        self.memory.memory[self.registers.sp as usize - 2] = (ret as u16) as u8;
 
 
         match value {
@@ -1890,7 +1893,7 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
-        self.registers.sp -= 2;
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
         if self.registers.debug {
             println!("Value: {:04X}", value);
         }
@@ -2281,9 +2284,12 @@ impl<'a> ExecutionContext<'a> {
     fn half_carry_sub(&self, mut value: u16) -> u16 {
         let sub = [0, 1, 1, 1, 0, 0, 0, 1];
         let a = (self.registers.reg_a & 0xFF) as u16;
+
         value &= 0xFF;
+
         let word: u16 = a.wrapping_sub(value).wrapping_add(0x100) & 0xFF;
         let row: u16 = (a & 0x88) >> 1 | ((value & 0x88) >> 2) | ((word & 0x88) >> 3);
+
         // Return half carry sub value
         sub[row as usize & 0x7]
     }
@@ -2315,8 +2321,9 @@ impl<'a> ExecutionContext<'a> {
             self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
             self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16) & 0xFF as u16) as u8;
 
-            self.registers.sp -= 2;
+            self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
+            println!("Servicing interrupt. Setting PC to: {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
     }

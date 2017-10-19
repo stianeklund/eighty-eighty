@@ -67,7 +67,7 @@ mod tests {
     fn cpu_test() {
         let mut i = Interconnect::new();
 
-        let duration = Duration::new(0, 2000);
+        let duration = Duration::new(0, 10);
         let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
@@ -110,7 +110,6 @@ mod tests {
                 if i.registers.reg_c == 2 {
                     print!("{}", i.registers.reg_e as char);
                 }
-                // sleep(duration);
             }
 
             if i.registers.pc == 0 {
@@ -119,6 +118,7 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", stack);
                 break;
             }
+            // sleep(duration);
         }
     }
     #[test]
@@ -140,6 +140,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
+
         'main: loop {
             i.execute_cpu();
 
@@ -147,6 +148,7 @@ mod tests {
                 panic!("Halting");
 
             }
+
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
             if i.registers.pc == 05 {
@@ -169,9 +171,11 @@ mod tests {
             }
             sleep(duration);
             if i.registers.pc == 0 {
+                let sp = i.memory.read_imm(i.registers.sp);
+                i.registers.sp += 2;
                 let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
                     i.memory.memory[i.registers.sp as usize] as u16;
-                println!("\nJump to 0 from {:04X}", stack);
+                println!("\nJump to 0 from {:04X}, {:04X}", stack, sp);
                 break;
             }
         }

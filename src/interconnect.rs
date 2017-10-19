@@ -24,11 +24,7 @@ impl Interconnect {
 
     // Step once when pressing a key
     pub fn step_cpu(&mut self) {
-        let step: bool = true;
-        if step {
-            println!("{:?}", self.registers);
-            io::stdin().read_line(&mut String::new()).unwrap();
-        }
+        io::stdin().read_line(&mut String::new()).unwrap();
         ExecutionContext::new(self).step(1);
 
     }
