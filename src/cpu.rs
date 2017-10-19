@@ -868,6 +868,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             RegisterPair::SP => {
+                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 let result = hl.wrapping_add(self.registers.sp);
 
                 self.registers.reg_h = (result >> 8) as u8;
@@ -975,22 +976,22 @@ impl<'a> ExecutionContext<'a> {
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let mut bc = self.registers.reg_b.wrapping_shl(8) | self.registers.reg_c;
-                bc = bc.wrapping_sub(1);
-                self.registers.reg_b = bc.wrapping_shl(8) & 0xFF;
-                self.registers.reg_c = bc.wrapping_shl(0) & 0xFF;
+                let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
+                let value = bc.wrapping_sub(1);
+                self.registers.reg_b = (value >> 8) as u8 & 0xFF;
+                self.registers.reg_c = (value as u8) & 0xFF;
             }
             RegisterPair::DE => {
-                let mut de = self.registers.reg_d.wrapping_shl(8) | self.registers.reg_e;
-                de = de.wrapping_sub(1);
-                self.registers.reg_d = de.wrapping_shl(8) & 0xFF;
-                self.registers.reg_e = de.wrapping_shl(0) & 0xFF;
+                let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
+                let value = de.wrapping_sub(1);
+                self.registers.reg_d = (value >> 8) as u8 & 0xFF;
+                self.registers.reg_e = (value as u8) & 0xFF;
             }
             RegisterPair::HL => {
-                let mut hl = self.registers.reg_h.wrapping_shl(8) | self.registers.reg_l;
-                hl = hl.wrapping_sub(1);
-                self.registers.reg_h = hl.wrapping_shl(8) & 0xFF;
-                self.registers.reg_l = hl.wrapping_shl(0) & 0xFF;
+                let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let value = hl.wrapping_sub(1);
+                self.registers.reg_h = (value >> 8) as u8 & 0xFF;
+                self.registers.reg_l = (value as u8) & 0xFF;
             }
             RegisterPair::SP => self.registers.sp = self.registers.sp.wrapping_sub(1),
         }
@@ -1232,9 +1233,10 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H
         // register.
         // L <- (adr); H<-(adr+1)
+        let addr = self.memory.read_imm(self.registers.pc);
 
-        self.registers.reg_l = self.memory.read_imm(self.registers.pc) as u8;
-        self.registers.reg_h = self.memory.read_imm(self.registers.pc + 1) as u8;
+        self.registers.reg_h = self.memory.memory[addr as usize + 1];
+        self.registers.reg_l = self.memory.memory[addr as usize];
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1910,9 +1912,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Store H & L direct
     fn shld(&mut self) {
-        let hl = (self.registers.reg_h as u16) << 8 | self.registers.reg_l as u16;
-        self.memory.memory[hl as usize + 1] = self.registers.reg_h;
-        self.memory.memory[hl as usize] = self.registers.reg_l;
+        let addr = self.memory.read_imm(self.registers.pc);
+        self.memory.memory[addr as usize + 1] = self.registers.reg_h;
+        self.memory.memory[addr as usize] = self.registers.reg_l;
 
         self.adv_cycles(16);
         self.adv_pc(3);

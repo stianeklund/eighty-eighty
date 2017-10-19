@@ -82,7 +82,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
+        // i.registers.debug = true;
         let mut cycles = 0;
 
         'main: loop {
@@ -92,6 +92,12 @@ mod tests {
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
+            /* if i.registers.reg_h == 0xFF && i.registers.reg_l == 0xFF {
+                i.registers.debug = true;
+                if i.registers.reg_l == 0xB0 {
+                    break;
+                }
+            }*/
 
             // If PC is 5 we're at the return address we set earlier.
             if i.registers.pc == 05 {
