@@ -53,7 +53,8 @@ impl Memory {
         (self.memory[addr as usize - 1] as u16) >> 8 | (self.memory[addr as usize - 2] as u16)
     }
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        u16::from((self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16))
+        // u16::from((self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16))
+        (self.read_byte(addr + 1) as u16) << 8 | (self.read_byte(addr) as u16)
     }
     pub fn write_memory(&mut self, addr: u16) {
         u16::from((self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16));

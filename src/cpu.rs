@@ -128,7 +128,7 @@ impl fmt::Debug for Registers {
                  "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Interrupt");
         write!(
             f,
-            "{}   {:04X}     {:04X} {     }     {:02X}  {:02X}{:02x} {:02X}{:02X} {:02X}{:02X} {:04X}     {} {} {} {} {} {}",
+            "{}   {:04X}     {:04X} {     }     {:02X}  {:02X}{:02X} {:02X}{:02X} {:02X}{:02X} {:04X}     {} {} {} {} {} {}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
@@ -566,10 +566,11 @@ impl<'a> ExecutionContext<'a> {
     fn sta(&mut self) {
         let addr = self.memory.read_imm(self.registers.pc);
 
-
         self.memory.memory[addr as usize] = self.registers.reg_a;
+
         if self.registers.debug {
-            // println!("STA, storing accumulator in memory: {:04X}", self.memory.memory[addr as usize]);
+            println!("STA, storing accumulator in memory: {:02X}", self.memory.memory[addr as usize]);
+            println!("HL Memory value:{:04X}", self.memory.memory[self.get_hl() as usize]);
         }
         self.adv_pc(3);
         self.adv_cycles(13);
@@ -688,94 +689,58 @@ impl<'a> ExecutionContext<'a> {
     // Compare Register or Memory With Accumulator
     fn cmp(&mut self, reg: Register) {
 
-        let result = self.registers.reg_a;
 
+        let mut result = 0;
         match reg {
             Register::A => {
-                if result < self.registers.reg_a {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_a {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_a {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_a);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_a;
             }
+
             Register::B => {
-                if result < self.registers.reg_b {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_b {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_b {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_b);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_b;
+
             }
             Register::C => {
-                if result < self.registers.reg_c {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_c {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_c {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
-            }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_c);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_c;
+            },
             Register::D => {
-                if result < self.registers.reg_d {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_d {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_d {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
-            }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_d);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_d;
+            },
             Register::E => {
-                if result < self.registers.reg_e {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_e {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_e {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_e);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_e;
             }
             Register::H => {
-                if result < self.registers.reg_h {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_h {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_h {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_h);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_h;
+
             }
             Register::L => {
-                if result < self.registers.reg_l {
-                    self.registers.carry = true;
-                } else if result == self.registers.reg_l {
-                    self.registers.zero = true;
-                } else if result > self.registers.reg_l {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                result = self.registers.reg_a.wrapping_sub(self.registers.reg_l);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < self.registers.reg_l;
             }
             Register::M => {
-                let hl = u16::from(
-                    (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16),
-                );
-                if result < hl as u8 {
-                    self.registers.carry = true;
-                } else if result == hl as u8 {
-                    self.registers.zero = true;
-                } else if result > hl as u8 {
-                    self.registers.carry = true;
-                    self.registers.zero = true;
-                }
+                let mem = self.memory.memory[((self.registers.reg_h as u16) as usize) << 8 | (self.registers.reg_l as u16) as usize];
+                result = self.registers.reg_a.wrapping_sub(mem);
+                self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
+                self.registers.carry = self.registers.reg_a < mem;
                 self.adv_cycles(4);
             }
-        };
+        }
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.parity = self.parity(result & 0xFF);;
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -988,10 +953,10 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_e = (value as u8) & 0xFF;
             }
             RegisterPair::HL => {
-                let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let hl =  self.get_hl();
                 let value = hl.wrapping_sub(1);
                 self.registers.reg_h = (value >> 8) as u8 & 0xFF;
-                self.registers.reg_l = (value as u8) & 0xFF;
+                self.registers.reg_l = value as u8 & 0xFF;
             }
             RegisterPair::SP => self.registers.sp = self.registers.sp.wrapping_sub(1),
         }
@@ -1292,7 +1257,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.parity = self.parity(value as u8);
             }
             Register::C => {
-                let value = self.registers.reg_c.wrapping_add(1);
+                // self.registers.reg_c += 1;
+                let value: u8 = self.registers.reg_c.wrapping_add(1);
                 self.registers.reg_c = value & 0xFF;
                 self.registers.sign = value & 0x80 != 0;
                 self.registers.zero = value == 0;
@@ -1303,10 +1269,7 @@ impl<'a> ExecutionContext<'a> {
                 let value = self.registers.reg_d.wrapping_add(1);
                 self.registers.reg_d = value & 0xFF;
                 self.registers.sign = value & 0x80 != 0;
-                if value == 0 {
-                    self.registers.zero = true
-                };
-                // self.registers.zero = value == 0;
+                self.registers.zero = value == 0;
                 self.registers.half_carry = !value & 0x0F == 0;
                 self.registers.parity = self.parity(value as u8);
             }
@@ -1417,7 +1380,8 @@ impl<'a> ExecutionContext<'a> {
             if self.registers.half_carry { 0x10 } else { 0x0 } | 0x02;
 
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
-        self.memory.memory[self.registers.sp as usize - 2] = psw as u8;
+        self.memory.memory[self.registers.sp as usize - 2] = psw;
+
         self.registers.sp = self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
@@ -1599,15 +1563,15 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn xchg(&mut self) {
-        let h = self.registers.reg_h;
-        let l = self.registers.reg_l;
-        let d = self.registers.reg_d;
-        let e = self.registers.reg_e;
-        self.registers.reg_h = d;
-        self.registers.reg_l = e;
+        use std::mem;
 
-        self.registers.reg_d = h;
-        self.registers.reg_e = l;
+        mem::swap(&mut self.registers.reg_h, &mut self.registers.reg_d);
+        mem::swap(&mut self.registers.reg_l, &mut self.registers.reg_e);
+
+        // self.registers.reg_l = e;
+        // self.registers.reg_d = h;
+        // self.registers.reg_e = l;
+
 
         self.adv_cycles(5);
         self.adv_pc(1);
@@ -1663,7 +1627,9 @@ impl<'a> ExecutionContext<'a> {
     fn pop_psw(&mut self) {
         let sp = self.registers.sp as usize;
 
-        self.registers.reg_a = self.memory.memory[sp as usize + 1];
+        self.registers.reg_a = (self.memory.read_word(self.registers.sp) >> 8) as u8;
+
+        // self.registers.reg_a = self.memory.memory[sp as usize + 1];
         self.registers.zero = self.memory.memory[sp as usize] & 0x40 != 0;
         self.registers.sign = self.memory.memory[sp as usize] & 0x80 != 0;
         self.registers.parity = self.memory.memory[sp as usize] & 0x04 != 0;
@@ -1797,7 +1763,8 @@ impl<'a> ExecutionContext<'a> {
         match dst {
             Register::A => {
                 if src == Register::M {
-                    self.registers.reg_a = self.memory.memory[addr as usize];
+                    self.registers.reg_a = self.memory.read_byte(addr);
+                    // self.registers.reg_a = self.memory.memory[addr as usize] as u8;
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value)
@@ -1805,7 +1772,9 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::B => {
                 if src == Register::M {
-                    self.registers.reg_b = self.memory.memory[addr as usize];
+                    let hl = self.get_hl();
+                    self.registers.reg_b = self.memory.read_byte(hl);
+                    println!("HL Memory value:{:04X}", self.memory.memory[self.get_hl() as usize]);
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1813,7 +1782,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::C => {
                 if src == Register::M {
-                    self.registers.reg_c = self.memory.memory[addr as usize];
+                    self.registers.reg_c = self.memory.read_byte(addr);
+                    // self.registers.reg_c = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1821,7 +1791,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::D => {
                 if src == Register::M {
-                    self.registers.reg_d = self.memory.memory[addr as usize];
+                    self.registers.reg_d = self.memory.read_byte(addr);
+                    // self.registers.reg_d = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1829,7 +1800,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::E => {
                 if src == Register::M {
-                    self.registers.reg_e = self.memory.memory[addr as usize];
+                    self.registers.reg_e = self.memory.read_byte(addr);
+                    // self.registers.reg_e = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1837,7 +1809,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::H => {
                 if src == Register::M {
-                    self.registers.reg_h = self.memory.memory[addr as usize];
+                    self.registers.reg_h = self.memory.read_byte(addr);
+                    // self.registers.reg_h = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1845,7 +1818,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::L => {
                 if src == Register::M {
-                    self.registers.reg_l = self.memory.memory[addr as usize];
+                    self.registers.reg_l = self.memory.read_byte(addr);
+                    // self.registers.reg_l = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -2294,6 +2268,10 @@ impl<'a> ExecutionContext<'a> {
 
         // Return half carry sub value
         sub[row as usize & 0x7]
+    }
+    fn get_hl(&self) -> u16 {
+        (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16)
+
     }
     fn parity(&self, mut value: u8) -> bool {
         let parity_table = [

@@ -84,6 +84,7 @@ mod tests {
 
         // i.registers.debug = true;
         let mut cycles = 0;
+        let hl = (i.registers.reg_h as u16) << 8 | (i.registers.reg_l as u16);
 
         'main: loop {
             // i.step_cpu();
@@ -92,9 +93,15 @@ mod tests {
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
+
+            /* if i.registers.prev_pc == 0x3589 && i.registers.reg_a == 0x02 && i.registers.reg_c == 0x05 {
+                println!("B register: {:02X}, Mem location value: {:04X}", i.registers.reg_b, i.memory.memory[hl as usize]);
+                panic!();
+            }*/
+
             /* if i.registers.reg_h == 0xFF && i.registers.reg_l == 0xFF {
                 i.registers.debug = true;
-                if i.registers.reg_l == 0xB0 {
+                if i.registers.reg_c == 19 {
                     break;
                 }
             }*/
@@ -131,8 +138,8 @@ mod tests {
     fn cpu_ex1() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        let duration = Duration::new(0, 15120);
-        let bin: &str = "8080EX1.COM";
+        let duration = Duration::new(0, 0);
+        let bin: &str = "TEST.COM";
         i.memory.load_tests(bin);
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
@@ -145,6 +152,7 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
+        i.registers.debug = true;
 
 
         'main: loop {
@@ -175,7 +183,7 @@ mod tests {
                     print!("{}", i.registers.reg_e as char);
                 }
             }
-            sleep(duration);
+            // sleep(duration);
             if i.registers.pc == 0 {
                 let sp = i.memory.read_imm(i.registers.sp);
                 i.registers.sp += 2;
