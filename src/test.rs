@@ -54,8 +54,7 @@ mod tests {
             }
 
             if i.registers.pc == 0 {
-                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 | i.memory.memory[i.registers.sp as usize] as u16;
-                println!("\nJump to 0 from {:04X}", stack);
+                println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
             }
             // sleep(duration);
@@ -83,6 +82,7 @@ mod tests {
         i.registers.pc = 0x0100;
 
         // i.registers.debug = true;
+        let sta_addr = i.memory.memory[0x345B];
         let mut cycles = 0;
         let hl = (i.registers.reg_h as u16) << 8 | (i.registers.reg_l as u16);
 
@@ -93,11 +93,6 @@ mod tests {
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
             }
-
-            /* if i.registers.prev_pc == 0x3589 && i.registers.reg_a == 0x02 && i.registers.reg_c == 0x05 {
-                println!("B register: {:02X}, Mem location value: {:04X}", i.registers.reg_b, i.memory.memory[hl as usize]);
-                panic!();
-            }*/
 
             /* if i.registers.reg_h == 0xFF && i.registers.reg_l == 0xFF {
                 i.registers.debug = true;
@@ -126,9 +121,7 @@ mod tests {
             }
 
             if i.registers.pc == 0 {
-                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
-                    i.memory.memory[i.registers.sp as usize] as u16;
-                println!("\nJump to 0 from {:04X}", stack);
+                println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
             }
             // sleep(duration);
@@ -152,7 +145,7 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
-        i.registers.debug = true;
+        i.registers.debug = false;
 
 
         'main: loop {
@@ -185,11 +178,7 @@ mod tests {
             }
             // sleep(duration);
             if i.registers.pc == 0 {
-                let sp = i.memory.read_imm(i.registers.sp);
-                i.registers.sp += 2;
-                let stack = (i.memory.memory[i.registers.sp as usize + 1] as u16) << 8 |
-                    i.memory.memory[i.registers.sp as usize] as u16;
-                println!("\nJump to 0 from {:04X}, {:04X}", stack, sp);
+                println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
             }
         }
