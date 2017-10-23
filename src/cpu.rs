@@ -648,11 +648,11 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.carry = self.registers.reg_a < self.registers.reg_l;
             }
             Register::M => {
-                let mem = self.memory.memory[((self.registers.reg_h as u16) as usize) << 8 | (self.registers.reg_l as u16) as usize];
+                let mem = self.memory.memory[self.get_hl() as usize];
                 result = self.registers.reg_a.wrapping_sub(mem);
                 self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
                 self.registers.carry = self.registers.reg_a < mem;
-                self.adv_cycles(4);
+                self.adv_cycles(3);
             }
         }
         self.registers.zero = result & 0xFF == 0;
@@ -1396,12 +1396,12 @@ impl<'a> ExecutionContext<'a> {
             Register::E => reg_a.wrapping_sub(self.registers.reg_e),
             Register::H => reg_a.wrapping_sub(self.registers.reg_h),
             Register::L => reg_a.wrapping_sub(self.registers.reg_l),
-            Register::M => reg_a.wrapping_sub(self.registers.reg_m),
+            Register::M => {
+                self.adv_cycles(3);
+                reg_a.wrapping_sub(self.registers.reg_m)
+            },
         };
 
-        if reg == Register::M {
-            self.adv_cycles(4);
-        }
 
         self.registers.reg_a = reg_a;
         self.registers.half_carry = self.half_carry_sub((reg_a & 0xFF) as u16) != 0;
@@ -1448,8 +1448,7 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_a ^= self.registers.reg_h,
             Register::L => self.registers.reg_a ^= self.registers.reg_l,
             Register::M => {
-                let value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                self.registers.reg_a ^= value as u8;
+                self.registers.reg_a ^= self.get_hl() as u8;
                 self.adv_cycles(3);
             }
         }
@@ -1466,7 +1465,7 @@ impl<'a> ExecutionContext<'a> {
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        let value = self.memory.read_byte(self.registers.pc + 1);
+        let value = self.memory.read_next_byte(self.registers.pc);
         self.registers.reg_a ^= value;
 
         self.registers.half_carry = false;
@@ -1485,11 +1484,6 @@ impl<'a> ExecutionContext<'a> {
         mem::swap(&mut self.registers.reg_h, &mut self.registers.reg_d);
         mem::swap(&mut self.registers.reg_l, &mut self.registers.reg_e);
 
-        // self.registers.reg_l = e;
-        // self.registers.reg_d = h;
-        // self.registers.reg_e = l;
-
-
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -1499,13 +1493,12 @@ impl<'a> ExecutionContext<'a> {
         // Swap H:L with top word on stack
         let old_h = self.registers.reg_h;
         let old_l = self.registers.reg_l;
-
         let new_h = self.memory.memory[self.registers.sp as usize + 1];
         let new_l = self.memory.memory[self.registers.sp as usize];
 
-
         self.registers.reg_h = new_h;
         self.registers.reg_l = new_l;
+
         // Write old HL values to memory
         self.memory.memory[self.registers.sp as usize + 1] = old_h;
         self.memory.memory[self.registers.sp as usize] = old_l;
