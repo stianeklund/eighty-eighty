@@ -1113,82 +1113,47 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn inr(&mut self, reg: Register) {
+        let mut value = 0;
         match reg {
             Register::A => {
-                let value = self.registers.reg_a.wrapping_add(1);
+                value = self.registers.reg_a.wrapping_add(1);
                 self.registers.reg_a = value & 0xFF;
-
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::B => {
-                let value = self.registers.reg_b.wrapping_add(1);
+                value = self.registers.reg_b.wrapping_add(1);
                 self.registers.reg_b = value & 0xFF;
-
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::C => {
-                // self.registers.reg_c += 1;
-                let value: u8 = self.registers.reg_c.wrapping_add(1);
+                value = self.registers.reg_c.wrapping_add(1);
                 self.registers.reg_c = value & 0xFF;
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::D => {
-                let value = self.registers.reg_d.wrapping_add(1);
+                value = self.registers.reg_d.wrapping_add(1);
                 self.registers.reg_d = value & 0xFF;
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::E => {
-                let value = self.registers.reg_e.wrapping_add(1);
+                value = self.registers.reg_e.wrapping_add(1);
                 self.registers.reg_e = value & 0xFF;
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::H => {
-                let value = self.registers.reg_h.wrapping_add(1);
+                value = self.registers.reg_h.wrapping_add(1);
                 self.registers.reg_h = value & 0xFF;
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::L => {
-                let value = self.registers.reg_l.wrapping_add(1);
+                value = self.registers.reg_l.wrapping_add(1);
                 self.registers.reg_l = value & 0xFF;
-                self.registers.sign = value & 0x80 != 0;
-                self.registers.zero = value == 0;
-                self.registers.half_carry = !value & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
             }
             Register::M => {
-                let value = (self.registers.reg_h.wrapping_add(1) as u16) << 8 | (self.registers.reg_l.wrapping_add(1) as u16);
-                self.registers.reg_h = value as u8 & 0xFF;
-
-                self.registers.sign = value as u8 & 0x80 != 0;
-                self.registers.zero = value as u8 == 0;
-                self.registers.half_carry = !value as u8 & 0x0F == 0;
-                self.registers.parity = self.parity(value as u8);
+                let hl = (self.registers.reg_h.wrapping_add(1) as u16) << 8 | (self.registers.reg_l.wrapping_add(1) as u16);
+                value = hl as u8;
+                self.adv_cycles(5);
             }
-        };
-
-        if reg == Register::M {
-            self.adv_cycles(10);
-        } else {
-            self.adv_cycles(5);
         }
+        self.registers.zero = value & 0xFF == 0;
+        self.registers.sign = value & 0x80 != 0;
+        self.registers.half_carry = !value & 0x0F == 0x00;
+        self.registers.parity = self.parity(value as u8);
+        self.adv_cycles(5);
         self.adv_pc(1);
     }
 
