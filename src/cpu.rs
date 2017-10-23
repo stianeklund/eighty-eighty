@@ -2,7 +2,6 @@ use std::fmt;
 use opcode::{Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
-use std::io;
 
 // Intel 8080 Notes:
 ///
@@ -1310,35 +1309,35 @@ impl<'a> ExecutionContext<'a> {
 
     // SUB Subtract Register or Memory From Accumulator
     fn sub(&mut self, reg: Register) {
-        let mut reg_a = self.registers.reg_a;
+        let mut result = 0;
 
         match reg {
-            Register::A => reg_a.wrapping_sub(self.registers.reg_a),
-            Register::B => reg_a.wrapping_sub(self.registers.reg_b),
-            Register::C => reg_a.wrapping_sub(self.registers.reg_c),
-            Register::D => reg_a.wrapping_sub(self.registers.reg_d),
-            Register::E => reg_a.wrapping_sub(self.registers.reg_e),
-            Register::H => reg_a.wrapping_sub(self.registers.reg_h),
-            Register::L => reg_a.wrapping_sub(self.registers.reg_l),
+            Register::A => result = self.registers.reg_a.wrapping_sub(self.registers.reg_a),
+            Register::B => result = self.registers.reg_a.wrapping_sub(self.registers.reg_b),
+            Register::C => result = self.registers.reg_a.wrapping_sub(self.registers.reg_c),
+            Register::D => result = self.registers.reg_a.wrapping_sub(self.registers.reg_d),
+            Register::E => result = self.registers.reg_a.wrapping_sub(self.registers.reg_e),
+            Register::H => result = self.registers.reg_a.wrapping_sub(self.registers.reg_h),
+            Register::L => result = self.registers.reg_a.wrapping_sub(self.registers.reg_l),
             Register::M => {
                 self.adv_cycles(3);
-                reg_a.wrapping_sub(self.memory.memory[self.get_hl() as usize])
-            },
-        };
+                result = self.registers.reg_a.wrapping_sub(self.memory.memory[self.get_hl() as usize]);
+            }
+        }
+        self.registers.reg_a = result & 0xFF;
 
-
-        self.registers.reg_a = reg_a;
-        self.registers.half_carry = self.half_carry_sub((reg_a & 0xFF) as u16) != 0;
-        self.registers.parity = self.parity(reg_a);
-        self.registers.zero = reg_a & 0xFF == 0;
-        self.registers.sign = reg_a & 0x80 != 0;
-        self.registers.carry = reg_a & 0x0100 != 0;
+        self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
+        self.registers.parity = self.parity(result);
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.carry = result & 0x0100 != 0;
 
         self.adv_cycles(4);
         self.adv_pc(1);
+        panic!();
     }
 
-    // SUB Subtract Immediate From Accumulator
+    // SUI Subtract Immediate From Accumulator
     fn sui(&mut self) {
         let mut imm = self.memory.read_imm(self.registers.pc);
         let value = self.registers.reg_a.wrapping_sub(imm as u8) as u16;
@@ -1372,8 +1371,8 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_a ^= self.registers.reg_h,
             Register::L => self.registers.reg_a ^= self.registers.reg_l,
             Register::M => {
-                self.registers.reg_a ^= self.get_hl() as u8;
                 self.adv_cycles(3);
+                self.registers.reg_a ^= self.memory.memory[self.get_hl() as usize];
             }
         }
 

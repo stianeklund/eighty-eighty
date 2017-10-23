@@ -25,7 +25,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = false;
+        i.registers.debug = true;
         'main: loop {
             i.execute_cpu();
             if i.registers.pc == 0x76 {
@@ -81,7 +81,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = false;
+        i.registers.debug = true;
         let mut cycles = 0;
 
         'main: loop {
