@@ -769,89 +769,48 @@ impl<'a> ExecutionContext<'a> {
         // and memory location 3A7CH contains 40H, the instruction:
         // DCR M will cause memory location 3A7CH to contain 3FH.
 
+        let mut value = 0;
+
         match reg {
             Register::A => {
-                let value = self.registers.reg_a.wrapping_sub(1);
+                value = self.registers.reg_a.wrapping_sub(1);
                 self.registers.reg_a = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::B => {
-                let value = self.registers.reg_b.wrapping_sub(1);
+                value = self.registers.reg_b.wrapping_sub(1);
                 self.registers.reg_b = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::C => {
-                let value = self.registers.reg_c.wrapping_sub(1);
+                value = self.registers.reg_c.wrapping_sub(1);
                 self.registers.reg_c = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::D => {
-                let value = self.registers.reg_d.wrapping_sub(1);
+                value = self.registers.reg_d.wrapping_sub(1);
                 self.registers.reg_d = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::E => {
-                let value = self.registers.reg_e.wrapping_sub(1);
+                value = self.registers.reg_e.wrapping_sub(1);
                 self.registers.reg_e = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::H => {
-                let value = self.registers.reg_h.wrapping_sub(1);
+                value = self.registers.reg_h.wrapping_sub(1);
                 self.registers.reg_h = value & 0xFF;
-                self.registers.half_carry = value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
             Register::L => {
-                let value = self.registers.reg_l.wrapping_sub(1);
+                value = self.registers.reg_l.wrapping_sub(1);
                 self.registers.reg_l = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(5);
             }
-
-            // TODO Investigate if this should change or read from H or L registers
             Register::M => {
-                let value = self.registers.reg_m.wrapping_sub(1);
-
-                self.registers.reg_m = value & 0xFF;
-                self.registers.half_carry = !value & 0x0F == 0x0F;
-                self.registers.zero = value & 0xFF == 0;
-                self.registers.parity = self.parity(value & 0xFF);
-                self.registers.sign = value & 0x80 != 0;
-                self.adv_cycles(6);
+                let value = self.get_hl().wrapping_sub(1);
+                self.memory.memory[value as usize & 0xFF];
+                self.adv_cycles(5);
             }
         }
+        self.registers.half_carry = !value & 0x0F == 0x0F;
+        self.registers.zero = value & 0xFF == 0;
+        self.registers.parity = self.parity(value & 0xFF);
+        self.registers.sign = value & 0x80 != 0;
+        self.adv_cycles(5);
         self.adv_pc(1);
     }
 
