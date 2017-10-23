@@ -1281,7 +1281,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = self.half_carry_sub((reg_a & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(reg_a);
         // If the result from the subtraction is 1 the zero bit is set
-        self.registers.zero = reg_a == 0;
+        self.registers.zero = reg_a & 0xFF == 0;
         self.registers.sign = reg_a & 0x80 != 0;
         // Check if the carry bit is set if our result
         self.registers.carry = reg_a & 0x0100 != 0;
@@ -1300,7 +1300,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = value as u8;
         self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(value as u8);
-        self.registers.zero = value == 0;
+        self.registers.zero = value & 0xFF == 0;
         self.registers.sign = value & 0x80 != 0;
         self.registers.carry = value & 0x0100 != 0;
 
@@ -1322,7 +1322,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => reg_a.wrapping_sub(self.registers.reg_l),
             Register::M => {
                 self.adv_cycles(3);
-                reg_a.wrapping_sub(self.registers.reg_m)
+                reg_a.wrapping_sub(self.memory.memory[self.get_hl() as usize])
             },
         };
 
@@ -1330,7 +1330,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = reg_a;
         self.registers.half_carry = self.half_carry_sub((reg_a & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(reg_a);
-        self.registers.zero = reg_a == 0;
+        self.registers.zero = reg_a & 0xFF == 0;
         self.registers.sign = reg_a & 0x80 != 0;
         self.registers.carry = reg_a & 0x0100 != 0;
 
