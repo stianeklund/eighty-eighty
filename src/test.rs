@@ -25,7 +25,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
+        i.registers.debug = false;
         'main: loop {
             i.execute_cpu();
             if i.registers.pc == 0x76 {
@@ -70,7 +70,7 @@ mod tests {
         let bin: &str = "TEST.COM";
         i.memory.load_tests(bin);
 
-        // Inject RET (0xC9) at 0x0005 to handle CALL 5
+        // Inject RET (0xC9) at 0x0005 to handle CALL 5h
         // CALL 5 is the last subroutine call in the test.
         // If successful it should return to 0x0005.
         i.memory.memory[5] = 0xC9;
@@ -81,7 +81,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
+        i.registers.debug = false;
         let mut cycles = 0;
 
         'main: loop {

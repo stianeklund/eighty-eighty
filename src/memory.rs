@@ -34,18 +34,11 @@ impl Memory {
     pub fn read_next_byte(&mut self, byte: u16) -> u8 {
         self.memory[byte as usize + 1]
     }
-    pub fn write_byte(&mut self, addr: u16, mut byte: u16) {
-        byte = self.memory[addr as usize & 0xFFFF] as u16;
-    }
+
     // Read immediate value
     pub fn read_imm(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
     }
-    // Create register pair
-    pub fn create_rp(&mut self, reg1: u8, reg2: u8) -> u16 {
-        (self.memory[reg1 as usize + 2] as u16) << 8 | (self.memory[reg2 as usize + 1] as u16)
-    }
-
     pub fn pop(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16)
     }
@@ -53,7 +46,6 @@ impl Memory {
         (self.memory[addr as usize - 1] as u16) >> 8 | (self.memory[addr as usize - 2] as u16)
     }
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        // u16::from((self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16))
         (self.read_byte(addr + 1) as u16) << 8 | (self.read_byte(addr) as u16)
     }
     pub fn write_memory(&mut self, addr: u16) {
@@ -66,11 +58,6 @@ impl Memory {
 
     pub fn read_low(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize + 1]
-    }
-
-    pub fn write_word(&mut self, addr: u16, word: u16) {
-        self.write_byte(addr, word & 0xFF);
-        self.write_byte(addr + 1, (word >> 8) & 0xFF);
     }
 
     // Reads the memory address and returns a 16 bit integer, for self.pc / sp

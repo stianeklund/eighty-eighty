@@ -3,7 +3,7 @@ use opcode::{Register, RegisterPair};
 use memory::Memory;
 use interconnect::Interconnect;
 
-// Intel 8080 Notes:
+/// Intel 8080 Notes:
 ///
 /// The Intel 8080 has 7 8-bit registers (A,B,C,D,E,H and L).
 /// The A register is the primary 8-bit accumulator.
@@ -206,21 +206,20 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn adc(&mut self, reg: Register) {
-        let mut value = 0;
-
-        match reg {
-            Register::A => value = self.registers.reg_a + self.registers.reg_a + (self.registers.carry as u8),
-            Register::B => value = self.registers.reg_a + self.registers.reg_b + (self.registers.carry as u8),
-            Register::C => value = self.registers.reg_a + self.registers.reg_c + (self.registers.carry as u8),
-            Register::D => value = self.registers.reg_a + self.registers.reg_d + (self.registers.carry as u8),
-            Register::E => value = self.registers.reg_a + self.registers.reg_e + (self.registers.carry as u8),
-            Register::H => value = self.registers.reg_a + self.registers.reg_h + (self.registers.carry as u8),
-            Register::L => value = self.registers.reg_a + self.registers.reg_l + (self.registers.carry as u8),
+        // TODO Investigate if wrapping is necessary.
+        let value = match reg {
+            Register::A => self.registers.reg_a + self.registers.reg_a + (self.registers.carry as u8),
+            Register::B => self.registers.reg_a + self.registers.reg_b + (self.registers.carry as u8),
+            Register::C => self.registers.reg_a + self.registers.reg_c + (self.registers.carry as u8),
+            Register::D => self.registers.reg_a + self.registers.reg_d + (self.registers.carry as u8),
+            Register::E => self.registers.reg_a + self.registers.reg_e + (self.registers.carry as u8),
+            Register::H => self.registers.reg_a + self.registers.reg_h + (self.registers.carry as u8),
+            Register::L => self.registers.reg_a + self.registers.reg_l + (self.registers.carry as u8),
             Register::M => {
-                value = self.get_hl() as u8 + self.registers.carry as u8;
                 self.adv_cycles(3);
+                self.get_hl() as u8 + self.registers.carry as u8
             }
-        }
+        };
 
         self.registers.reg_a = value & 0xFF;
         self.registers.zero = value & 0xFF == 0;
@@ -228,29 +227,27 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = (value & 0x0100) != 0;
         self.registers.parity = self.parity(value as u8 & 0xFF);
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
+
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     fn add(&mut self, reg: Register) {
-        let mut value = self.registers.reg_a;
-
-        match reg {
-            Register::A => value += self.registers.reg_a,
-            Register::B => value += self.registers.reg_b,
-            Register::C => value += self.registers.reg_c,
-            Register::D => value += self.registers.reg_d,
-            Register::E => value += self.registers.reg_e,
-            Register::H => value += self.registers.reg_h,
-            Register::L => value += self.registers.reg_l,
+        let value = match reg {
+            Register::A => self.registers.reg_a.wrapping_add(self.registers.reg_a),
+            Register::B => self.registers.reg_a.wrapping_add(self.registers.reg_b),
+            Register::C => self.registers.reg_a.wrapping_add(self.registers.reg_c),
+            Register::D => self.registers.reg_a.wrapping_add(self.registers.reg_d),
+            Register::E => self.registers.reg_a.wrapping_add(self.registers.reg_e),
+            Register::H => self.registers.reg_a.wrapping_add(self.registers.reg_h),
+            Register::L => self.registers.reg_a.wrapping_add(self.registers.reg_l),
             Register::M => {
-                value += self.get_hl() as u8;
                 self.adv_cycles(3);
+                self.registers.reg_a.wrapping_add(self.get_hl() as u8)
             }
-        }
+        };
 
         self.registers.reg_a = value & 0xFF;
-
         self.registers.zero = value & 0xFF == 0;
         self.registers.sign = value & 0x80 != 0;
         self.registers.half_carry = self.half_carry_add(value as u16) != 0;
@@ -263,24 +260,21 @@ impl<'a> ExecutionContext<'a> {
 
     fn ana(&mut self, reg: Register) {
         // Check if the 4th bit is set on all registers
-        let mut value = 0;
-
-        match reg {
-            Register::A => value = self.registers.reg_a,
-            Register::B => value = self.registers.reg_b,
-            Register::C => value = self.registers.reg_c,
-            Register::D => value = self.registers.reg_d,
-            Register::E => value = self.registers.reg_e,
-            Register::H => value = self.registers.reg_h,
-            Register::L => value = self.registers.reg_l,
+        let value = match reg {
+            Register::A => self.registers.reg_a,
+            Register::B => self.registers.reg_b,
+            Register::C => self.registers.reg_c,
+            Register::D => self.registers.reg_d,
+            Register::E => self.registers.reg_e,
+            Register::H => self.registers.reg_h,
+            Register::L => self.registers.reg_l,
             Register::M => {
-                value = self.get_hl() as u8;
                 self.adv_cycles(3);
+                self.get_hl() as u8
             }
-        }
+        };
         // And value with accumulator
         self.registers.reg_a &= value;
-
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
         self.registers.zero = self.registers.reg_a & 0xFF != 0;
         self.registers.carry = false;
@@ -297,7 +291,6 @@ impl<'a> ExecutionContext<'a> {
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
         self.registers.reg_a &= self.memory.read_imm(self.registers.pc) as u8;
-
         self.registers.half_carry = (self.registers.pc | self.registers.pc) & 0x08 != 0;
         self.registers.zero = self.registers.reg_a == 0;
         self.parity(self.registers.reg_a);
@@ -328,16 +321,15 @@ impl<'a> ExecutionContext<'a> {
     // Add Immediate to Accumulator
     fn adi(&mut self) {
         // Read next byte of immediate data (low).
-        let next_byte = self.memory.read_next_byte(self.registers.pc);
-        let result = (next_byte as u8).wrapping_add(self.registers.reg_a);
+        let imm = self.memory.read_next_byte(self.registers.pc);
+        let result = (imm as u8).wrapping_add(self.registers.reg_a);
 
         // Add immediate data + old accumulator values to new accumulator.
         self.registers.reg_a = result & 0xFF;
         self.registers.parity = self.parity(self.registers.reg_a);
         self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-
-        // Should we perform evaluation of the next byte of immediate here or with result?
+        // TODO Investigate, should we perform evaluation of the next byte or with the result?
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
 
@@ -442,10 +434,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Jump to address in H:L
     fn pchl(&mut self) {
-        let hl: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
         self.adv_cycles(5);
         self.registers.prev_pc = self.registers.pc;
-        self.registers.pc = hl;
+        self.registers.pc = self.get_hl();
     }
 
     // Load Register Pair Immediate
@@ -480,12 +471,12 @@ impl<'a> ExecutionContext<'a> {
 
     // Store Accumulator direct
     fn sta(&mut self) {
-        let addr = self.memory.read_imm(self.registers.pc);
+        let imm = self.memory.read_imm(self.registers.pc);
 
-        self.memory.memory[addr as usize] = self.registers.reg_a;
+        self.memory.memory[imm as usize] = self.registers.reg_a;
 
         if self.registers.debug {
-            println!("STA, storing accumulator in memory: {:02X}", self.memory.memory[addr as usize]);
+            println!("STA, storing accumulator in memory: {:02X}", self.memory.memory[imm as usize]);
             println!("HL Memory value:{:04X}", self.memory.memory[self.get_hl() as usize]);
         }
         self.adv_pc(3);
@@ -604,9 +595,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Compare Register or Memory With Accumulator
     fn cmp(&mut self, reg: Register) {
+        // TODO verify result
+        let mut result;
 
-
-        let mut result = 0;
         match reg {
             Register::A => {
                 result = self.registers.reg_a.wrapping_sub(self.registers.reg_a);
@@ -624,12 +615,12 @@ impl<'a> ExecutionContext<'a> {
                 result = self.registers.reg_a.wrapping_sub(self.registers.reg_c);
                 self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
                 self.registers.carry = self.registers.reg_a < self.registers.reg_c;
-            },
+            }
             Register::D => {
                 result = self.registers.reg_a.wrapping_sub(self.registers.reg_d);
                 self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
                 self.registers.carry = self.registers.reg_a < self.registers.reg_d;
-            },
+            }
             Register::E => {
                 result = self.registers.reg_a.wrapping_sub(self.registers.reg_e);
                 self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
@@ -665,7 +656,6 @@ impl<'a> ExecutionContext<'a> {
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
         let byte = self.memory.read_next_byte(self.registers.pc);
-
         // Compare the result of the accumulator with the immediate address.
         let result = (self.registers.reg_a).wrapping_sub(byte as u8);
 
@@ -714,7 +704,7 @@ impl<'a> ExecutionContext<'a> {
         // Double precision ADD.
         // For these instructions, HL functions as an accumulator.
         // DAD B means BC + HL --> HL. DAD D means DE + HL -- HL.
-        let mut hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+        let mut hl = self.get_hl();
 
         match reg {
             RegisterPair::BC => {
@@ -726,7 +716,6 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.carry = result < hl;
             }
-
             RegisterPair::DE => {
                 let value = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
                 let result = hl.wrapping_add(value);
@@ -735,9 +724,8 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = result as u8;
                 self.registers.carry = result < hl;
             }
-
             RegisterPair::HL => {
-                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+                let mut value = self.get_hl();
                 value = value.wrapping_add(
                     (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16),
                 );
@@ -747,9 +735,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = result as u8;
                 self.registers.carry = result < hl;
             }
-
             RegisterPair::SP => {
-                let mut value = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
                 let result = hl.wrapping_add(self.registers.sp);
 
                 self.registers.reg_h = (result >> 8) as u8;
@@ -768,7 +754,7 @@ impl<'a> ExecutionContext<'a> {
         // and memory location 3A7CH contains 40H, the instruction:
         // DCR M will cause memory location 3A7CH to contain 3FH.
 
-        let mut value = 0;
+        let mut value;
 
         match reg {
             Register::A => {
@@ -800,7 +786,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = value & 0xFF;
             }
             Register::M => {
-                let value = self.get_hl().wrapping_sub(1);
+                value = self.get_hl().wrapping_sub(1) as u8;
                 self.memory.memory[value as usize & 0xFF];
                 self.adv_cycles(5);
             }
@@ -828,7 +814,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_e = (value as u8) & 0xFF;
             }
             RegisterPair::HL => {
-                let hl =  self.get_hl();
+                let hl = self.get_hl();
                 let value = hl.wrapping_sub(1);
                 self.registers.reg_h = (value >> 8) as u8 & 0xFF;
                 self.registers.reg_l = value as u8 & 0xFF;
@@ -841,9 +827,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Double precision add
     fn daa(&mut self) {
-        let carry = self.registers.carry;
+        let mut carry = self.registers.carry;
         let mut add = 0;
-        let mut result = 0;
+        let mut result;
 
         // TODO Investigate if there's a cleaner way to do this..
         if self.registers.half_carry || self.registers.reg_a & 0x0F > 9 {
@@ -852,15 +838,15 @@ impl<'a> ExecutionContext<'a> {
 
         if self.registers.carry || (self.registers.reg_a >> 4) > 9 || self.registers.reg_a >> 4 >= 9 && self.registers.reg_a & 0x0F > 9 {
             add |= 0x60;
-            self.registers.carry = true;
-        }
+            carry = true;
 
+        }
         result = add + self.registers.reg_a;
 
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.reg_a = result & 0xFF;
         self.registers.parity = self.parity(result as u8);
-        self.registers.carry = carry as bool;
+        self.registers.carry = carry;
         self.registers.zero = result & 0xFF == 0;
         self.registers.sign = result & 0x80 != 0;
 
@@ -1012,7 +998,6 @@ impl<'a> ExecutionContext<'a> {
     fn mvi(&mut self, reg: Register) {
         // The MVI instruction uses a 8-bit data quantity, as opposed to
         // LXI which uses a 16-bit data quantity.
-
         let mut value = self.memory.read_next_byte(self.registers.pc);
 
         match reg {
@@ -1024,7 +1009,8 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_h = value,
             Register::L => self.registers.reg_l = value,
             Register::M => {
-                self.registers.reg_m = value;
+                let hl = self.get_hl();
+                self.memory.memory[hl as usize] = value;
                 self.adv_cycles(3);
             }
         }
@@ -1034,8 +1020,8 @@ impl<'a> ExecutionContext<'a> {
 
     // LDA Load Accumulator direct
     fn lda(&mut self) {
-        let addr = self.memory.read_imm(self.registers.pc);
-        self.registers.reg_a = self.memory.memory[addr as usize];
+        let imm = self.memory.read_imm(self.registers.pc);
+        self.registers.reg_a = self.memory.memory[imm as usize];
         self.adv_cycles(13);
         self.adv_pc(3);
     }
@@ -1050,13 +1036,13 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let addr = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
-                self.registers.reg_a = self.memory.memory[addr as usize];
+                let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
+                self.registers.reg_a = self.memory.memory[bc as usize];
             }
 
             RegisterPair::DE => {
-                let addr = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
-                self.registers.reg_a = self.memory.memory[addr as usize];
+                let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
+                self.registers.reg_a = self.memory.memory[de as usize];
             }
 
             _ => eprintln!("LDAX on invalid register"),
@@ -1073,10 +1059,10 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H
         // register.
         // L <- (adr); H<-(adr+1)
-        let addr = self.memory.read_imm(self.registers.pc);
+        let imm = self.memory.read_imm(self.registers.pc);
 
-        self.registers.reg_h = self.memory.memory[addr as usize + 1];
-        self.registers.reg_l = self.memory.memory[addr as usize];
+        self.registers.reg_h = self.memory.memory[imm as usize + 1];
+        self.registers.reg_l = self.memory.memory[imm as usize];
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1112,7 +1098,8 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn inr(&mut self, reg: Register) {
-        let mut value = 0;
+        let mut value;
+
         match reg {
             Register::A => {
                 value = self.registers.reg_a.wrapping_add(1);
@@ -1210,8 +1197,6 @@ impl<'a> ExecutionContext<'a> {
         }
         self.adv_cycles(11);
         self.adv_pc(1);
-
-        // println!("Stack {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
     }
 
     fn push_psw(&mut self) {
@@ -1221,16 +1206,10 @@ impl<'a> ExecutionContext<'a> {
 
         self.memory.memory[self.registers.sp as usize - 1] = self.registers.reg_a;
         self.memory.memory[self.registers.sp as usize - 2] = psw;
-
         self.registers.sp = self.registers.sp.wrapping_sub(2);
 
         self.adv_cycles(11);
         self.adv_pc(1);
-        if self.registers.debug {
-            // println!("Push PSW {:?}", &self.memory.memory[self.registers.sp as usize - 10 .. self.registers.sp as usize + 10]);
-            // println!("SP {}", self.registers.sp)
-
-        }
     }
 
     // Store the contents of the accumulator addressed by registers B, C
@@ -1290,8 +1269,7 @@ impl<'a> ExecutionContext<'a> {
     }
     // Subtract Immediate with Borrow
     fn sbi(&mut self) {
-        let mut imm = self.memory.read_imm(self.registers.pc);
-        // let value = self.registers.reg_a as u16 - imm - self.registers.carry as u16;
+        let imm = self.memory.read_imm(self.registers.pc);
         let value = self.registers.reg_a.wrapping_sub(imm as u8).wrapping_sub(
             self.registers.carry as u8,
         );
@@ -1309,21 +1287,19 @@ impl<'a> ExecutionContext<'a> {
 
     // SUB Subtract Register or Memory From Accumulator
     fn sub(&mut self, reg: Register) {
-        let mut result = 0;
-
-        match reg {
-            Register::A => result = self.registers.reg_a.wrapping_sub(self.registers.reg_a),
-            Register::B => result = self.registers.reg_a.wrapping_sub(self.registers.reg_b),
-            Register::C => result = self.registers.reg_a.wrapping_sub(self.registers.reg_c),
-            Register::D => result = self.registers.reg_a.wrapping_sub(self.registers.reg_d),
-            Register::E => result = self.registers.reg_a.wrapping_sub(self.registers.reg_e),
-            Register::H => result = self.registers.reg_a.wrapping_sub(self.registers.reg_h),
-            Register::L => result = self.registers.reg_a.wrapping_sub(self.registers.reg_l),
+        let result = match reg {
+            Register::A => self.registers.reg_a.wrapping_sub(self.registers.reg_a),
+            Register::B => self.registers.reg_a.wrapping_sub(self.registers.reg_b),
+            Register::C => self.registers.reg_a.wrapping_sub(self.registers.reg_c),
+            Register::D => self.registers.reg_a.wrapping_sub(self.registers.reg_d),
+            Register::E => self.registers.reg_a.wrapping_sub(self.registers.reg_e),
+            Register::H => self.registers.reg_a.wrapping_sub(self.registers.reg_h),
+            Register::L => self.registers.reg_a.wrapping_sub(self.registers.reg_l),
             Register::M => {
                 self.adv_cycles(3);
-                result = self.registers.reg_a.wrapping_sub(self.memory.memory[self.get_hl() as usize]);
+                self.registers.reg_a.wrapping_sub(self.memory.memory[self.get_hl() as usize])
             }
-        }
+        };
         self.registers.reg_a = result & 0xFF;
 
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
@@ -1334,20 +1310,19 @@ impl<'a> ExecutionContext<'a> {
 
         self.adv_cycles(4);
         self.adv_pc(1);
-        panic!();
     }
 
     // SUI Subtract Immediate From Accumulator
     fn sui(&mut self) {
         let mut imm = self.memory.read_imm(self.registers.pc);
-        let value = self.registers.reg_a.wrapping_sub(imm as u8) as u16;
+        let result = self.registers.reg_a.wrapping_sub(imm as u8) as u16;
 
-        self.registers.reg_a = value as u8;
-        self.registers.half_carry = self.half_carry_sub((value & 0xFF) as u16) != 0;
-        self.registers.parity = self.parity(value as u8);
-        self.registers.zero = value == 0;
-        self.registers.sign = value & 0x80 != 0;
-        self.registers.carry = value & 0x0100 != 0;
+        self.registers.reg_a = result as u8;
+        self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
+        self.registers.parity = self.parity(result as u8);
+        self.registers.zero = result == 0;
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.carry = result & 0x0100 != 0;
 
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -1388,8 +1363,8 @@ impl<'a> ExecutionContext<'a> {
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        let value = self.memory.read_next_byte(self.registers.pc);
-        self.registers.reg_a ^= value;
+        let imm = self.memory.read_next_byte(self.registers.pc);
+        self.registers.reg_a ^= imm;
 
         self.registers.half_carry = false;
         self.registers.carry = false;
@@ -1550,20 +1525,18 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(10);
     }
     fn ora(&mut self, reg: Register) {
-        let mut value = self.registers.reg_a;
 
         match reg {
-            Register::A => value |= self.registers.reg_a,
-            Register::B => value |= self.registers.reg_b,
-            Register::C => value |= self.registers.reg_c,
-            Register::D => value |= self.registers.reg_d,
-            Register::E => value |= self.registers.reg_e,
-            Register::H => value |= self.registers.reg_h,
-            Register::L => value |= self.registers.reg_l,
+            Register::A => self.registers.reg_a |= self.registers.reg_a,
+            Register::B => self.registers.reg_a |= self.registers.reg_b,
+            Register::C => self.registers.reg_a |= self.registers.reg_c,
+            Register::D => self.registers.reg_a |= self.registers.reg_d,
+            Register::E => self.registers.reg_a |= self.registers.reg_e,
+            Register::H => self.registers.reg_a |= self.registers.reg_h,
+            Register::L => self.registers.reg_a |= self.registers.reg_l,
             Register::M => {
-                let hl = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
-                self.registers.reg_a |= hl as u8;
                 self.adv_cycles(3);
+                self.registers.reg_a |= self.get_hl() as u8;
             }
         }
 
@@ -1597,7 +1570,6 @@ impl<'a> ExecutionContext<'a> {
             Register::A => {
                 if src == Register::M {
                     self.registers.reg_a = self.memory.read_byte(addr);
-                    // self.registers.reg_a = self.memory.memory[addr as usize] as u8;
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value)
@@ -1615,7 +1587,6 @@ impl<'a> ExecutionContext<'a> {
             Register::C => {
                 if src == Register::M {
                     self.registers.reg_c = self.memory.read_byte(addr);
-                    // self.registers.reg_c = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1624,7 +1595,6 @@ impl<'a> ExecutionContext<'a> {
             Register::D => {
                 if src == Register::M {
                     self.registers.reg_d = self.memory.read_byte(addr);
-                    // self.registers.reg_d = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1633,7 +1603,6 @@ impl<'a> ExecutionContext<'a> {
             Register::E => {
                 if src == Register::M {
                     self.registers.reg_e = self.memory.read_byte(addr);
-                    // self.registers.reg_e = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1642,7 +1611,6 @@ impl<'a> ExecutionContext<'a> {
             Register::H => {
                 if src == Register::M {
                     self.registers.reg_h = self.memory.read_byte(addr);
-                    // self.registers.reg_h = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1651,7 +1619,6 @@ impl<'a> ExecutionContext<'a> {
             Register::L => {
                 if src == Register::M {
                     self.registers.reg_l = self.memory.read_byte(addr);
-                    // self.registers.reg_l = self.memory.memory[addr as usize];
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
