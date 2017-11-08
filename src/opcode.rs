@@ -139,6 +139,7 @@ impl Opcode {
             0x51 => "MOV (D, C)",
             0x52 => "MOV (D, D)",
             0x53 => "MOV (D, E)",
+            0x54 => "MOV (D, H)",
             0x55 => "MOV (D, L)",
             0x56 => "MOV (D, M)",
             0x57 => "MOV (D, A)",

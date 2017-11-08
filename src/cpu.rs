@@ -206,7 +206,6 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn adc(&mut self, reg: Register) {
-        // TODO Investigate if wrapping is necessary.
         let value = match reg {
             Register::A => (self.registers.reg_a).wrapping_add(self.registers.reg_a).wrapping_add(self.registers.carry as u8),
             Register::B => (self.registers.reg_a).wrapping_add(self.registers.reg_b).wrapping_add(self.registers.carry as u8),
@@ -222,10 +221,10 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.reg_a = value & 0xFF;
-        self.registers.zero = value & 0xFF == 0;
-        self.registers.sign = value & 0x80 != 0;
-        self.registers.carry = (value & 0x0100) != 0;
-        self.registers.parity = self.parity(value as u8 & 0xFF);
+        self.registers.zero = self.registers.reg_a & 0xFF == 0;
+        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.carry = (value as u16 & 0x0100) != 0;
+        self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
 
         self.adv_cycles(4);
