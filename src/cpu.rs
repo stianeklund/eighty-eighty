@@ -302,17 +302,20 @@ impl<'a> ExecutionContext<'a> {
 
     // Add Immediate to Accumulator with Carry
     fn aci(&mut self) {
-        // TODO Check if we should check with the low immediate value here?
-        let imm = self.memory.read_imm(self.registers.pc);
-        let result = imm as u8 + (self.registers.carry as u8);
-        self.registers.reg_a = result & 0xFF;
+        let imm = self.memory.read(self.registers.pc + 1);
 
+        // Add immediate with accumulator + carry flag value
+        let a = self.registers.reg_a as u16;
+        let result = (imm).wrapping_add(a).wrapping_add(self.registers.carry as u16);
+
+        self.registers.reg_a = result as u8 & 0xFF;
+
+        self.registers.parity = self.parity(self.registers.reg_a);
         self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-
-        self.registers.half_carry = self.half_carry_add(imm) == 0;
+        self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
-        self.registers.parity = self.parity(self.registers.reg_a);
+
 
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -321,12 +324,12 @@ impl<'a> ExecutionContext<'a> {
     // Add Immediate to Accumulator
     fn adi(&mut self) {
         // Read next byte of immediate data (low).
-        let imm = self.memory.memory[self.registers.pc as usize + 1] as u16;
+        let imm = self.memory.read(self.registers.pc + 1);
         let result = (imm).wrapping_add(self.registers.reg_a as u16);
         // println!("ADI immediate:{:04X}, Result:{:04X}", imm, result);
 
         // Add immediate data + old accumulator values to new accumulator.
-        self.registers.reg_a = (result as u8 & 0xFF);
+        self.registers.reg_a = result as u8 & 0xFF;
 
         // Set CPU flags with new accumulator values
         self.registers.parity = self.parity(self.registers.reg_a);
