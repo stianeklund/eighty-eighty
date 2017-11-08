@@ -321,16 +321,17 @@ impl<'a> ExecutionContext<'a> {
     // Add Immediate to Accumulator
     fn adi(&mut self) {
         // Read next byte of immediate data (low).
-        let imm = self.memory.read_next_byte(self.registers.pc);
-        let result = (imm as u8).wrapping_add(self.registers.reg_a);
+        let imm = self.memory.memory[self.registers.pc as usize + 1] as u16;
+        let result = (imm).wrapping_add(self.registers.reg_a as u16);
+        // println!("ADI immediate:{:04X}, Result:{:04X}", imm, result);
 
         // Add immediate data + old accumulator values to new accumulator.
-        self.registers.reg_a = result & 0xFF;
+        self.registers.reg_a = (result as u8 & 0xFF);
+
+        // Set CPU flags with new accumulator values
         self.registers.parity = self.parity(self.registers.reg_a);
         self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-
-        // self.registers.half_carry = self.half_carry_add(imm as u16) == 0;
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
 

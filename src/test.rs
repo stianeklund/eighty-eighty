@@ -81,7 +81,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = false;
+        i.registers.debug = true;
         let mut cycles = 0;
 
         'main: loop {
@@ -206,7 +206,9 @@ mod tests {
             if i.registers.pc == 0x76 {
                 panic!("Halting");
             }
-
+            if i.registers.opcode == 0x0000 {
+                panic!();
+            }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
             if i.registers.pc == 05 {
