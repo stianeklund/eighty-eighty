@@ -208,13 +208,13 @@ impl<'a> ExecutionContext<'a> {
     fn adc(&mut self, reg: Register) {
         // TODO Investigate if wrapping is necessary.
         let value = match reg {
-            Register::A => self.registers.reg_a + self.registers.reg_a + (self.registers.carry as u8),
-            Register::B => self.registers.reg_a + self.registers.reg_b + (self.registers.carry as u8),
-            Register::C => self.registers.reg_a + self.registers.reg_c + (self.registers.carry as u8),
-            Register::D => self.registers.reg_a + self.registers.reg_d + (self.registers.carry as u8),
-            Register::E => self.registers.reg_a + self.registers.reg_e + (self.registers.carry as u8),
-            Register::H => self.registers.reg_a + self.registers.reg_h + (self.registers.carry as u8),
-            Register::L => self.registers.reg_a + self.registers.reg_l + (self.registers.carry as u8),
+            Register::A => (self.registers.reg_a).wrapping_add(self.registers.reg_a).wrapping_add(self.registers.carry as u8),
+            Register::B => (self.registers.reg_a).wrapping_add(self.registers.reg_b).wrapping_add(self.registers.carry as u8),
+            Register::C => (self.registers.reg_a).wrapping_add(self.registers.reg_c).wrapping_add(self.registers.carry as u8),
+            Register::D => (self.registers.reg_a).wrapping_add(self.registers.reg_d).wrapping_add(self.registers.carry as u8),
+            Register::E => (self.registers.reg_a).wrapping_add(self.registers.reg_e).wrapping_add(self.registers.carry as u8),
+            Register::H => (self.registers.reg_a).wrapping_add(self.registers.reg_h).wrapping_add(self.registers.carry as u8),
+            Register::L => (self.registers.reg_a).wrapping_add(self.registers.reg_l).wrapping_add(self.registers.carry as u8),
             Register::M => {
                 self.adv_cycles(3);
                 self.get_hl() as u8 + self.registers.carry as u8
@@ -329,12 +329,13 @@ impl<'a> ExecutionContext<'a> {
         self.registers.parity = self.parity(self.registers.reg_a);
         self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-        // TODO Investigate, should we perform evaluation of the next byte or with the result?
+
+        // self.registers.half_carry = self.half_carry_add(imm as u16) == 0;
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
 
-        self.adv_pc(2);
         self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     fn jmp(&mut self) {
