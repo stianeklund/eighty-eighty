@@ -292,7 +292,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.reg_a &= self.memory.read_imm(self.registers.pc) as u8;
         self.registers.half_carry = (self.registers.pc | self.registers.pc) & 0x08 != 0;
-        self.parity(self.registers.reg_a);
+        self.registers.parity = self.parity(self.registers.reg_a);
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
         self.registers.zero = self.registers.reg_a & 0x80 == 0;
         // Clear carry flag
