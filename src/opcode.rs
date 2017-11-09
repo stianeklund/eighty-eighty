@@ -49,7 +49,7 @@ impl Opcode {
             0x00 | 0x08 => "NOP       ",
             0x01 => "LXI BC    ",
             0x02 => "STAX BC   ",
-            0x03 => "INX C     ",
+            0x03 => "INX BC    ",
             0x04 => "INR B     ",
             0x05 => "DCR B     ",
             0x06 => "MVI B     ",

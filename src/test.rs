@@ -81,7 +81,7 @@ mod tests {
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
 
-        i.registers.debug = true;
+        i.registers.debug = false;
         let mut cycles = 0;
 
         'main: loop {
@@ -185,7 +185,7 @@ mod tests {
         // Standup memory & registers
         let mut i = Interconnect::new();
         let duration = Duration::new(0, 0);
-        let bin: &str = "8080EX1.COM";
+        let bin: &str = "8080EXM.COM";
         i.memory.load_tests(bin);
 
         // Inject RET (0xC9) at 0x0005 to handle CALL 5
@@ -198,17 +198,18 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
-        i.registers.debug = false;
+        i.registers.debug = true;
 
 
         'main: loop {
-            i.execute_cpu();
+            // i.execute_cpu();
+            i.step_cpu();
 
             if i.registers.pc == 0x76 {
                 panic!("Halting");
             }
             if i.registers.opcode == 0x0000 {
-                panic!();
+                // panic!();
             }
             // If PC is 5 we're at the return address we set earlier.
             // Print out characters from rom
