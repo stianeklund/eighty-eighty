@@ -198,12 +198,12 @@ mod tests {
 
         // All test binaries start at 0x0100.
         i.registers.pc = 0x0100;
-        i.registers.debug = true;
+        i.registers.debug = false;
 
 
         'main: loop {
-            // i.execute_cpu();
-            i.step_cpu();
+            i.execute_cpu();
+            // i.step_cpu();
 
             if i.registers.pc == 0x76 {
                 panic!("Halting");

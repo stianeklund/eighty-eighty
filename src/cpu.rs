@@ -682,14 +682,11 @@ impl<'a> ExecutionContext<'a> {
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8 & 0xFF;
-
-                self.registers.carry = result > 0xFFFF;
-                // self.registers.carry = result & 0x10000 != 0;
+                self.registers.carry = result & 0x10000 != 0;
             }
             RegisterPair::DE => {
                 let value = (self.registers.reg_d as u32) << 8 | (self.registers.reg_e as u32);
                 let result = (self.get_hl() as u32).wrapping_add(value);
-                // let result = hl.wrapping_add(value);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8 & 0xFF;
@@ -808,7 +805,7 @@ impl<'a> ExecutionContext<'a> {
             self.registers.carry = true;
 
         }
-        let result = (self.registers.reg_a as u16).wrapping_add(add);
+        let result = (self.registers.reg_a as u16).wrapping_add(add as u16);
 
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.reg_a = result as u8 & 0xFF;
@@ -842,23 +839,23 @@ impl<'a> ExecutionContext<'a> {
     // Rotate Accumulator Left Through Carry
     fn ral(&mut self) {
         // The contents of the accumulator are rotated one bit position to the left.
-        // The high-order bit of the accumulator replaces the carry bit
-        // while the carry bit replaces the high-order bit of the accumulator
-        // Conditional flags affected: Carry
-        self.registers.reg_a <<= 1;
-        self.registers.carry = (self.registers.reg_a << 1) | ((self.registers.reg_a) & 0x40) != 1;
+        // The high-order bit of the accumulator replaces the carry bit while the carry bit
+        // replaces the high-order bit of the accumulator
+        let carry = self.registers.carry as u8;
+        self.registers.carry = self.registers.reg_a & 0x80 != 0;
+        self.registers.reg_a = (self.registers.reg_a << 1) | carry;
 
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
     // Rotate Accumulator Right Through Carry
     fn rar(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (self.registers.reg_a as u8) << 7;
-        // self.registers.carry = self.registers.reg_a & 0x08 != 0;
-        self.registers.carry = self.registers.reg_a & 0x1 != 0;
+        let carry = self.registers.carry as u8;
+        self.registers.carry = self.registers.reg_a & 0x01 != 0;
+        self.registers.reg_a = (self.registers.reg_a >> 1) | (carry << 7);
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -868,8 +865,8 @@ impl<'a> ExecutionContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        self.registers.reg_a = self.registers.reg_a.rotate_left(1);
-        self.registers.carry = self.registers.reg_a & 0x08 != 0;
+        self.registers.carry = self.registers.reg_a & 0x80 != 0;
+        self.registers.reg_a = self.registers.reg_a << 1 | self.registers.carry as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -879,7 +876,7 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         self.registers.carry = self.registers.reg_a & 0x01 != 0;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.reg_a & 0x1) << 7);
+        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
         self.adv_cycles(4);
         self.adv_pc(1);
     }
