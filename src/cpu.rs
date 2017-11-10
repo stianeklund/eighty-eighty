@@ -1436,29 +1436,22 @@ impl<'a> ExecutionContext<'a> {
             // Sets the offset size for shift register
             0x02 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
-                if self.registers.debug {
-                    println!("Out port 2: {:04X}", self.registers.port_2_out);
-                }
+                println!("Out port 2: {:04X}", self.registers.port_2_out);
             }
             // Sound port
             0x03 => {
                 self.registers.port_3_out = self.registers.reg_a;
-                if self.registers.debug {
-                    println!("Port 3: {:04X}", self.registers.port_3_out);
-                }
+                println!("Output SND Port 3: {:04X}", self.registers.port_3_out);
             }
 
             // Sets shift register values
             0x04 => {
                 self.registers.port_4_out_low = self.registers.port_4_out_high;
                 self.registers.port_4_out_high = self.registers.reg_a;
-                if self.registers.debug {
-                    println!(
-                        "Setting shift register values, high:{:04X}, low{:04X}",
-                        self.registers.port_4_out_high,
-                        self.registers.port_4_out_low
-                    );
-                }
+                println!("Setting shift register values, high:{:04X}, low{:04X}",
+                         self.registers.port_4_out_high,
+                         self.registers.port_4_out_low
+                );
             }
             // Sound port
             0x05 => self.registers.port_5_out = self.registers.reg_a,
@@ -2051,9 +2044,7 @@ impl<'a> ExecutionContext<'a> {
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
-            if self.registers.debug {
-                println!("Servicing interrupt. Setting PC to: {:04X}", u16::from(self.registers.interrupt_addr));
-            }
+            println!("Servicing interrupt. Setting PC to: {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
     }
@@ -2067,10 +2058,7 @@ impl<'a> ExecutionContext<'a> {
 
             // Call Reset with interrupt code
             if self.registers.interrupt {
-                if self.registers.debug {
-                 println!("Interrupt enabled");
-                }
-
+                println!("Interrupt enabled");
                 // Emulate interrupt
                 self.emulate_interrupt();
                 // self.rst(8);
