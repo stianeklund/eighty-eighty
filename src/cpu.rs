@@ -274,13 +274,13 @@ impl<'a> ExecutionContext<'a> {
         };
         // And value with accumulator
         let result = self.registers.reg_a & value;
-        self.registers.reg_a = result as u8 & 0xFF;
 
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
-        self.registers.zero = self.registers.reg_a & 0xFF != 0;
+        self.registers.zero = self.registers.reg_a & 0xFF == 0;
         self.registers.carry = false;
         self.registers.half_carry = (self.registers.reg_a | value) & 0x08 != 0;
-        self.parity(self.registers.reg_a);
+        self.registers.parity = self.parity(self.registers.reg_a);
+        self.registers.reg_a = result as u8 & 0xFF;
 
         self.adv_pc(1);
         self.adv_cycles(4);
