@@ -36,7 +36,7 @@ impl Display {
             FB_WIDTH as usize,
             FB_HEIGHT as usize,
             WindowOptions {
-                resize: false,
+                resize: true,
                 scale: Scale::X2,
                 ..WindowOptions::default()
             },
@@ -51,17 +51,23 @@ impl Display {
     pub fn draw_pixel(&mut self, interconnect: &Interconnect) {
         let memory = &interconnect.memory.memory;
 
+        // Iterate over VRAM
         for (i, byte) in (memory[0x2400..0x4000]).iter().enumerate() {
-            let y = i * 8 / (WIDTH as usize);
+            let y = i as isize * 8 / 256;
 
-            for shift in 0..(7 + 1) {
-                let x = ((i * 8) % WIDTH as usize + shift as usize) as isize;
+            for shift in 0..7 + 1 {
+                let x = ((i * 8) % 256 as usize + shift as usize) as isize;
 
+                // Rotate frame buffer 90 deg
                 let new_x = y as isize;
                 let new_y = -x as isize + 256;
 
                 let pixel = if byte.wrapping_shr(shift) & 1 == 0 {
                     0xFF00_0000 // Alpha
+                } else if x <= 63 && (x >= 15 || x <= 15 && y >= 20 && y <= 120) {
+                    0xFF00_FF00 // Green
+                } else if x >= 200 && x <= 220 {
+                    0xFF00_00FF // Red
                 } else {
                     0xFFFF_FFFF // Black
                 };

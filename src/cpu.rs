@@ -1588,14 +1588,14 @@ impl<'a> ExecutionContext<'a> {
     // TODO Investigate RST(5)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc;
+        let ret = self.registers.pc + 3;
 
         if self.registers.debug {
             println!("RST return address: {:04X}", ret);
         }
 
-        self.memory.memory[self.registers.sp as usize - 1] = (ret as u16 >> 8) as u8;
-        self.memory.memory[self.registers.sp as usize - 2] = (ret as u16) as u8;
+        self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret as u16 >> 8) as u8;
+        self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = (ret as u16) as u8;
 
 
         match value {
@@ -2037,14 +2037,14 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret = self.registers.pc;
+            let ret = self.registers.pc + 3;
 
             self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
             self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16) & 0xFF as u16) as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
-            println!("Servicing interrupt. Setting PC to: {:04X}", u16::from(self.registers.interrupt_addr));
+            println!("Servicing interrupt: {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
     }
@@ -2061,7 +2061,7 @@ impl<'a> ExecutionContext<'a> {
                 println!("Interrupt enabled");
                 // Emulate interrupt
                 self.emulate_interrupt();
-                // self.rst(8);
+                // self.rst(1);
                 self.registers.interrupt = false;
             }
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
@@ -2070,9 +2070,11 @@ impl<'a> ExecutionContext<'a> {
 
 
             if self.registers.interrupt {
-                // println!("Interrupt enabled");
-                // self.rst(16);
-                self.registers.interrupt = false;
+                // TODO Investigate this, it brings Space Invaders along
+                // but uncertain if it's correct to emulate interrupts twice like this.
+               // self.emulate_interrupt();
+
+              //  self.registers.interrupt = false;
             }
         }
     }
