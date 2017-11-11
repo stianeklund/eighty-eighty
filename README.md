@@ -6,6 +6,9 @@ Compatible with Windows, Linux & Mac OS
 
 This project is for learning purposes and probably will not end up as a a fully compatible 8080 emulator.
 
+## Space Invaders
+![Invaders](https://github.com/stianeklund/eighty-eighty/blob/master/assets/screenshot.png)
+
 References used:
 
 * http://computerarcheology.com/Arcade/SpaceInvaders/
@@ -17,13 +20,10 @@ References used:
 
 
 
-## Space Invaders
-![alt text](https://github.com/stianeklund/eighty-eighty/raw/master/src/assets/screenshot.png)
 
+## How to build & run Eighty Eighty
 
-## How to build & run
-
-Having Rust installed, `cargo run --release invaders.bin`
+Having Rust installed: `cargo run --release invaders.bin`
 * Note there is currently no support for other games nor separate game files.
 
 If you have multiple files you can merge them with `cat` or a similar util.
