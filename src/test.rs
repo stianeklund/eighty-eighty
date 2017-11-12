@@ -206,7 +206,7 @@ mod tests {
             // i.step_cpu();
 
             if i.registers.pc == 0x76 {
-                panic!("Halting");
+               panic!("Halting");
             }
             if i.registers.opcode == 0x0000 {
                 // panic!();

@@ -104,7 +104,7 @@ impl Registers {
 
             cycles: 0,
             interrupt: false,
-            interrupt_addr: 0x10,
+            interrupt_addr: 0x08,
 
             port_0_in: 0x0E,
             port_1_in: 0x08,
@@ -127,7 +127,7 @@ impl fmt::Debug for Registers {
                  "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Interrupt");
         write!(
             f,
-            "{}   {:04X}     {:04X} {     }     {:02X}  {:02X}{:02X} {:02X}{:02X} {:02X}{:02X} {:04X}     {} {} {} {} {} {}",
+            "{}   {:04X}     {:04X} {     }    {:02X}  {:02X}{:02X} {:02X}{:02X} {:02X}{:02X} {:04X}   {} {} {} {} {} {}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
@@ -484,8 +484,8 @@ impl<'a> ExecutionContext<'a> {
         // Store value of the accumulator in in memory
         self.memory.memory[imm as usize] = self.registers.reg_a;
 
-        self.adv_pc(3);
         self.adv_cycles(13);
+        self.adv_pc(3);
     }
 
     fn call(&mut self, addr: u16) {
@@ -883,24 +883,30 @@ impl<'a> ExecutionContext<'a> {
     // Return if no carry
     fn rnc(&mut self) {
         if !self.registers.carry {
+            self.adv_cycles(11);
             self.ret();
         } else {
+            self.adv_cycles(5);
             self.adv_pc(1);
         }
     }
     // Return if Parity Even
     fn rpe(&mut self) {
         if self.registers.parity {
+            self.adv_cycles(11);
             self.ret()
         } else {
+            self.adv_cycles(5);
             self.adv_pc(1);
         }
     }
     // Return if Parity Odd
     fn rpo(&mut self) {
         if !self.registers.parity {
+            self.adv_cycles(11);
             self.ret()
         } else {
+            self.adv_cycles(5);
             self.adv_pc(1);
         }
     }
@@ -915,8 +921,6 @@ impl<'a> ExecutionContext<'a> {
             self.adv_pc(1);
         }
     }
-
-    // TODO
     fn rnz(&mut self) {
         if !self.registers.zero {
             self.adv_cycles(11);
@@ -939,8 +943,8 @@ impl<'a> ExecutionContext<'a> {
     // Return if positive (if sign bit is 0)
     fn rp(&mut self) {
         if !self.registers.sign {
+            self.adv_cycles(11);
             self.ret();
-            self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
             self.adv_pc(1);
@@ -948,8 +952,8 @@ impl<'a> ExecutionContext<'a> {
     }
     fn rz(&mut self) {
         if self.registers.zero {
+            self.adv_cycles(11);
             self.ret();
-            self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
             self.adv_pc(1);
@@ -1290,8 +1294,8 @@ impl<'a> ExecutionContext<'a> {
     // Set Carry (set carry bit to 1)
     fn stc(&mut self) {
         self.registers.carry = true;
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
@@ -1427,7 +1431,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.pc = ret;
     }
 
-    // TODO Generalize
     fn output(&mut self) {
         let port = self.memory.read_next_byte(self.registers.pc);
         match port {
@@ -1460,8 +1463,8 @@ impl<'a> ExecutionContext<'a> {
             }
             _ => println!("Port: {:04X}, does not match implementation", port),
         }
-        self.adv_pc(2);
         self.adv_cycles(10);
+        self.adv_pc(2);
     }
     fn ora(&mut self, reg: Register) {
 
@@ -1495,7 +1498,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.half_carry = false;
         self.registers.carry = false;
-        self.registers.zero = self.registers.reg_a & 0xFF == 0;
+        self.registers.zero = self.registers.reg_a == 0;
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
 
@@ -1586,15 +1589,11 @@ impl<'a> ExecutionContext<'a> {
     // TODO Investigate RST(5)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc + 3;
+        let ret = self.registers.pc;
 
-        if self.registers.debug {
-            println!("RST return address: {:04X}", ret);
-        }
 
-        self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret as u16 >> 8) as u8;
-        self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = (ret as u16) as u8;
-
+        self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret >> 8) as u8;
+        self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = ret as u8;
 
         match value {
             0 => self.registers.pc = 0x0000,
@@ -1608,18 +1607,19 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
-        // self.registers.sp = self.registers.sp.wrapping_sub(2);
-        self.registers.sp = self.registers.sp.wrapping_add(2);
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
+
         if self.registers.debug {
             println!("Value: {:04X}", value);
         }
         self.registers.prev_pc = self.registers.pc;
-        self.registers.pc = (value & 0x38).into();
+        // self.registers.pc = (value & 0x38).into();
+        println!("RST {:04X}, PC:{:04X}", value, self.registers.pc);
         self.adv_cycles(11);
     }
 
     fn sphl(&mut self) {
-        self.registers.sp = u16::from((self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16));
+        self.registers.sp = self.get_hl();
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -2038,12 +2038,12 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.interrupt {
             let ret: u16 = self.registers.pc + 1;
 
-            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) & 0xFF as u16) as u8;
-            self.memory.memory[self.registers.sp as usize - 2] = ((ret) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 2] = ((ret) as u16) as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
-            println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
+            // println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
         self.registers.interrupt = false;
