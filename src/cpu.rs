@@ -269,7 +269,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.get_hl() as u8
+                self.memory.memory[self.get_hl() as usize]
             }
         };
         // And value with accumulator
@@ -635,8 +635,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = result & 0x0100 != 0;
         self.registers.parity = self.parity(result as u8);
 
-        self.adv_pc(2);
         self.adv_cycles(7);
+        self.adv_pc(2);
     }
 
     // Call if Parity Even
@@ -679,7 +679,7 @@ impl<'a> ExecutionContext<'a> {
         match reg {
             RegisterPair::BC => {
                 let value = (self.registers.reg_b as u32) << 8 | (self.registers.reg_c as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value);
+                let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8 & 0xFF;
@@ -687,7 +687,7 @@ impl<'a> ExecutionContext<'a> {
             }
             RegisterPair::DE => {
                 let value = (self.registers.reg_d as u32) << 8 | (self.registers.reg_e as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value);
+                let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8 & 0xFF;
@@ -695,7 +695,7 @@ impl<'a> ExecutionContext<'a> {
             }
             RegisterPair::HL => {
                 let mut value = (self.registers.reg_h as u32) << 8 | (self.registers.reg_l as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value);
+                let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8 & 0xFF;
@@ -1196,7 +1196,6 @@ impl<'a> ExecutionContext<'a> {
 
     // SBB Subtract Register or Memory from Accumulator with borrow
     fn sbb(&mut self, reg: Register) {
-        // let carry = if self.registers.carry { 0x01 } else { 0x00 };
         let result = match reg {
             Register::A => (self.registers.reg_a as u16).wrapping_sub(self.registers.reg_a as u16).wrapping_sub(self.registers.carry as u16),
             Register::B => (self.registers.reg_a as u16).wrapping_sub(self.registers.reg_b as u16).wrapping_sub(self.registers.carry as u16),
@@ -1212,7 +1211,7 @@ impl<'a> ExecutionContext<'a> {
             }
         };
 
-        self.registers.reg_a = result as u8 & 0xFF;
+        self.registers.reg_a = (result & 0xFF) as u8;
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(result as u8);
 
