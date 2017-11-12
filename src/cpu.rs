@@ -1431,7 +1431,7 @@ impl<'a> ExecutionContext<'a> {
 
     // TODO Generalize
     fn output(&mut self) {
-        let port = self.memory.read(self.registers.pc + 1);
+        let port = self.memory.read_next_byte(self.registers.pc);
         match port {
             // Sets the offset size for shift register
             0x02 => {
@@ -1448,7 +1448,7 @@ impl<'a> ExecutionContext<'a> {
             0x04 => {
                 self.registers.port_4_out_low = self.registers.port_4_out_high;
                 self.registers.port_4_out_high = self.registers.reg_a;
-                println!("Setting shift register values, high:{:04X}, low{:04X}",
+                println!("Setting shift register values: High:{:04X}, Low:{:04X}",
                          self.registers.port_4_out_high,
                          self.registers.port_4_out_low
                 );
@@ -1610,7 +1610,8 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
-        self.registers.sp = self.registers.sp.wrapping_sub(2);
+        // self.registers.sp = self.registers.sp.wrapping_sub(2);
+        self.registers.sp = self.registers.sp.wrapping_add(2);
         if self.registers.debug {
             println!("Value: {:04X}", value);
         }
@@ -2037,16 +2038,17 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret = self.registers.pc + 3;
+            let ret: u16 = self.registers.pc + 1;
 
-            self.memory.memory[self.registers.sp as usize - 1] = ((ret as u16 >> 8) & 0xFF as u16) as u8;
-            self.memory.memory[self.registers.sp as usize - 2] = ((ret as u16) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 2] = ((ret) & 0xFF as u16) as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
-            println!("Servicing interrupt: {:04X}", u16::from(self.registers.interrupt_addr));
+            println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
+        self.registers.interrupt = false;
     }
     pub fn try_interrupt(&mut self) {
         if self.registers.cycles < 16_667 {
@@ -2055,27 +2057,11 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16_667 {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x08;
-
-            // Call Reset with interrupt code
-            if self.registers.interrupt {
-                println!("Interrupt enabled");
-                // Emulate interrupt
-                self.emulate_interrupt();
-                // self.rst(1);
-                self.registers.interrupt = false;
-            }
+            self.emulate_interrupt();
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x10;
-
-
-            if self.registers.interrupt {
-                // TODO Investigate this, it brings Space Invaders along
-                // but uncertain if it's correct to emulate interrupts twice like this.
-               // self.emulate_interrupt();
-
-              //  self.registers.interrupt = false;
-            }
+            self.emulate_interrupt();
         }
     }
 }
