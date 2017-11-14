@@ -21,7 +21,7 @@ use interconnect::Interconnect;
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 // Set to false for release
-const TEST: bool = true;
+const TEST: bool = false;
 
 // #[derive(Copy, Clone)]
 pub struct Registers {
@@ -614,7 +614,10 @@ impl<'a> ExecutionContext<'a> {
             Register::E => (self.registers.reg_a as u16).wrapping_sub(self.registers.reg_e as u16),
             Register::H => (self.registers.reg_a as u16).wrapping_sub(self.registers.reg_h as u16),
             Register::L => (self.registers.reg_a as u16).wrapping_sub(self.registers.reg_l as u16),
-            Register::M => (self.registers.reg_a as u16).wrapping_sub(mem as u16)
+            Register::M => {
+                self.adv_cycles(3);
+                (self.registers.reg_a as u16).wrapping_sub(mem as u16)
+            }
         };
 
         self.registers.half_carry = !self.half_carry_sub(result as u16) != 0;
@@ -821,18 +824,18 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn di(&mut self) {
-        if self.registers.debug {
-            println!("Disabling interrupts");
-        }
+        // if self.registers.debug {
+        // println!("Disabling interrupts");
+        // }
         self.registers.interrupt = false;
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     fn ei(&mut self) {
-        if self.registers.debug {
-            println!("Enabling interrupts");
-        }
+        // if self.registers.debug {
+        //   println!("Enabling interrupts");
+        // }
         self.registers.interrupt = true;
 
         self.adv_cycles(4);
@@ -907,7 +910,7 @@ impl<'a> ExecutionContext<'a> {
     // Return if Parity Odd
     fn rpo(&mut self) {
         if !self.registers.parity {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret()
         } else {
             self.adv_cycles(5);
@@ -918,7 +921,7 @@ impl<'a> ExecutionContext<'a> {
     fn rc(&mut self) {
         // If Carry flag is set, return from subroutine
         if self.registers.carry {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret();
         } else {
             self.adv_cycles(5);
@@ -927,7 +930,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn rnz(&mut self) {
         if !self.registers.zero {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret();
         } else {
             self.adv_cycles(5);
@@ -937,8 +940,8 @@ impl<'a> ExecutionContext<'a> {
     // Return if minus
     fn rm(&mut self) {
         if self.registers.sign {
+            self.adv_cycles(1);
             self.ret();
-            self.adv_cycles(11)
         } else {
             self.adv_cycles(5);
             self.adv_pc(1);
@@ -947,7 +950,7 @@ impl<'a> ExecutionContext<'a> {
     // Return if positive (if sign bit is 0)
     fn rp(&mut self) {
         if !self.registers.sign {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret();
         } else {
             self.adv_cycles(5);
@@ -956,7 +959,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn rz(&mut self) {
         if self.registers.zero {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret();
         } else {
             self.adv_cycles(5);
@@ -1506,7 +1509,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = self.registers.reg_a & 0x80 != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
 
-        self.adv_cycles(4);
+        self.adv_cycles(7);
         self.adv_pc(2);
     }
     fn mov(&mut self, dst: Register, src: Register) {
