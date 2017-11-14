@@ -20,6 +20,9 @@ use interconnect::Interconnect;
 /// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
+// Set to false for release
+const TEST: bool = true;
+
 // #[derive(Copy, Clone)]
 pub struct Registers {
     pub opcode: u8,
@@ -123,11 +126,12 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:>0} {:>7} {:>4} {:>8} {:>4} {:>4} {:>4} {:>4} {:>4}  {:>6}{:>6}{:>6}{:>6}{:>8}{:>10}",
+        //           I   O   PC  Cycles  A    BC   DE     HL    SP    S     Z     P     C    AC    Intr
+        writeln!(f, "{}\t{}\t{}\t {:>4}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}",
                  "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Interrupt");
         write!(
             f,
-            "{}   {:04X}     {:04X} {     }    {:02X}  {:02X}{:02X} {:02X}{:02X} {:02X}{:02X} {:04X}   {} {} {} {} {} {}",
+            "{}\t{:04X}\t{:04X}\t{}\t\t{:02X}\t\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t{}\t{}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
@@ -1589,7 +1593,7 @@ impl<'a> ExecutionContext<'a> {
     // TODO Investigate RST(5)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc;
+        let ret = self.registers.pc + 1;
 
 
         self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret >> 8) as u8;
@@ -1614,7 +1618,7 @@ impl<'a> ExecutionContext<'a> {
         }
         self.registers.prev_pc = self.registers.pc;
         // self.registers.pc = (value & 0x38).into();
-        println!("RST {:04X}, PC:{:04X}", value, self.registers.pc);
+        // println!("RST {:04X}, PC:{:04X}", value, self.registers.pc);
         self.adv_cycles(11);
     }
 
@@ -1952,7 +1956,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             self.execute_instruction();
-            self.try_interrupt();
+            // self.try_interrupt();
         }
     }
 
@@ -2043,7 +2047,7 @@ impl<'a> ExecutionContext<'a> {
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
-            // println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
+            println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
             self.registers.pc = u16::from(self.registers.interrupt_addr);
         }
         self.registers.interrupt = false;
@@ -2055,11 +2059,15 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16_667 {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x08;
-            self.emulate_interrupt();
+            if !TEST {
+                self.emulate_interrupt();
+            }
         } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
             self.registers.cycles -= 16_667;
             self.registers.interrupt_addr = 0x10;
-            self.emulate_interrupt();
+            if !TEST {
+                self.emulate_interrupt();
+            }
         }
     }
 }

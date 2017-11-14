@@ -1,4 +1,3 @@
-#![feature(try_from)]
 extern crate minifb;
 extern crate byteorder;
 use interconnect::Interconnect;
