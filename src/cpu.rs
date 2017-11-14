@@ -126,12 +126,12 @@ impl Registers {
 
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //           I   O   PC  Cycles  A    BC   DE     HL    SP    S     Z     P     C    AC    Intr
-        writeln!(f, "{}\t{}\t{}\t {:>4}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}\t\t{}",
-                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S", "Z", "P", "C", "AC ", "Interrupt");
+        //           I   O   PC  Cycles A   BC  DE  HL  SP    S     Z     P     C    AC    Intr
+        writeln!(f, "{}\t{}\t{}\t{:>4}\t{}\t{}\t{}\t{}\t{}    \t{}\t{}\t{}\t{}\t{}\t{}\t",
+                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S   ", "Z   ", "P   ", "C   ", "AC   ", "Interrupt");
         write!(
-            f,
-            "{}\t{:04X}\t{:04X}\t{}\t\t{:02X}\t\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t{}\t{}",
+            f, // S   Z   P   C   AC  Interrupt
+            "{}\t{:04X}\t{:04X}\t{}\t{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t{}\t{}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
@@ -592,14 +592,14 @@ impl<'a> ExecutionContext<'a> {
 
     fn cma(&mut self) {
         self.registers.reg_a ^= 0xFF;
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     fn cmc(&mut self) {
         self.registers.carry = !self.registers.carry;
-        self.adv_pc(1);
         self.adv_cycles(4);
+        self.adv_pc(1);
     }
 
     // Compare Register or Memory With Accumulator
@@ -1956,7 +1956,7 @@ impl<'a> ExecutionContext<'a> {
             }
 
             self.execute_instruction();
-            // self.try_interrupt();
+            self.try_interrupt();
         }
     }
 
