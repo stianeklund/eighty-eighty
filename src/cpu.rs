@@ -21,7 +21,7 @@ use interconnect::Interconnect;
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 // Set to false for release
-const TEST: bool = false;
+const TEST: bool = true;
 
 // #[derive(Copy, Clone)]
 pub struct Registers {
@@ -127,15 +127,14 @@ impl Registers {
 impl fmt::Debug for Registers {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //           I   O   PC  Cycles A   BC  DE  HL  SP    S     Z     P     C    AC    Intr
-        writeln!(f, "{}\t{}\t{}\t{:>4}\t{}\t{}\t{}\t{}\t{}    \t{}\t{}\t{}\t{}\t{}\t{}\t",
-                 "Instruction", "Opcode", "PC", "Cycles", "A", "BC", "DE", "HL", "SP", "S   ", "Z   ", "P   ", "C   ", "AC   ", "Interrupt");
+        writeln!(f, "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}    \t{}\t{}\t{}\t{}\t{}\t{}\t",
+                 "Instruction", "Opcode", "PC", "A", "BC", "DE", "HL", "SP", "S   ", "Z   ", "P   ", "C   ", "AC   ", "I");
         write!(
             f, // S   Z   P   C   AC  Interrupt
-            "{}\t{:04X}\t{:04X}\t{}\t{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{:04X}\t{:04X}\t{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t{}\t{}",
             self.current_instruction,
             self.opcode,
             self.prev_pc,
-            self.cycles,
             self.reg_a,
             self.reg_b,
             self.reg_c,
@@ -144,12 +143,12 @@ impl fmt::Debug for Registers {
             self.reg_h,
             self.reg_l,
             self.sp,
-            self.sign,
-            self.zero,
-            self.parity,
-            self.carry,
-            self.half_carry,
-            self.interrupt
+            self.sign as u8,
+            self.zero as u8,
+            self.parity as u8,
+            self.carry as u8,
+            self.half_carry as u8,
+            self.interrupt as u8
         )
     }
 }
@@ -224,8 +223,8 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.reg_a = value as u8 & 0xFF;
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = value & 0xFF == 0;
+        self.registers.sign = value & 0x80 != 0;
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
         self.registers.carry = value & 0x0100 != 0;
         self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
@@ -251,8 +250,8 @@ impl<'a> ExecutionContext<'a> {
         };
 
         self.registers.reg_a = (value & 0xFF) as u8;
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = value & 0xFF == 0;
+        self.registers.sign = value & 0x80 != 0;
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
         self.registers.carry = value & 0x0100 != 0;
         self.registers.parity = self.parity(value as u8 & 0xFF);
@@ -280,8 +279,8 @@ impl<'a> ExecutionContext<'a> {
         let result = self.registers.reg_a & value;
         self.registers.reg_a = (result & 0xFF) as u8;
 
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
-        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.zero = result == 0;
         self.registers.carry = false;
         self.registers.half_carry = (self.registers.reg_a | value) & 0x08 != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
@@ -300,8 +299,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = (result & 0xFF) as u8;
         self.registers.half_carry = (self.registers.pc | self.registers.pc) & 0x08 != 0;
         self.registers.parity = self.parity(self.registers.reg_a);
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
-        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.sign = result & 0x80 != 0;
+        self.registers.zero = result == 0;
         // Clear carry flag
         self.registers.carry = false;
 
@@ -320,8 +319,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = (result & 0xFF) as u8;
 
         self.registers.parity = self.parity(self.registers.reg_a);
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
 
@@ -341,8 +340,8 @@ impl<'a> ExecutionContext<'a> {
 
         // Set CPU flags with new accumulator values
         self.registers.parity = self.parity(self.registers.reg_a);
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.carry = result & 0x0100 != 0;
 
@@ -816,7 +815,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.reg_a = result as u8 & 0xFF;
         self.registers.parity = self.parity(result as u8);
-        self.registers.zero = self.registers.reg_a == 0;
+        self.registers.zero = result & 0xFF == 0;
         self.registers.sign = result & 0x80 != 0;
 
         self.adv_cycles(4);
@@ -1227,8 +1226,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.parity = self.parity(result as u8);
 
         // If the result from the subtraction is 1 the zero bit is set
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         // Check if the carry bit is set if our result
         self.registers.carry = result & 0x0100 != 0;
 
@@ -1246,8 +1245,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = result as u8 & 0xFF;
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(result as u8);
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         self.registers.carry = result & 0x0100 != 0;
 
         self.adv_cycles(7);
@@ -1273,8 +1272,8 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(result as u8);
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         self.registers.carry = result & 0x0100 != 0;
 
         self.adv_cycles(4);
@@ -1290,8 +1289,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.reg_a = result as u8 & 0xFF;
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(result as u8);
-        self.registers.zero = self.registers.reg_a == 0;
-        self.registers.sign = self.registers.reg_a & 0x80 != 0;
+        self.registers.zero = result & 0xFF == 0;
+        self.registers.sign = result & 0x80 != 0;
         self.registers.carry = result & 0x0100 != 0;
 
         self.adv_cycles(7);
