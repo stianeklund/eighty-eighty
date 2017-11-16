@@ -17,11 +17,11 @@ use interconnect::Interconnect;
 /// referring to the memory address pointed to by the HL pair.
 /// BC, DE, or HL, (referred to as B, D, H in Intel documents)
 /// or SP can be loaded with an immediate 16-bit value (using LXI).
-/// Incremented or decremented (using INX and DCX) or adled to HL (using DAD).
+/// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
 // Set to false for release
-const TEST: bool = true;
+const TEST: bool = false;
 
 // #[derive(Copy, Clone)]
 pub struct Registers {
@@ -110,7 +110,7 @@ impl Registers {
             interrupt_addr: 0x08,
 
             port_0_in: 0x0E,
-            port_1_in: 0x08,
+            port_1_in: 0x08, // 0xFE, (coin value)
             port_2_in: 0x00,
             port_3_in: 0,
 
@@ -228,6 +228,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = self.half_carry_add(value as u16) == 0;
         self.registers.carry = (value & 0x0100) != 0;
         self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
+
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -802,11 +803,11 @@ impl<'a> ExecutionContext<'a> {
 
         // TODO Investigate if there's a cleaner way to do this..
         if self.registers.half_carry || self.registers.reg_a & 0x0F > 9 {
-            add = 0x06;
+            add += 0x06;
         }
 
         if self.registers.carry || (self.registers.reg_a >> 4) > 9 || self.registers.reg_a >> 4 >= 9 && self.registers.reg_a & 0x0F > 9 {
-            add |= 0x60;
+            add += 0x60;
             self.registers.carry = true;
 
         }
@@ -889,7 +890,7 @@ impl<'a> ExecutionContext<'a> {
     // Return if no carry
     fn rnc(&mut self) {
         if !self.registers.carry {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret();
         } else {
             self.adv_cycles(5);
@@ -899,7 +900,7 @@ impl<'a> ExecutionContext<'a> {
     // Return if Parity Even
     fn rpe(&mut self) {
         if self.registers.parity {
-            self.adv_cycles(11);
+            self.adv_cycles(1);
             self.ret()
         } else {
             self.adv_cycles(5);
@@ -1045,26 +1046,21 @@ impl<'a> ExecutionContext<'a> {
 
         let mut result: u16 = 0;
         match port {
-            0 => {
-                result = self.registers.port_0_in as u16;
-            }
+            0 => result = self.registers.port_0_in as u16,
             1 => {
                 result = self.registers.port_1_in as u16;
                 self.registers.port_1_in &= 0xFE;
-            }
+            },
             2 => result = (self.registers.port_2_in as u16) & 0x8F | (self.registers.port_2_in as u16) & 0x70,
-            3 => {
-                result = ((self.registers.port_4_out_high as u16) << 8) |
-                    (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF
-            }
-
-            _ => eprintln!("Input port not covered, {:04X}", port),
-        }
+            3 => result = ((self.registers.port_4_out_high as u16) << 8) |
+                (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
+            _ => eprintln!("Input port {}, not implemented", port),
+        };
 
         if self.registers.debug {
             println!("Input port: {}, Result: {:04X}", port, result);
         }
-        self.registers.reg_a = result as u8;
+        self.registers.reg_a = (result & 0xFF) as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
     }
@@ -1242,7 +1238,7 @@ impl<'a> ExecutionContext<'a> {
             self.registers.carry as u16,
         );
 
-        self.registers.reg_a = result as u8 & 0xFF;
+        self.registers.reg_a = (result & 0xFF) as u8;
         self.registers.half_carry = self.half_carry_sub((result & 0xFF) as u16) != 0;
         self.registers.parity = self.parity(result as u8);
         self.registers.zero = (result & 0xFF) == 0;
@@ -1412,7 +1408,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sp = sp.wrapping_add(2) as u16;
 
-        self.adv_cycles(11);
+        self.adv_cycles(10);
         self.adv_pc(1);
     }
 
@@ -1426,15 +1422,16 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn ret(&mut self) {
-        let low = u16::from(self.memory.memory[self.registers.sp as usize]);
-        let high = u16::from(self.memory.memory[self.registers.sp as usize + 1]);
-        let mut ret: u16 = u16::from((high as u16) << 8 | (low as u16));
+        let low = self.memory.memory[self.registers.sp as usize];
+        let high = self.memory.memory[self.registers.sp as usize + 1];
+        let mut ret: u16 = (high as u16) << 8 | (low as u16);
 
         self.registers.sp = self.registers.sp.wrapping_add(2);
         self.adv_cycles(10);
 
         // Set program counter for debug output
         self.registers.prev_pc = self.registers.pc;
+        // println!("Returning to {:04X}", ret);
         self.registers.pc = ret;
     }
 
@@ -1957,11 +1954,11 @@ impl<'a> ExecutionContext<'a> {
     pub fn step(&mut self, times: u8) {
         for _ in 0..times {
             self.execute_instruction();
-            self.try_interrupt();
             if self.registers.debug {
                 println!("{:?}", self.registers);
             }
         }
+        self.try_interrupt();
     }
 
 
@@ -2056,8 +2053,8 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.interrupt {
             let ret: u16 = self.registers.pc + 1;
 
-            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) as u16) as u8;
-            self.memory.memory[self.registers.sp as usize - 2] = ((ret) as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) & 0xFF as u16) as u8;
+            self.memory.memory[self.registers.sp as usize - 2] = ((ret & 0xFF) as u16) as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.registers.prev_pc = self.registers.pc;
