@@ -283,7 +283,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = result == 0;
         self.registers.carry = false;
         self.registers.half_carry = (self.registers.reg_a | value) & 0x08 != 0;
-        self.registers.parity = self.parity(self.registers.reg_a);
+        self.registers.parity = self.parity(result);
 
         self.adv_pc(1);
         self.adv_cycles(4);
@@ -298,7 +298,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.reg_a = (result & 0xFF) as u8;
         self.registers.half_carry = (self.registers.pc | self.registers.pc) & 0x08 != 0;
-        self.registers.parity = self.parity(self.registers.reg_a);
+        self.registers.parity = self.parity(result as u8);
         self.registers.sign = result & 0x80 != 0;
         self.registers.zero = result == 0;
         // Clear carry flag
@@ -623,7 +623,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = result & 0x0100 != 0;
         self.registers.zero = result & 0xFF == 0;
         self.registers.sign = result & 0x80 != 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -814,7 +814,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.half_carry = self.half_carry_add(result as u16) == 0;
         self.registers.reg_a = result as u8 & 0xFF;
-        self.registers.parity = self.parity(result as u8);
+        self.registers.parity = self.parity(self.registers.reg_a as u8);
         self.registers.zero = result & 0xFF == 0;
         self.registers.sign = result & 0x80 != 0;
 
@@ -1306,19 +1306,20 @@ impl<'a> ExecutionContext<'a> {
 
     // XRA Logical Exclusive-Or memory with Accumulator (Zero accumulator)
     fn xra(&mut self, reg: Register) {
-        match reg {
-            Register::A => self.registers.reg_a ^= self.registers.reg_a,
-            Register::B => self.registers.reg_a ^= self.registers.reg_b,
-            Register::C => self.registers.reg_a ^= self.registers.reg_c,
-            Register::D => self.registers.reg_a ^= self.registers.reg_d,
-            Register::E => self.registers.reg_a ^= self.registers.reg_e,
-            Register::H => self.registers.reg_a ^= self.registers.reg_h,
-            Register::L => self.registers.reg_a ^= self.registers.reg_l,
+        let value = match reg {
+            Register::A => self.registers.reg_a,
+            Register::B => self.registers.reg_b,
+            Register::C => self.registers.reg_c,
+            Register::D => self.registers.reg_d,
+            Register::E => self.registers.reg_e,
+            Register::H => self.registers.reg_h,
+            Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.registers.reg_a ^= self.memory.memory[self.get_hl() as usize];
+                self.memory.memory[self.get_hl() as usize]
             }
-        }
+        };
+        self.registers.reg_a ^= value;
 
         self.registers.half_carry = false;
         self.registers.carry = false;
@@ -1474,20 +1475,21 @@ impl<'a> ExecutionContext<'a> {
     }
     fn ora(&mut self, reg: Register) {
 
-        match reg {
-            Register::A => self.registers.reg_a |= self.registers.reg_a,
-            Register::B => self.registers.reg_a |= self.registers.reg_b,
-            Register::C => self.registers.reg_a |= self.registers.reg_c,
-            Register::D => self.registers.reg_a |= self.registers.reg_d,
-            Register::E => self.registers.reg_a |= self.registers.reg_e,
-            Register::H => self.registers.reg_a |= self.registers.reg_h,
-            Register::L => self.registers.reg_a |= self.registers.reg_l,
+        let value = match reg {
+            Register::A => self.registers.reg_a,
+            Register::B => self.registers.reg_b,
+            Register::C => self.registers.reg_c,
+            Register::D => self.registers.reg_d,
+            Register::E => self.registers.reg_e,
+            Register::H => self.registers.reg_h,
+            Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.registers.reg_a |= self.memory.memory[self.get_hl() as usize]
+                self.memory.memory[self.get_hl() as usize]
             }
-        }
+        };
 
+        self.registers.reg_a |= value;
         self.registers.half_carry = false;
         self.registers.carry = false;
         self.registers.zero = self.registers.reg_a == 0;
@@ -1649,9 +1651,9 @@ impl<'a> ExecutionContext<'a> {
         use self::Register::*;
         use self::RegisterPair::*;
 
-
         let opcode = self.memory.memory[self.registers.pc as usize];
 
+        
         match opcode {
             0x00 | 0x08 | 0x10 | 0x18 | 0x20 | 0x28 | 0x30 | 0x38 => self.nop(),
             0x01 => self.lxi(BC),
@@ -1948,17 +1950,17 @@ impl<'a> ExecutionContext<'a> {
         use opcode::Opcode;
         // Print current instruction
         self.registers.current_instruction = Opcode::print(self.registers.opcode).to_string();
+
     }
 
     // Step one instruction
     pub fn step(&mut self, times: u8) {
         for _ in 0..times {
+            self.execute_instruction();
+            self.try_interrupt();
             if self.registers.debug {
                 println!("{:?}", self.registers);
             }
-
-            self.execute_instruction();
-            self.try_interrupt();
         }
     }
 
@@ -2019,7 +2021,8 @@ impl<'a> ExecutionContext<'a> {
         (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16)
 
     }
-    fn parity(&self, mut value: u8) -> bool {
+
+    /* fn parity(&self, mut value: u8) -> bool {
         let parity_table = [
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
             0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
@@ -2039,6 +2042,15 @@ impl<'a> ExecutionContext<'a> {
             1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
         ];
         return parity_table[value as usize] == 1;
+    }*/
+
+
+    fn parity(&self, mut value: u8) -> bool {
+        let mut bits: u8 = 0;
+        for i in 0..8 {
+            bits += (value >> i) & 1;
+        }
+        bits & 1 == 0
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
