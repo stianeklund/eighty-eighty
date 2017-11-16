@@ -2,13 +2,9 @@ use std::fmt;
 use minifb::{Scale, WindowOptions, Window};
 use interconnect::Interconnect;
 
-// Actual raster size
-pub const WIDTH: u32 = 256;
-pub const HEIGHT: u32 = 224;
+pub const WIDTH: u32 = 224;
+pub const HEIGHT: u32 = 256;
 
-// Frame buffer size (temporary size TODO fix shearing issue)
-const FB_WIDTH: u32 = 256;
-const FB_HEIGHT: u32 = 256;
 
 pub struct Display {
     pub raster: Vec<u32>,
@@ -33,8 +29,8 @@ impl Display {
     pub fn new() -> Display {
         let mut window = Window::new(
             "Eighty Eighty",
-            FB_WIDTH as usize,
-            FB_HEIGHT as usize,
+            WIDTH as usize,
+            HEIGHT as usize,
             WindowOptions {
                 resize: true,
                 scale: Scale::X2,
@@ -55,12 +51,12 @@ impl Display {
         for (i, byte) in (memory[0x2400..0x4000]).iter().enumerate() {
             let y = i as isize * 8 / 256;
 
-            for shift in 0..7 + 1 {
+            for shift in 0..(7 + 1) {
                 let x = ((i * 8) % 256 as usize + shift as usize) as isize;
 
                 // Rotate frame buffer 90 deg
                 let new_x = y as isize;
-                let new_y = -x as isize + 256;
+                let new_y = (-x as isize + 256) - 1;
 
                 let pixel = if byte.wrapping_shr(shift) & 1 == 0 {
                     0xFF00_0000 // Alpha
