@@ -59,7 +59,7 @@ impl Opcode {
             0x0A => "LDAX BC   ",
             0x0B => "DCX BC    ",
             0x0C => "INR C     ",
-            0x0D => "DCR D     ",
+            0x0D => "DCR C     ",
             0x0E => "MVI C     ",
             0x0F => "RRC       ",
 
