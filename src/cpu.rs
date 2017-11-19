@@ -294,8 +294,8 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        let imm = self.memory.read_imm(self.registers.pc);
-        let result = (self.registers.reg_a as u16 & imm);
+        let imm = self.memory.read_next_byte(self.registers.pc);
+        let result = (self.registers.reg_a as u16 & imm as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
@@ -487,12 +487,11 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(3);
     }
 
-    fn call(&mut self, addr: u16) {
-        // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers
-        // Manual)
+    fn call(&mut self, opcode: u16) {
+        // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
         let ret: u16 = self.registers.pc + 3;
-        match addr {
+        match opcode {
             0xCC | 0xCD | 0xC4 | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFD | 0xFC => {
                 // High order byte
                 self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = (ret >> 8) as u8;
@@ -502,34 +501,8 @@ impl<'a> ExecutionContext<'a> {
                 // Push return address to stack
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
             }
-            _ => println!("Unknown call address: {:04X}", self.registers.opcode),
+            _ => println!("Unknown call opcode: {:04X}", self.registers.opcode),
         };
-
-        /*
-        For debugging Space Invaders
-
-        if self.registers.debug {
-            // For debugging
-            // Match call addr with dissasembled Space Invaders function names
-
-            match self.registers.pc {
-                0x1E6 => println!("{:02X}, Load DE, prepare for BlockCopy", self.registers.pc),
-                0x1EC => println!("Call BlockCopy"),
-                0x01D => println!("Call CheckHandleTilt"),
-                0x03B => println!("Call DrawnumCredits"),
-                0x18DC => println!("Call DrawStatus"),
-                0x18D9 => println!("RAM Mirror in ROM"),
-                0x1928 => println!("DrawScore"),
-                0x1956 => println!("Call ClearScreen"),
-                0x1959 => println!("Call DrawScoreHead"),
-                0x8F5 => println!("Call DrawChar"),
-                0x214F => println!("Call $214F"),
-                0x187 => println!("Call Error"),
-
-                _ => println!(),
-            };
-        }
-        */
 
         self.registers.prev_pc = self.registers.pc;
 
@@ -1392,7 +1365,6 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_psw(&mut self) {
         let sp = self.registers.sp as usize;
-
         self.registers.sign = (self.memory.memory[sp as usize] & 0x80) != 0;
         self.registers.zero = (self.memory.memory[sp as usize] & 0x40) != 0;
         self.registers.parity = (self.memory.memory[sp as usize] & 0x04) != 0;
@@ -1496,7 +1468,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Or Immediate with Accumulator
     fn ori(&mut self) {
-         let result = (self.registers.reg_a as u16 | self.memory.read_imm(self.registers.pc));
+         let result = (self.registers.reg_a as u16 | self.memory.read_next_byte(self.registers.pc) as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
