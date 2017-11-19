@@ -220,12 +220,13 @@ impl<'a> ExecutionContext<'a> {
         };
         let result = (self.registers.reg_a as u16).wrapping_add(value);
 
-        self.registers.zero = (result & 0xFF) == 0;
         self.registers.sign = (result & 0x80) != 0;
+        self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = (self.registers.reg_a & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.parity = self.parity(self.registers.reg_a & 0xFF);
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
+
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -251,11 +252,10 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) + (value as i8 & 0x0F) > 0x0F;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.half_carry = (self.registers.reg_a as u8 & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
-
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -282,9 +282,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = ((self.registers.reg_a | value) & 0x08) != 0;
-        self.registers.parity = self.parity(result & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
-
         self.registers.reg_a = result as u8;
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -304,8 +303,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
-
         self.registers.reg_a = result as u8;
+
         self.adv_cycles(7);
         self.adv_pc(2);
     }
@@ -324,7 +323,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8 & 0xFF);
         self.registers.carry = (result & 0x0100) != 0;
-
         self.registers.reg_a = result as u8;
 
         self.adv_cycles(7);
@@ -342,9 +340,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.parity = self.parity(result as u8 & 0xFF);
         self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
-        // self.registers.half_carry = (self.registers.reg_a as i8 & 0xF).wrapping_sub(result as i8) < 0;
         self.registers.carry = (result & 0x0100) != 0;
-
         self.registers.reg_a = result as u8;
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -763,7 +759,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (value & 0x80) != 0;
         self.registers.zero = (value & 0xFF) == 0;
         self.registers.half_carry = !((value & 0x0F) == 0x0F);
-        self.registers.parity = self.parity(value);
+        self.registers.parity = self.parity(value as u8);
 
         self.adv_cycles(5);
         self.adv_pc(1);
@@ -774,20 +770,20 @@ impl<'a> ExecutionContext<'a> {
             RegisterPair::BC => {
                 let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
                 let value = bc.wrapping_sub(1);
-                self.registers.reg_b = (value >> 8 & 0xFF) as u8;
-                self.registers.reg_c = (value & 0xFF) as u8;
+                self.registers.reg_b = (value >> 8) as u8;
+                self.registers.reg_c = value as u8;
             }
             RegisterPair::DE => {
                 let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
                 let value = de.wrapping_sub(1);
-                self.registers.reg_d = (value >> 8 & 0xFF) as u8;
-                self.registers.reg_e = (value & 0xFF) as u8;
+                self.registers.reg_d = (value >> 8) as u8;
+                self.registers.reg_e = value as u8;
             }
             RegisterPair::HL => {
                 let hl = self.get_hl();
                 let value = hl.wrapping_sub(1);
-                self.registers.reg_h = (value >> 8 & 0xFF) as u8;
-                self.registers.reg_l = (value & 0xFF) as u8;
+                self.registers.reg_h = (value >> 8) as u8;
+                self.registers.reg_l = value as u8;
             }
             RegisterPair::SP => self.registers.sp = self.registers.sp.wrapping_sub(1),
         }
@@ -817,7 +813,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) + (add as i8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
 
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1055,7 +1051,7 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.debug {
             println!("Input port: {}, Result: {:04X}", port, result);
         }
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
         self.adv_cycles(10);
         self.adv_pc(2);
     }
@@ -1063,31 +1059,31 @@ impl<'a> ExecutionContext<'a> {
     fn inr(&mut self, reg: Register) {
         let value = match reg {
             Register::A => {
-                self.registers.reg_a = self.registers.reg_a.wrapping_add(1) & 0xFF;
+                self.registers.reg_a = self.registers.reg_a.wrapping_add(1);
                 self.registers.reg_a
             },
             Register::B => {
-                self.registers.reg_b = self.registers.reg_b.wrapping_add(1) & 0xFF;
+                self.registers.reg_b = self.registers.reg_b.wrapping_add(1);
                 self.registers.reg_b
             }
             Register::C => {
-                self.registers.reg_c = self.registers.reg_c.wrapping_add(1) & 0xFF;
+                self.registers.reg_c = self.registers.reg_c.wrapping_add(1);
                 self.registers.reg_c
             }
             Register::D => {
-                self.registers.reg_d = self.registers.reg_d.wrapping_add(1) & 0xFF;
+                self.registers.reg_d = self.registers.reg_d.wrapping_add(1);
                 self.registers.reg_d
             }
             Register::E => {
-                self.registers.reg_e = self.registers.reg_e.wrapping_add(1) & 0xFF;
+                self.registers.reg_e = self.registers.reg_e.wrapping_add(1);
                 self.registers.reg_e
             }
             Register::H => {
-                self.registers.reg_h = self.registers.reg_h.wrapping_add(1) & 0xFF;
+                self.registers.reg_h = self.registers.reg_h.wrapping_add(1);
                 self.registers.reg_h
             }
             Register::L => {
-                self.registers.reg_l = self.registers.reg_l.wrapping_add(1) & 0xFF;
+                self.registers.reg_l = self.registers.reg_l.wrapping_add(1);
                 self.registers.reg_l
 
             }
@@ -1102,6 +1098,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.zero = (value & 0xFF) == 0;
         self.registers.half_carry = (value & 0x0F) == 0x00;
         self.registers.parity = self.parity(value as u8);
+
         self.adv_cycles(5);
         self.adv_pc(1);
     }
@@ -1238,7 +1235,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (imm as i8 & 0x0F) >= 0;
         self.registers.parity = self.parity(result as u8 & 0xFF);
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -1266,7 +1263,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
         self.registers.parity = self.parity(result as u8 & 0xFF);
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1282,7 +1279,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (imm as i8 & 0x0F) >= 0;
         self.registers.parity = self.parity(result as u8 & 0xFF);
         self.registers.carry = (result & 0x0100) != 0;
-        self.registers.reg_a = (result & 0xFF) as u8;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -1318,7 +1315,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = false;
         self.registers.carry = false;
         self.registers.parity = self.parity(result as u8 & 0xFF);
-        self.registers.reg_a = (result as u8 & 0xFF);
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1489,9 +1486,9 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = false;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
-        self.registers.reg_a = (result as u8 & 0xFF);
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1504,9 +1501,9 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = false;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
-        self.registers.reg_a = (result as u8 & 0xFF);
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(7);
         self.adv_pc(2);
