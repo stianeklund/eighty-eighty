@@ -314,13 +314,14 @@ impl<'a> ExecutionContext<'a> {
         let value = self.memory.read(self.registers.pc + 1) as u16;
 
         // Add immediate with accumulator + carry flag value
-        let a = self.registers.reg_a as u16;
-        let result = (value).wrapping_add(a).wrapping_add(self.registers.carry as u16);
+        let reg_a = self.registers.reg_a as u16;
+        let carry = self.registers.carry as u16;
+        let result = (value).wrapping_add(reg_a as u16).wrapping_add(carry as u16);
 
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.half_carry = (reg_a & 0x0F) + (value & 0x0F) + (carry & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
@@ -1313,14 +1314,14 @@ impl<'a> ExecutionContext<'a> {
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
         let imm = self.memory.read(self.registers.pc + 1);
-        let result = self.registers.reg_a as u16 ^ imm as u16;
+        let result = self.registers.reg_a ^ imm as u8;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = false;
-        self.registers.parity = self.parity(result as u8);
+        self.registers.parity = self.parity(result);
         self.registers.carry = false;
-        self.registers.reg_a = result as u8;
+        self.registers.reg_a = result;
 
         self.adv_cycles(7);
         self.adv_pc(2);
