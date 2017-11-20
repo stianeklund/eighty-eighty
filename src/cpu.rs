@@ -214,8 +214,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l as u16 + self.registers.carry as u16,
             Register::M => {
                 self.adv_cycles(3);
-                let hl = self.get_hl();
-                self.memory.memory[hl as usize] as u16 + self.registers.carry as u16
+                self.memory.memory[self.get_hl() as usize] as u16 + self.registers.carry as u16
             }
         };
         let result = (self.registers.reg_a as u16).wrapping_add(value as u16);
@@ -231,6 +230,28 @@ impl<'a> ExecutionContext<'a> {
         self.adv_pc(1);
     }
 
+    // Add Immediate to Accumulator with Carry
+    fn aci(&mut self) {
+        let value = self.memory.read(self.registers.pc + 1) as u16;
+
+        // Add immediate with accumulator + carry flag value
+        let reg_a = self.registers.reg_a;
+        let carry = self.registers.carry as u8;
+        let result = (value).wrapping_add(reg_a as u16).wrapping_add(carry as u16);
+
+
+        self.registers.sign = (result & 0x80) != 0;
+        self.registers.zero = (result & 0xFF) == 0;
+        self.registers.half_carry = (reg_a & 0x0F) + (value as u8 & 0x0F) + (carry & 0x0F) > 0x0F;
+        self.registers.parity = self.parity(result as u8);
+        self.registers.carry = (result & 0x0100) != 0;
+        self.registers.reg_a = result as u8;
+
+        self.adv_cycles(7);
+        self.adv_pc(2);
+    }
+
+
     fn add(&mut self, reg: Register) {
         let value = match reg {
 
@@ -243,8 +264,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                let hl = self.get_hl();
-                self.memory.memory[hl as usize]
+                self.memory.memory[self.get_hl() as usize]
             }
         };
 
@@ -260,6 +280,25 @@ impl<'a> ExecutionContext<'a> {
         self.adv_cycles(4);
         self.adv_pc(1);
     }
+
+    // Add Immediate to Accumulator
+    fn adi(&mut self) {
+        // Read next byte of immediate data (low).
+        let value = self.memory.read(self.registers.pc + 1) as u16;
+        let result = (value).wrapping_add(self.registers.reg_a as u16);
+
+        // Set CPU flags with new accumulator values
+        self.registers.sign = (result & 0x80) != 0;
+        self.registers.zero = (result & 0xFF) == 0;
+        self.registers.parity = self.parity(result as u8);
+        self.registers.half_carry = (self.registers.reg_a as u8 & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.carry = (result & 0x0100) != 0;
+        self.registers.reg_a = result as u8;
+        self.adv_cycles(7);
+        self.adv_pc(2);
+    }
+
+
 
     fn ana(&mut self, reg: Register) {
         // Check if the 4th bit is set on all registers
@@ -305,44 +344,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.carry = false;
         self.registers.reg_a = result as u8;
 
-        self.adv_cycles(7);
-        self.adv_pc(2);
-    }
-
-    // Add Immediate to Accumulator with Carry
-    fn aci(&mut self) {
-        let value = self.memory.read(self.registers.pc + 1) as u16;
-
-        // Add immediate with accumulator + carry flag value
-        let reg_a = self.registers.reg_a as u16;
-        let carry = self.registers.carry as u16;
-        let result = (value).wrapping_add(reg_a as u16).wrapping_add(carry as u16);
-
-
-        self.registers.sign = (result & 0x80) != 0;
-        self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (reg_a & 0x0F) + (value & 0x0F) + (carry & 0x0F) > 0x0F;
-        self.registers.parity = self.parity(result as u8);
-        self.registers.carry = (result & 0x0100) != 0;
-        self.registers.reg_a = result as u8;
-
-        self.adv_cycles(7);
-        self.adv_pc(2);
-    }
-
-    // Add Immediate to Accumulator
-    fn adi(&mut self) {
-        // Read next byte of immediate data (low).
-        let value = self.memory.read(self.registers.pc + 1) as u16;
-        let result = (value).wrapping_add(self.registers.reg_a as u16);
-
-        // Set CPU flags with new accumulator values
-        self.registers.sign = (result & 0x80) != 0;
-        self.registers.zero = (result & 0xFF) == 0;
-        self.registers.parity = self.parity(result as u8);
-        self.registers.half_carry = (self.registers.reg_a as u8 & 0x0F) + (value as u8 & 0x0F) > 0x0F;
-        self.registers.carry = (result & 0x0100) != 0;
-        self.registers.reg_a = result as u8;
         self.adv_cycles(7);
         self.adv_pc(2);
     }
@@ -1188,17 +1189,17 @@ impl<'a> ExecutionContext<'a> {
     // SBB Subtract Register or Memory from Accumulator with borrow
     fn sbb(&mut self, reg: Register) {
         let value = match reg {
-            Register::A => (self.registers.reg_a as u16) + self.registers.carry as u16,
-            Register::B => (self.registers.reg_b as u16) + self.registers.carry as u16,
-            Register::C => (self.registers.reg_c as u16) + self.registers.carry as u16,
-            Register::D => (self.registers.reg_d as u16) + self.registers.carry as u16,
-            Register::E => (self.registers.reg_e as u16) + self.registers.carry as u16,
-            Register::H => (self.registers.reg_h as u16) + self.registers.carry as u16,
-            Register::L => (self.registers.reg_l as u16) + self.registers.carry as u16,
+            Register::A => self.registers.reg_a + self.registers.carry as u8,
+            Register::B => self.registers.reg_b + self.registers.carry as u8,
+            Register::C => self.registers.reg_c + self.registers.carry as u8,
+            Register::D => self.registers.reg_d + self.registers.carry as u8,
+            Register::E => self.registers.reg_e + self.registers.carry as u8,
+            Register::H => self.registers.reg_h + self.registers.carry as u8,
+            Register::L => self.registers.reg_l + self.registers.carry as u8,
             Register::M => {
+                self.adv_cycles(3);
                 let mem = self.memory.memory[self.get_hl() as usize];
-                self.adv_cycles(4);
-                mem as u16 + self.registers.carry as u16
+                mem as u8 + self.registers.carry as u8
             }
         };
 
