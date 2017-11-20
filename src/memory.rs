@@ -30,25 +30,10 @@ impl Memory {
     pub fn read_byte(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
-    pub fn read_next_byte(&mut self, byte: u16) -> u8 {
-        self.memory[byte as usize + 1]
-    }
 
     // Read immediate value
     pub fn read_imm(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
-    }
-    pub fn pop(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize + 1] as u16) << 8 | (self.memory[addr as usize] as u16)
-    }
-    pub fn push(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize - 1] as u16) >> 8 | (self.memory[addr as usize - 2] as u16)
-    }
-    pub fn read_word(&mut self, addr: u16) -> u16 {
-        (self.read_byte(addr + 1) as u16) << 8 | (self.read_byte(addr) as u16)
-    }
-    pub fn write_memory(&mut self, addr: u16) {
-        u16::from((self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16));
     }
 
     pub fn read_high(&mut self, addr: u16) -> u8 {
@@ -59,23 +44,7 @@ impl Memory {
         self.memory[addr as usize + 1]
     }
 
-    // Reads the memory address and returns a 16 bit integer, for self.pc / sp
-    // instructions
-    pub fn read_rp(&mut self, addr: usize) -> u16 {
-        u16::from(self.memory[addr])
-    }
-
-    // Useful to read values out of memory to assign to 8 bit registers
-    pub fn read(&mut self, addr: u16) -> u16 {
-        u16::from(self.memory[addr as usize])
-    }
-    pub fn write(&mut self, addr: u16, val: u8) {
-        self.memory[addr as usize] = val;
-    }
-
-    pub fn read_or(&mut self, reg: usize) -> u8 {
-        self.memory[reg | reg]
-    }
+    pub fn read(&mut self, addr: u16) -> u16 { u16::from(self.memory[addr as usize])  }
 
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);

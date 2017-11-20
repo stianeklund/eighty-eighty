@@ -952,7 +952,7 @@ impl<'a> ExecutionContext<'a> {
     fn mvi(&mut self, reg: Register) {
         // The MVI instruction uses a 8-bit data quantity, as opposed to
         // LXI which uses a 16-bit data quantity.
-        let mut value = self.memory.read(self.registers.pc + 1) as u8;
+        let value = self.memory.read(self.registers.pc + 1) as u8;
 
         match reg {
             Register::A => self.registers.reg_a = value,
@@ -963,9 +963,9 @@ impl<'a> ExecutionContext<'a> {
             Register::H => self.registers.reg_h = value,
             Register::L => self.registers.reg_l = value,
             Register::M => {
+                self.adv_cycles(3);
                 let hl = self.get_hl();
                 self.memory.memory[hl as usize] = value;
-                self.adv_cycles(3);
             }
         }
         self.adv_cycles(7);
@@ -1170,16 +1170,11 @@ impl<'a> ExecutionContext<'a> {
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
     fn stax(&mut self, reg: RegisterPair) {
+        let reg_a = self.registers.reg_a;
         match reg {
-            RegisterPair::BC => {
-                self.memory.memory[(self.registers.reg_b as usize) << 8 | self.registers.reg_c as usize] = self.registers.reg_a;
-            }
-            RegisterPair::DE => {
-                self.memory.memory[(self.registers.reg_d as usize) << 8 | self.registers.reg_e as usize] = self.registers.reg_a;
-            }
-            RegisterPair::HL => {
-                self.memory.memory[(self.registers.reg_h as usize) << 8 | self.registers.reg_l as usize] = self.registers.reg_a;
-            }
+            RegisterPair::BC => self.memory.memory[(self.registers.reg_b as usize) << 8 | self.registers.reg_c as usize] = reg_a,
+            RegisterPair::DE => self.memory.memory[(self.registers.reg_d as usize) << 8 | self.registers.reg_e as usize] = reg_a,
+            RegisterPair::HL => self.memory.memory[(self.registers.reg_h as usize) << 8 | self.registers.reg_l as usize] = reg_a,
             RegisterPair::SP => eprintln!("STAX should not run on SP register"),
         }
         self.adv_cycles(7);
@@ -1383,13 +1378,13 @@ impl<'a> ExecutionContext<'a> {
 
     fn pop_psw(&mut self) {
         let sp = self.registers.sp as usize;
-        self.registers.sign = (self.memory.memory[sp as usize] & 0x80) != 0;
-        self.registers.zero = (self.memory.memory[sp as usize] & 0x40) != 0;
-        self.registers.parity = (self.memory.memory[sp as usize] & 0x04) != 0;
-        self.registers.half_carry = (self.memory.memory[sp as usize] & 0x10) != 0;
-        self.registers.carry = (self.memory.memory[sp as usize] & 0x01) != 0;
+        self.registers.sign = (self.memory.memory[sp] & 0x80) != 0;
+        self.registers.zero = (self.memory.memory[sp] & 0x40) != 0;
+        self.registers.parity = (self.memory.memory[sp] & 0x04) != 0;
+        self.registers.half_carry = (self.memory.memory[sp] & 0x10) != 0;
+        self.registers.carry = (self.memory.memory[sp] & 0x01) != 0;
 
-        self.registers.reg_a = (self.memory.read_word(sp as u16) >> 8) as u8;
+        self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
         self.registers.sp = sp.wrapping_add(2) as u16;
 
         self.adv_cycles(10);
