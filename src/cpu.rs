@@ -218,7 +218,7 @@ impl<'a> ExecutionContext<'a> {
                 self.memory.memory[hl as usize] as u16 + self.registers.carry as u16
             }
         };
-        let result = (self.registers.reg_a as u16).wrapping_add(value);
+        let result = (self.registers.reg_a as u16).wrapping_add(value as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
@@ -277,7 +277,7 @@ impl<'a> ExecutionContext<'a> {
             }
         };
         // And value with accumulator
-        let result = self.registers.reg_a & value;
+        let result = self.registers.reg_a as u16 & value as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
@@ -294,12 +294,12 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        let imm = self.memory.read(self.registers.pc + 1);
-        let result = (self.registers.reg_a as u16 & imm as u16);
+        let value = self.memory.read(self.registers.pc + 1);
+        let result = self.registers.reg_a as u16 & value as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = ((self.registers.reg_a | imm as u8) & 0x08) != 0;
+        self.registers.half_carry = ((self.registers.reg_a | value as u8) & 0x08) != 0;
         // self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
@@ -311,17 +311,17 @@ impl<'a> ExecutionContext<'a> {
 
     // Add Immediate to Accumulator with Carry
     fn aci(&mut self) {
-        let imm = self.memory.read(self.registers.pc + 1) as u16;
+        let value = self.memory.read(self.registers.pc + 1) as u16;
 
         // Add immediate with accumulator + carry flag value
         let a = self.registers.reg_a as u16;
-        let result = (imm).wrapping_add(a).wrapping_add(self.registers.carry as u16);
+        let result = (value).wrapping_add(a).wrapping_add(self.registers.carry as u16);
 
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
 
@@ -332,14 +332,14 @@ impl<'a> ExecutionContext<'a> {
     // Add Immediate to Accumulator
     fn adi(&mut self) {
         // Read next byte of immediate data (low).
-        let imm = self.memory.read_next_byte(self.registers.pc) as u16;
-        let result = (imm).wrapping_add(self.registers.reg_a as u16);
+        let value = self.memory.read(self.registers.pc + 1) as u16;
+        let result = (value).wrapping_add(self.registers.reg_a as u16);
 
         // Set CPU flags with new accumulator values
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
-        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
+        self.registers.parity = self.parity(result as u8);
+        self.registers.half_carry = (self.registers.reg_a as u8 & 0x0F) + (value as u8 & 0x0F) > 0x0F;
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
         self.adv_cycles(7);
@@ -588,7 +588,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
 
         self.adv_cycles(4);
@@ -598,14 +598,14 @@ impl<'a> ExecutionContext<'a> {
     // Compare Immediate with Accumulator
     fn cpi(&mut self) {
         // Fetch byte out of memory which we will use to compare & set flags with.
-        let byte = self.memory.read_next_byte(self.registers.pc) as u16;
+        let value = self.memory.read(self.registers.pc + 1) as u16;
         // Compare the result of the accumulator with the immediate address.
-        let result = (self.registers.reg_a as u16).wrapping_sub(byte as u16);
+        let result = (self.registers.reg_a as u16).wrapping_sub(value as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (byte as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
 
         self.adv_cycles(7);
@@ -769,7 +769,6 @@ impl<'a> ExecutionContext<'a> {
     fn daa(&mut self) {
         let mut add = 0;
 
-        // TODO Investigate if there's a cleaner way to do this..
         if self.registers.half_carry || self.registers.reg_a & 0x0F > 9 {
             add = 0x06;
         }
@@ -783,8 +782,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        // self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (add as i8 & 0x0F) >= 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) + (add as i8 & 0x0F) > 0x0F;
+        self.registers.half_carry = (self.registers.reg_a as u8 & 0x0F) + (add as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
 
         self.registers.reg_a = result as u8;
@@ -812,9 +810,13 @@ impl<'a> ExecutionContext<'a> {
         // The contents of the accumulator are rotated one bit position to the left.
         // The high-order bit of the accumulator replaces the carry bit while the carry bit
         // replaces the high-order bit of the accumulator
-        let carry = self.registers.carry as u8;
-        self.registers.carry = (self.registers.reg_a & 0x80) != 0;
-        self.registers.reg_a = (self.registers.reg_a << 1) | carry;
+        // let carry = self.registers.carry as u8;
+        // self.registers.reg_a = (self.registers.reg_a << 1) | carry;
+        // self.registers.carry = (self.registers.reg_a & 0x80) != 0;
+
+        let carry = (self.registers.reg_a & 0x80) != 0;
+        self.registers.reg_a = (self.registers.reg_a << 1) | (self.registers.carry as u8);
+        self.registers.carry = carry;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -824,9 +826,14 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        let carry = self.registers.carry as u8;
-        self.registers.carry = (self.registers.reg_a & 0x01) != 0;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | (carry << 7);
+        // let carry = self.registers.carry as u8;
+        // self.registers.reg_a = (self.registers.reg_a >> 1) | (carry << 7);
+        // self.registers.carry = (self.registers.reg_a & 0x01) != 0;
+
+        let carry = (self.registers.reg_a & 1) != 0;
+        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
+        self.registers.carry = carry;
+
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -836,8 +843,11 @@ impl<'a> ExecutionContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        self.registers.carry = (self.registers.reg_a & 0x80) != 0;
-        self.registers.reg_a = (self.registers.reg_a << 1) | self.registers.carry as u8;
+        // self.registers.carry = (self.registers.reg_a & 0x80) != 0;
+        // self.registers.reg_a = (self.registers.reg_a << 1) | self.registers.carry as u8;
+
+        self.registers.reg_a = self.registers.reg_a.rotate_left(1);
+        self.registers.carry = (self.registers.reg_a & 1)  != 0;
 
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -846,8 +856,12 @@ impl<'a> ExecutionContext<'a> {
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
-        self.registers.carry = (self.registers.reg_a & 0x01) != 0;
-        self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
+        // self.registers.carry = (self.registers.reg_a & 0x01) != 0;
+        // self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
+
+        self.registers.reg_a = self.registers.reg_a.rotate_right(1);
+        self.registers.carry = (self.registers.reg_a & 0x80) != 0;
+
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -936,7 +950,7 @@ impl<'a> ExecutionContext<'a> {
     fn mvi(&mut self, reg: Register) {
         // The MVI instruction uses a 8-bit data quantity, as opposed to
         // LXI which uses a 16-bit data quantity.
-        let mut value = self.memory.read_next_byte(self.registers.pc);
+        let mut value = self.memory.read(self.registers.pc + 1) as u8;
 
         match reg {
             Register::A => self.registers.reg_a = value,
@@ -1007,7 +1021,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn input(&mut self) {
-        let port = self.memory.read_next_byte(self.registers.pc);
+        let port = self.memory.read(self.registers.pc + 1);
 
         let mut result: u16 = 0;
         match port {
@@ -1191,8 +1205,8 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (result as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(value as u8);
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
 
@@ -1207,8 +1221,8 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (imm as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
 
@@ -1236,7 +1250,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
 
@@ -1246,13 +1260,13 @@ impl<'a> ExecutionContext<'a> {
 
     // SUI Subtract Immediate From Accumulator
     fn sui(&mut self) {
-        let imm = self.memory.read(self.registers.pc + 1);
-        let result = (self.registers.reg_a as u16).wrapping_sub(imm) as u16;
+        let value = self.memory.read(self.registers.pc + 1);
+        let result = (self.registers.reg_a as u16).wrapping_sub(value) as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (imm as i8 & 0x0F) >= 0;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
 
@@ -1283,13 +1297,13 @@ impl<'a> ExecutionContext<'a> {
             }
         };
 
-        let result = (self.registers.reg_a as u16 ^ value as u16);
+        let result = self.registers.reg_a as u16 ^ value as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = false;
         self.registers.carry = false;
-        self.registers.parity = self.parity(result as u8 & 0xFF);
+        self.registers.parity = self.parity(result as u8);
         self.registers.reg_a = result as u8;
 
         self.adv_cycles(4);
@@ -1298,15 +1312,15 @@ impl<'a> ExecutionContext<'a> {
 
     // XRI Exclusive-Or Immediate with Accumulator
     fn xri(&mut self) {
-        let imm = self.memory.read_next_byte(self.registers.pc);
-        let result = (self.registers.reg_a ^ imm);
+        let imm = self.memory.read(self.registers.pc + 1);
+        let result = self.registers.reg_a as u16 ^ imm as u16;
 
-        self.registers.half_carry = false;
-        self.registers.carry = false;
-        self.registers.zero = (result & 0xFF) == 0;
         self.registers.sign = (result & 0x80) != 0;
-        self.registers.parity = self.parity(result & 0xFF);
-        self.registers.reg_a = result;
+        self.registers.zero = (result & 0xFF) == 0;
+        self.registers.half_carry = false;
+        self.registers.parity = self.parity(result as u8);
+        self.registers.carry = false;
+        self.registers.reg_a = result as u8;
 
         self.adv_cycles(7);
         self.adv_pc(2);
@@ -1404,7 +1418,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn output(&mut self) {
-        let port = self.memory.read_next_byte(self.registers.pc);
+        let port = self.memory.read(self.registers.pc + 1);
         println!("Output is running");
         match port {
             // Sets the offset size for shift register
@@ -1455,7 +1469,7 @@ impl<'a> ExecutionContext<'a> {
             }
         };
 
-        let result = (self.registers.reg_a as u16 | value as u16);
+        let result = self.registers.reg_a as u16 | value as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
@@ -1470,7 +1484,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Or Immediate with Accumulator
     fn ori(&mut self) {
-         let result = (self.registers.reg_a as u16 | self.memory.read_next_byte(self.registers.pc) as u16);
+         let result = self.registers.reg_a as u16 | self.memory.read(self.registers.pc + 1) as u16;
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;

@@ -2,7 +2,6 @@
 mod tests {
     use interconnect::Interconnect;
     use std::time::Duration;
-    use std::thread::sleep;
 
     #[test]
     fn preliminary() {
@@ -66,7 +65,6 @@ mod tests {
     fn test_com() {
         let mut i = Interconnect::new();
 
-        let duration = Duration::new(0, 10);
         let bin: &str = "TEST.COM";
         i.memory.load_tests(bin);
 
@@ -120,14 +118,12 @@ mod tests {
                 println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
             }
-            // sleep(duration);
         }
     }
     #[test]
     fn cpu_test() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        let duration = Duration::new(0, 0);
         let bin: &str = "CPUTEST.COM";
         i.memory.load_tests(bin);
 
@@ -172,7 +168,6 @@ mod tests {
                     print!("{}", i.registers.reg_e as char);
                 }
             }
-            // sleep(duration);
             if i.registers.pc == 0 {
                 println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
@@ -184,7 +179,6 @@ mod tests {
     fn cpu_exer() {
         // Standup memory & registers
         let mut i = Interconnect::new();
-        let duration = Duration::new(0, 0);
         let bin: &str = "8080EXM.COM";
         i.memory.load_tests(bin);
 
@@ -231,7 +225,6 @@ mod tests {
                     print!("{}", i.registers.reg_e as char);
                 }
             }
-            // sleep(duration);
             if i.registers.pc == 0 {
                 println!("\nJump to 0 from {:04X}", i.registers.prev_pc);
                 break;
