@@ -294,13 +294,13 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is reset to zero.
         // Set half carry if the accumulator or opcode and the lower 4 bits are 1.
 
-        let imm = self.memory.read_next_byte(self.registers.pc);
+        let imm = self.memory.read(self.registers.pc + 1);
         let result = (self.registers.reg_a as u16 & imm as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        // self.registers.half_carry = ((self.registers.reg_a | imm as u8) & 0x08) != 0;
-        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
+        self.registers.half_carry = ((self.registers.reg_a | imm as u8) & 0x08) != 0;
+        // self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
         self.registers.reg_a = result as u8;
@@ -311,7 +311,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Add Immediate to Accumulator with Carry
     fn aci(&mut self) {
-        let imm = self.memory.read_next_byte(self.registers.pc) as u16;
+        let imm = self.memory.read(self.registers.pc + 1) as u16;
 
         // Add immediate with accumulator + carry flag value
         let a = self.registers.reg_a as u16;
@@ -452,21 +452,21 @@ impl<'a> ExecutionContext<'a> {
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let high = self.memory.read_imm(self.registers.pc) >> 8;
+                let high = self.memory.read_high(self.registers.pc);
                 let low = self.memory.read_low(self.registers.pc);
                 self.registers.reg_b = high as u8;
                 self.registers.reg_c = low;
             }
 
             RegisterPair::DE => {
-                let high = self.memory.read_imm(self.registers.pc) >> 8;
+                let high = self.memory.read_high(self.registers.pc);
                 let low = self.memory.read_low(self.registers.pc);
                 self.registers.reg_d = high as u8;
                 self.registers.reg_e = low;
             }
 
             RegisterPair::HL => {
-                let high = self.memory.read_imm(self.registers.pc) >> 8;
+                let high = self.memory.read_high(self.registers.pc);
                 let low = self.memory.read_low(self.registers.pc);
                 self.registers.reg_h = high as u8;
                 self.registers.reg_l = low;
@@ -724,9 +724,10 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l
             }
             Register::M => {
-                let hl = self.get_hl().wrapping_sub(1);
                 self.adv_cycles(5);
-                self.memory.memory[hl as usize & 0xFF]
+                let hl = self.get_hl();
+                self.memory.memory[hl as usize] = self.memory.memory[hl as usize].wrapping_sub(1);
+                self.memory.memory[hl as usize]
             }
         };
         self.registers.sign = (value & 0x80) != 0;
@@ -1062,7 +1063,8 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::M => {
                 self.adv_cycles(5);
-                let hl = self.get_hl().wrapping_add(1);
+                let hl = self.get_hl();
+                self.memory.memory[hl as usize] = self.memory.memory[hl as usize].wrapping_add(1);
                 self.memory.memory[hl as usize]
             }
         };
@@ -1189,7 +1191,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (result as i8 & 0x0F) >= 0;
         self.registers.parity = self.parity(value as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
@@ -1398,7 +1400,7 @@ impl<'a> ExecutionContext<'a> {
         // Set program counter for debug output
         self.registers.prev_pc = self.registers.pc;
         // println!("Returning to {:04X}", ret);
-        self.registers.pc = ret;
+        self.registers.pc = ret as u16;
     }
 
     fn output(&mut self) {
@@ -1962,7 +1964,7 @@ impl<'a> ExecutionContext<'a> {
         for i in 0..8 {
             bits += (value >> i) & 1;
         }
-        bits & 1 == 0
+        (bits & 1) == 0
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
