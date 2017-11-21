@@ -205,23 +205,23 @@ impl<'a> ExecutionContext<'a> {
 
     fn adc(&mut self, reg: Register) {
         let value = match reg {
-            Register::A => self.registers.reg_a as u16 + self.registers.carry as u16,
-            Register::B => self.registers.reg_b as u16 + self.registers.carry as u16,
-            Register::C => self.registers.reg_c as u16 + self.registers.carry as u16,
-            Register::D => self.registers.reg_d as u16 + self.registers.carry as u16,
-            Register::E => self.registers.reg_e as u16 + self.registers.carry as u16,
-            Register::H => self.registers.reg_h as u16 + self.registers.carry as u16,
-            Register::L => self.registers.reg_l as u16 + self.registers.carry as u16,
+            Register::A => self.registers.reg_a,
+            Register::B => self.registers.reg_b,
+            Register::C => self.registers.reg_c,
+            Register::D => self.registers.reg_d,
+            Register::E => self.registers.reg_e,
+            Register::H => self.registers.reg_h,
+            Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize] as u16 + self.registers.carry as u16
+                self.memory.memory[self.get_hl() as usize]
             }
         };
-        let result = (self.registers.reg_a as u16).wrapping_add(value as u16);
+        let result = (self.registers.reg_a as u16).wrapping_add(value as u16).wrapping_add(self.registers.carry as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (value as u8 & 0x0F) > 0x0F;
+        self.registers.half_carry = (self.registers.reg_a & 0x0F) + (value as u8 & 0x0F) + (self.registers.carry as u8) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
@@ -1184,25 +1184,24 @@ impl<'a> ExecutionContext<'a> {
     // SBB Subtract Register or Memory from Accumulator with borrow
     fn sbb(&mut self, reg: Register) {
         let value = match reg {
-            Register::A => self.registers.reg_a + self.registers.carry as u8,
-            Register::B => self.registers.reg_b + self.registers.carry as u8,
-            Register::C => self.registers.reg_c + self.registers.carry as u8,
-            Register::D => self.registers.reg_d + self.registers.carry as u8,
-            Register::E => self.registers.reg_e + self.registers.carry as u8,
-            Register::H => self.registers.reg_h + self.registers.carry as u8,
-            Register::L => self.registers.reg_l + self.registers.carry as u8,
+            Register::A => self.registers.reg_a,
+            Register::B => self.registers.reg_b,
+            Register::C => self.registers.reg_c,
+            Register::D => self.registers.reg_d,
+            Register::E => self.registers.reg_e,
+            Register::H => self.registers.reg_h,
+            Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                let mem = self.memory.memory[self.get_hl() as usize];
-                mem as u8 + self.registers.carry as u8
+                self.memory.memory[self.get_hl() as usize]
             }
         };
 
-        let result = (self.registers.reg_a as u16).wrapping_sub(value as u16);
+        let result = (self.registers.reg_a as u16).wrapping_sub(value as u16).wrapping_sub(self.registers.carry as u16);
 
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
-        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) >= 0;
+        self.registers.half_carry = (self.registers.reg_a as i8 & 0x0F) - (value as i8 & 0x0F) - (self.registers.carry as i8) >= 0;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = (result & 0x0100) != 0;
         self.registers.reg_a = result as u8;
