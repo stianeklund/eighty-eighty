@@ -165,7 +165,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn set_sp(&mut self, byte: u16) {
-        self.registers.sp = byte & 0xFFFF;
+        self.registers.sp = byte;
     }
 
     fn read_reg(&self, reg: Register) -> u8 {
@@ -339,7 +339,6 @@ impl<'a> ExecutionContext<'a> {
         self.registers.sign = (result & 0x80) != 0;
         self.registers.zero = (result & 0xFF) == 0;
         self.registers.half_carry = ((self.registers.reg_a | value as u8) & 0x08) != 0;
-        // self.registers.half_carry = (self.registers.reg_a & 0x0F) + (imm as u8 & 0x0F) > 0x0F;
         self.registers.parity = self.parity(result as u8);
         self.registers.carry = false;
         self.registers.reg_a = result as u8;
@@ -657,32 +656,32 @@ impl<'a> ExecutionContext<'a> {
                 let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
-                self.registers.reg_l = (result & 0xFF) as u8;
-                self.registers.carry = (result & 0x10000) != 0;
+                self.registers.reg_l = result as u8;
+                self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::DE => {
                 let value = (self.registers.reg_d as u32) << 8 | (self.registers.reg_e as u32);
                 let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
-                self.registers.reg_l = (result & 0xFF) as u8;
-                self.registers.carry = (result & 0x10000) != 0;
+                self.registers.reg_l = result as u8;
+                self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::HL => {
                 let mut value = (self.registers.reg_h as u32) << 8 | (self.registers.reg_l as u32);
                 let result = (self.get_hl() as u32).wrapping_add(value as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
-                self.registers.reg_l = (result & 0xFF) as u8;
-                self.registers.carry = (result & 0x10000) != 0;
+                self.registers.reg_l = result as u8;
+                self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::SP => {
                 let mut value = self.registers.sp as u32;
                 let result = (self.get_hl() as u32).wrapping_add(value);
 
                 self.registers.reg_h = (result >> 8) as u8;
-                self.registers.reg_l = (result & 0xFF) as u8;
-                self.registers.carry = (result & 0x10000) != 0;
+                self.registers.reg_l = result as u8;
+                self.registers.carry = (result & 0x10_000) != 0;
             }
         }
         self.adv_cycles(10);
@@ -698,31 +697,31 @@ impl<'a> ExecutionContext<'a> {
 
         let value = match reg {
             Register::A => {
-                self.registers.reg_a = self.registers.reg_a.wrapping_sub(1) & 0xFF;
+                self.registers.reg_a = self.registers.reg_a.wrapping_sub(1);
                 self.registers.reg_a
             }
             Register::B => {
-                self.registers.reg_b = self.registers.reg_b.wrapping_sub(1) & 0xFF;
+                self.registers.reg_b = self.registers.reg_b.wrapping_sub(1);
                 self.registers.reg_b
             }
             Register::C => {
-                self.registers.reg_c = self.registers.reg_c.wrapping_sub(1) & 0xFF;
+                self.registers.reg_c = self.registers.reg_c.wrapping_sub(1);
                 self.registers.reg_c
             }
             Register::D => {
-                self.registers.reg_d = self.registers.reg_d.wrapping_sub(1) & 0xFF;
+                self.registers.reg_d = self.registers.reg_d.wrapping_sub(1);
                 self.registers.reg_d
             }
             Register::E => {
-                self.registers.reg_e = self.registers.reg_e.wrapping_sub(1) & 0xFF;
+                self.registers.reg_e = self.registers.reg_e.wrapping_sub(1);
                 self.registers.reg_e
             }
             Register::H => {
-                self.registers.reg_h = self.registers.reg_h.wrapping_sub(1) & 0xFF;
+                self.registers.reg_h = self.registers.reg_h.wrapping_sub(1);
                 self.registers.reg_h
             }
             Register::L => {
-                self.registers.reg_l = self.registers.reg_l.wrapping_sub(1) & 0xFF;
+                self.registers.reg_l = self.registers.reg_l.wrapping_sub(1);
                 self.registers.reg_l
             }
             Register::M => {
@@ -769,17 +768,13 @@ impl<'a> ExecutionContext<'a> {
 
     // Double precision add
     fn daa(&mut self) {
-        let mut add = 0;
-
-        if self.registers.half_carry || self.registers.reg_a & 0x0F > 9 {
-            add = 0x06;
-        }
+        let mut add = if self.registers.half_carry || self.registers.reg_a & 0x0F > 9 { 0x06 } else { 0 };
 
         if self.registers.carry || (self.registers.reg_a >> 4) > 9 || (self.registers.reg_a >> 4) >= 9 && self.registers.reg_a & 0x0F > 9 {
             add |= 0x60;
             self.registers.carry = true;
-
         }
+
         let result = (self.registers.reg_a as u16).wrapping_add(add as u16);
 
         self.registers.sign = (result & 0x80) != 0;
@@ -828,15 +823,9 @@ impl<'a> ExecutionContext<'a> {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
         // If last bit is 1 bit shift one up so that the accumulator is 1
-        // let carry = self.registers.carry as u8;
-        // self.registers.reg_a = (self.registers.reg_a >> 1) | (carry << 7);
-        // self.registers.carry = (self.registers.reg_a & 0x01) != 0;
-
         let carry = (self.registers.reg_a & 1) != 0;
         self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
         self.registers.carry = carry;
-
-
         self.adv_cycles(4);
         self.adv_pc(1);
     }
@@ -845,9 +834,6 @@ impl<'a> ExecutionContext<'a> {
     fn rlc(&mut self) {
         // The Carry bit is set equal to the high-order bit of the accumulator
         // If one of the 4 higher bits are 1 we set the carry flag.
-        // self.registers.carry = (self.registers.reg_a & 0x80) != 0;
-        // self.registers.reg_a = (self.registers.reg_a << 1) | self.registers.carry as u8;
-
         self.registers.reg_a = self.registers.reg_a.rotate_left(1);
         self.registers.carry = (self.registers.reg_a & 1)  != 0;
 
@@ -858,9 +844,6 @@ impl<'a> ExecutionContext<'a> {
     fn rrc(&mut self) {
         // The Carry bit is set equal to the low-order bit of the accumulator
         // If one of the 4 lower bits are 1 we set the carry flag.
-        // self.registers.carry = (self.registers.reg_a & 0x01) != 0;
-        // self.registers.reg_a = (self.registers.reg_a >> 1) | ((self.registers.carry as u8) << 7);
-
         self.registers.reg_a = self.registers.reg_a.rotate_right(1);
         self.registers.carry = (self.registers.reg_a & 0x80) != 0;
 
@@ -1026,7 +1009,7 @@ impl<'a> ExecutionContext<'a> {
         let port = self.memory.read(self.registers.pc + 1);
 
         let mut result: u16 = 0;
-        match port {
+        let result = match port {
             0 => result = self.registers.port_0_in as u16,
             1 => {
                 result = self.registers.port_1_in as u16;
@@ -1595,7 +1578,7 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
-        self.registers.sp = self.registers.sp.wrapping_sub(2) & 0xFFFF;
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
         self.adv_cycles(11);
     }
 

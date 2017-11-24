@@ -8,7 +8,6 @@ mod cpu;
 mod opcode;
 mod display;
 mod interconnect;
-mod debugger;
 mod memory;
 mod keypad;
 mod test;
