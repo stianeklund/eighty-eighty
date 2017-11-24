@@ -1009,7 +1009,7 @@ impl<'a> ExecutionContext<'a> {
         let port = self.memory.read(self.registers.pc + 1);
 
         let mut result: u16 = 0;
-        let result = match port {
+        match port {
             0 => result = self.registers.port_0_in as u16,
             1 => {
                 result = self.registers.port_1_in as u16;
