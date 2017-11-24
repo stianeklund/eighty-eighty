@@ -4,7 +4,6 @@ use std::path::Path;
 use std::fmt;
 
 pub struct Memory {
-    // pub memory: [u8; 65536],
     pub memory: Vec<u8>,
 }
 
@@ -33,7 +32,7 @@ impl Memory {
 
     // Read immediate value
     pub fn read_imm(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize + 2] as u16) << 8 | (self.memory[addr as usize + 1] as u16)
+        (self.memory[addr as usize + 2] as u16) << 8 | u16::from(self.memory[addr as usize + 1])
     }
 
     pub fn read_high(&mut self, addr: u16) -> u8 {
@@ -52,9 +51,7 @@ impl Memory {
         let mut buf = Vec::new();
 
         file.read_to_end(&mut buf).expect("Failed to read binary");
-        for i in 0..buf.len() {
-            self.memory[i] = buf[i];
-        }
+        self.memory[..buf.len()].clone_from_slice(&buf[..]);
         println!("Loaded: {:?} Bytes: {:?}", path, buf.len());
     }
     pub fn load_tests(&mut self, file: &str) {
@@ -63,9 +60,8 @@ impl Memory {
         let mut buf = Vec::new();
 
         file.read_to_end(&mut buf).expect("Failed to read binary");
-        for i in 0..buf.len() {
-            self.memory[i + 0x0100] = buf[i];
-        }
+        // Tests are loaded at 0x0100
+        self.memory[0x0100..(buf.len() + 0x0100)].clone_from_slice(&buf[..]);
         println!("Test loaded: {:?} Bytes: {:?}", path, buf.len());
     }
 }
