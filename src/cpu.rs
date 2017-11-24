@@ -1970,7 +1970,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret: u16 = self.registers.pc + 1;
+            let ret: u16 = self.registers.pc + 3;
 
             self.memory.memory[(self.registers.sp as usize).wrapping_sub(1) & 0xFFFF] = (ret as u16 >> 8) as u8;
             self.memory.memory[(self.registers.sp as usize).wrapping_sub(2) & 0xFFFF] = ret as u8;

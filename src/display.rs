@@ -8,6 +8,7 @@ pub const HEIGHT: u32 = 256;
 
 pub struct Display {
     pub raster: Vec<u32>,
+    pub vblank: bool,
     pub window: Window,
 }
 
@@ -41,6 +42,7 @@ impl Display {
 
         Display {
             raster: vec![0x00FF_FFFF; WIDTH as usize * HEIGHT as usize * 2],
+            vblank: false,
             window,
         }
     }

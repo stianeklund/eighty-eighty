@@ -34,6 +34,9 @@ impl Memory {
     pub fn read_imm(&mut self, addr: u16) -> u16 {
         (self.memory[addr as usize + 2] as u16) << 8 | u16::from(self.memory[addr as usize + 1])
     }
+    pub fn read_word(&mut self, addr: u16) -> u16 {
+        (self.memory[addr as usize + 1] as u16) << 8 | u16::from(self.memory[addr as usize])
+    }
 
     pub fn read_high(&mut self, addr: u16) -> u8 {
         (self.memory[addr as usize + 2])
