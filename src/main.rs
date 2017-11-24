@@ -21,7 +21,7 @@ fn main() {
 
     let bin = &args[1];
 
-    let mut i = Interconnect::new();
+    let i = &mut Interconnect::new();
     let mut display = Display::new();
 
     // load binary file

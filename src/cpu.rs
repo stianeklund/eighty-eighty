@@ -1972,21 +1972,21 @@ impl<'a> ExecutionContext<'a> {
 
             self.registers.prev_pc = self.registers.pc;
             self.registers.pc = u16::from(self.registers.interrupt_addr);
+            self.registers.interrupt = false;
         }
-        self.registers.interrupt = false;
     }
     pub fn try_interrupt(&mut self) {
         if self.registers.cycles < 16_667 {
             return;
         }
-        if self.registers.interrupt_addr == 0x10 && self.registers.cycles > 16_667 {
+        if self.registers.interrupt_addr == 0x08 {
             self.registers.cycles -= 16_667;
-            self.registers.interrupt_addr = 0x08;
-            // self.emulate_interrupt();
-        } else if self.registers.interrupt_addr == 0x08 && self.registers.cycles > 16_667 {
-            self.registers.cycles -= 16_667;
+            self.emulate_interrupt();
             self.registers.interrupt_addr = 0x10;
-            // self.emulate_interrupt();
+        } else if self.registers.interrupt_addr == 0x10 {
+            self.registers.cycles -= 16_667;
+            self.emulate_interrupt();
+            self.registers.interrupt_addr = 0x08;
         }
     }
 }
