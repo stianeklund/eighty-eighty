@@ -3,6 +3,8 @@ extern crate byteorder;
 use interconnect::Interconnect;
 use minifb::Key;
 use display::Display;
+use std::thread::sleep_ms;
+use std::time::{Instant, Duration};
 
 mod cpu;
 mod opcode;
@@ -21,18 +23,24 @@ fn main() {
 
     let bin = &args[1];
 
+    let mut now = Instant::now();
     let i = &mut Interconnect::new();
     let mut display = Display::new();
 
     // load binary file
     i.memory.load_bin(bin);
+    // let fps = Duration::new(0,1_660_000_000);
+    // let ms = 16;
 
-    // TODO implement break & step keyboard actions
     loop {
-        // CPU execution
+        // Execute an instruction
         i.execute_cpu();
+        // Iterate over VRAM & only VRAM and update the local raster
+        sleep_ms(100);
         display.draw_pixel(&i);
-        display.window.update_with_buffer(&display.raster).unwrap();
+        // Present raster to window
+        display.window.update_with_buffer(&display.raster);
+
 
         if display.window.is_key_down(Key::D) {
             i.registers.debug = true;

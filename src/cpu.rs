@@ -1366,7 +1366,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.memory.memory[sp] & 0x10) != 0;
         self.registers.carry = (self.memory.memory[sp] & 0x01) != 0;
 
-        self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
+        // self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
+        self.registers.reg_a = self.memory.read(sp as u16 + 1 ) as u8;
         self.registers.sp = sp.wrapping_add(2) as u16;
 
         self.adv_cycles(10);
@@ -1903,21 +1904,29 @@ impl<'a> ExecutionContext<'a> {
         }
         self.registers.opcode = opcode;
         use opcode::Opcode;
+
         // Lookup opcode & get instruction name back for debugging purposes
         self.registers.current_instruction = Opcode::print(self.registers.opcode).to_string();
 
     }
-
-    // Step one instruction
-    pub fn step(&mut self, times: u8) {
-        for _ in 0..times {
-            self.execute_instruction();
-            if self.registers.debug {
-                println!("{:?}", self.registers);
-            }
-        }
+    pub fn execute_tests(&mut self) {
+        self.execute_instruction();
         self.try_interrupt();
     }
+
+    pub fn step(&mut self) {
+    let mut cycles_executed: usize = 0;
+
+    while cycles_executed < 16667 {
+        let start_cycles = self.registers.cycles;
+        self.execute_instruction();
+        if self.registers.debug {
+            println!("{:?}", self.registers);
+        }
+        cycles_executed += self.registers.cycles - start_cycles;
+        self.try_interrupt();
+    }
+}
 
 
     pub fn reset(&mut self) {
@@ -1963,8 +1972,8 @@ impl<'a> ExecutionContext<'a> {
         if self.registers.interrupt {
             let ret: u16 = self.registers.pc + 1;
 
-            self.memory.memory[self.registers.sp as usize - 1] = ((ret >> 8) & 0xFF as u16) as u8;
-            self.memory.memory[self.registers.sp as usize - 2] = ((ret & 0xFF) as u16) as u8;
+            self.memory.memory[(self.registers.sp as usize).wrapping_sub(1) & 0xFFFF] = (ret as u16 >> 8) as u8;
+            self.memory.memory[(self.registers.sp as usize).wrapping_sub(2) & 0xFFFF] = ret as u8;
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
 
@@ -1980,11 +1989,12 @@ impl<'a> ExecutionContext<'a> {
             return;
         }
         if self.registers.interrupt_addr == 0x08 {
-            self.registers.cycles -= 16_667;
+            self.registers.cycles = 0;
             self.emulate_interrupt();
             self.registers.interrupt_addr = 0x10;
+
         } else if self.registers.interrupt_addr == 0x10 {
-            self.registers.cycles -= 16_667;
+            self.registers.cycles = 0;
             self.emulate_interrupt();
             self.registers.interrupt_addr = 0x08;
         }

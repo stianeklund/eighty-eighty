@@ -26,7 +26,7 @@ mod tests {
 
         i.registers.debug = false;
         'main: loop {
-            i.execute_cpu();
+            i.run_tests();
             if i.registers.pc == 0x76 {
                 println!("HALT at {:#04X}", i.registers.pc);
                 #[should_panic]
@@ -84,7 +84,7 @@ mod tests {
 
         'main: loop {
             // i.step_cpu();
-            i.execute_cpu();
+            i.run_tests();
 
             if i.registers.pc == 0x76 {
                 assert_ne!(i.registers.pc, 0x76);
@@ -141,7 +141,7 @@ mod tests {
 
 
         'main: loop {
-            i.execute_cpu();
+            i.run_tests();
 
             if i.registers.pc == 0x76 {
                 panic!("Halting");
@@ -196,8 +196,7 @@ mod tests {
 
 
         'main: loop {
-            i.execute_cpu();
-            // i.step_cpu();
+            i.run_tests();
 
             if i.registers.pc == 0x76 {
                panic!("Halting");
