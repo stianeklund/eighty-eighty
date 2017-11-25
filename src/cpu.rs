@@ -54,23 +54,18 @@ pub struct Registers {
     pub interrupt_addr: u8,
 
     // I/O Read port
-    port_0_in: u8, // Input port 0
-    port_1_in: u8, // Input port 1
-    port_2_in: u8, // Input port 2
-    port_3_in: u8, // Bit shift register read / shift in
+    pub port_0_in: u8,   // Input port 0
+    pub port_1_in: u8,   // Input port 1 (player 1)
+    pub port_2_in: u8,   // Input port 2 (player 2)
+    port_3_in: u8,       // Bit shift register read / shift in
 
-    // I/O Write port
-    port_2_out: u8,
-    // Shift amount (3 bits)
-    port_3_out: u8,
-    // Sound bits
+    // I/O Write ports
+    port_2_out: u8,      // Shift amount (3 bits)
+    port_3_out: u8,      // Sound port
     port_4_out_high: u8, // Shift data port high
-    port_4_out_low: u8,
-    // Shift data port low
-    port_5_out: u8,
-    // Sound bits
-    port_6_out: u8,
-    // Watchdog (read or write to reset)
+    port_4_out_low: u8,  // Shift data port low
+    port_5_out: u8,      // Sound2 port
+    port_6_out: u8,      // Watchdog (read or write to reset)
 }
 
 impl Registers {
@@ -106,8 +101,8 @@ impl Registers {
             interrupt: false,
             interrupt_addr: 0x08,
 
-            port_0_in: 0x0E,
-            port_1_in: 0x08, // 0xFE, (coin value)
+            port_0_in: 0b0111000,
+            port_1_in: 0b1101000,
             port_2_in: 0,
             port_3_in: 0,
 
@@ -992,12 +987,10 @@ impl<'a> ExecutionContext<'a> {
 
         let mut result: u16 = 0;
         match port {
-            0 => result = self.registers.port_0_in as u16,
-            1 => {
-                result = self.registers.port_1_in as u16;
-                self.registers.port_1_in &= 0xFE;
+            0 => result = 1 as u16,
+            1 => { result = self.registers.port_1_in as u16;
             },
-            2 => result = (self.registers.port_2_in as u16) & 0x8F | (self.registers.port_2_in as u16) & 0x70,
+            2 => result = self.registers.port_2_in as u16, // (self.registers.port_2_in as u16) & 0x8F | (self.registers.port_2_in as u16) & 0x70,
             3 => result = ((self.registers.port_4_out_high as u16) << 8) |
                 (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
             _ => eprintln!("Input port {}, not implemented", port),
@@ -1355,6 +1348,10 @@ impl<'a> ExecutionContext<'a> {
 
         match port {
             // Sets the offset size for shift register
+            0x01 => {
+                self.registers.port_2_out = self.registers.reg_a & 0x7;
+                println!("Out port 1: {:04X}", self.registers.port_2_out);
+            }
             0x02 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
                 println!("Out port 2: {:04X}", self.registers.port_2_out);
@@ -1961,13 +1958,13 @@ impl<'a> ExecutionContext<'a> {
             return
         }
         if self.registers.interrupt_addr == 0x08 {
-            self.emulate_interrupt();
             self.registers.cycles = 0;
+            self.emulate_interrupt();
             self.registers.interrupt_addr = 0x10;
 
         } else if self.registers.interrupt_addr == 0x10 {
-            self.emulate_interrupt();
             self.registers.cycles = 0;
+            self.emulate_interrupt();
             self.registers.interrupt_addr = 0x08;
         }
     }
