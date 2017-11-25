@@ -29,25 +29,32 @@ impl Memory {
     pub fn read_byte(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
-
-    // Read immediate value
+    // Read 16 bit immediate value & increment by one)
     pub fn read_imm(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize + 2] as u16) << 8 | u16::from(self.memory[addr as usize + 1])
+        (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
     }
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        (self.memory[addr as usize + 1] as u16) << 8 | u16::from(self.memory[addr as usize])
+        (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }
 
     pub fn read_hb(&mut self, addr: u16) -> u8 {
-        (self.memory[addr as usize + 2])
+        self.read_byte(addr.wrapping_add(2))
     }
 
     pub fn read_lb(&mut self, addr: u16) -> u8 {
-        self.memory[addr as usize + 1]
+        self.read_byte(addr.wrapping_add(1))
     }
 
-    pub fn read(&mut self, addr: u16) -> u16 { u16::from(self.memory[addr as usize])  }
+    pub fn read(&self, addr: u16) -> u16 { u16::from(self.memory[addr as usize])  }
 
+    pub fn write_byte(&mut self, addr: u16, byte: u8) {
+        self.memory[addr as usize & 0xFFFF] = byte
+
+    }
+    pub fn write_word(&mut self, addr: u16, word: u16) {
+        self.write_byte(addr, word as u8);
+        self.write_byte((addr + 1), (word >> 8) as u8);
+    }
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);
         let mut file = File::open(&path).expect("Couldn't load binary");

@@ -29,18 +29,15 @@ fn main() {
 
     // load binary file
     i.memory.load_bin(bin);
-    // let fps = Duration::new(0,1_660_000_000);
-    // let ms = 16;
 
     loop {
         // Execute an instruction
         i.execute_cpu();
-        // Iterate over VRAM & only VRAM and update the local raster
         sleep_ms(100);
+        // Iterate over VRAM & only VRAM and update the local raster
         display.draw_pixel(&i);
         // Present raster to window
-        display.window.update_with_buffer(&display.raster);
-
+        display.window.update_with_buffer(&display.raster).unwrap();
 
         if display.window.is_key_down(Key::D) {
             i.registers.debug = true;

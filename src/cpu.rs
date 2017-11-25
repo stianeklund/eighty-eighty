@@ -106,9 +106,9 @@ impl Registers {
             interrupt: false,
             interrupt_addr: 0x08,
 
-            port_0_in: 0x0E,
-            port_1_in: 0x08, // 0xFE, (coin value)
-            port_2_in: 0x00,
+            port_0_in: 0, // 0x0E,
+            port_1_in: 0, // 0x08, // 0xFE, (coin value)
+            port_2_in: 0,
             port_3_in: 0,
 
             port_2_out: 0,
@@ -214,7 +214,8 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
+                let hl = self.get_hl();
+                self.memory.memory[hl]
             }
         };
         let result = (self.registers.reg_a as u16).wrapping_add(value as u16).wrapping_add(self.registers.carry as u16);
@@ -264,7 +265,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
+                self.memory.memory[self.get_hl()]
             }
         };
 
@@ -312,7 +313,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
+                self.memory.memory[self.get_hl()]
             }
         };
         // And value with accumulator
@@ -445,7 +446,7 @@ impl<'a> ExecutionContext<'a> {
     fn pchl(&mut self) {
         self.adv_cycles(5);
         self.registers.prev_pc = self.registers.pc;
-        self.registers.pc = self.get_hl();
+        self.registers.pc = self.get_hl() as u16;
     }
 
     // Load Register Pair Immediate
@@ -475,9 +476,9 @@ impl<'a> ExecutionContext<'a> {
 
     // Store Accumulator direct
     fn sta(&mut self) {
-        let imm = self.memory.read_imm(self.registers.pc);
+        let imm = self.memory.read_word(self.registers.pc + 1);
         // Store value of the accumulator in in memory
-        self.memory.memory[imm as usize] = self.registers.reg_a;
+        self.memory.write_byte(imm, self.registers.reg_a);
 
         self.adv_cycles(13);
         self.adv_pc(3);
@@ -576,7 +577,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
+                self.memory.memory[self.get_hl()]
             }
         };
         let result = (self.registers.reg_a as u16).wrapping_sub(value as u16);
@@ -647,32 +648,29 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let value = (self.registers.reg_b as u32) << 8 | (self.registers.reg_c as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value as u32);
+                let result = (self.get_hl() as u32).wrapping_add(self.get_bc() as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
                 self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::DE => {
-                let value = (self.registers.reg_d as u32) << 8 | (self.registers.reg_e as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value as u32);
+                let result = (self.get_hl() as u32).wrapping_add(self.get_de() as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
                 self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::HL => {
-                let mut value = (self.registers.reg_h as u32) << 8 | (self.registers.reg_l as u32);
-                let result = (self.get_hl() as u32).wrapping_add(value as u32);
+                let result = (self.get_hl() as u32).wrapping_add(self.get_hl() as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
                 self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::SP => {
-                let mut value = self.registers.sp as u32;
-                let result = (self.get_hl() as u32).wrapping_add(value);
+                // let mut value = self.registers.sp as u32;
+                let result = (self.get_hl() as u32).wrapping_add(self.registers.sp as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
                 self.registers.reg_l = result as u8;
@@ -722,7 +720,7 @@ impl<'a> ExecutionContext<'a> {
             Register::M => {
                 self.adv_cycles(5);
                 let hl = self.get_hl();
-                self.memory.memory[hl as usize] = self.memory.memory[hl as usize].wrapping_sub(1);
+                self.memory.memory[hl] = self.memory.memory[hl as usize].wrapping_sub(1);
                 self.memory.memory[hl as usize]
             }
         };
@@ -940,7 +938,7 @@ impl<'a> ExecutionContext<'a> {
             Register::M => {
                 self.adv_cycles(3);
                 let hl = self.get_hl();
-                self.memory.memory[hl as usize] = value;
+                self.memory.memory[hl] = value;
             }
         }
         self.adv_cycles(7);
@@ -964,14 +962,8 @@ impl<'a> ExecutionContext<'a> {
         // memory location are not altered.
 
         match reg {
-            RegisterPair::BC => {
-                let bc = self.get_bc() as usize;
-                self.registers.reg_a = self.memory.memory[bc];
-            }
-            RegisterPair::DE => {
-                let de = self.get_de() as usize;
-                self.registers.reg_a = self.memory.memory[de];
-            }
+            RegisterPair::BC => self.registers.reg_a = self.memory.memory[self.get_bc()],
+            RegisterPair::DE => self.registers.reg_a = self.memory.memory[self.get_de()],
             _ => eprintln!("LDAX on invalid register"),
         };
 
@@ -1052,7 +1044,7 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::M => {
                 self.adv_cycles(5);
-                let hl = self.get_hl() as usize;
+                let hl = self.get_hl();
                 self.memory.memory[hl] = self.memory.memory[hl].wrapping_add(1);
                 self.memory.memory[hl]
             }
@@ -1073,23 +1065,18 @@ impl<'a> ExecutionContext<'a> {
                 let value = self.get_bc().wrapping_add(1);
                 self.registers.reg_b = (value >> 8) as u8;
                 self.registers.reg_c = (value) as u8;
-
             }
-
             RegisterPair::DE => {
                 let value = self.get_de().wrapping_add(1);
                 self.registers.reg_d = (value >> 8) as u8;
                 self.registers.reg_e = (value) as u8;
             }
-
             RegisterPair::HL => {
                 let value = self.get_hl().wrapping_add(1);
                 self.registers.reg_h = (value >> 8) as u8;
                 self.registers.reg_l = (value) as u8;
             }
-            RegisterPair::SP => {
-                self.registers.sp = self.registers.sp.wrapping_add(1);
-            }
+            RegisterPair::SP => { self.registers.sp = self.registers.sp.wrapping_add(1); }
         };
         self.adv_cycles(5);
         self.adv_pc(1);
@@ -1098,24 +1085,21 @@ impl<'a> ExecutionContext<'a> {
     fn push(&mut self, reg: Register) {
         match reg {
             Register::B => {
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = self.registers.reg_b;
-                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = self.registers.reg_c;
+                let bc = self.get_bc() as u16;
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.memory.write_word(self.registers.sp, bc);
             }
-
             Register::D => {
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = self.registers.reg_d;
-                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = self.registers.reg_e;
+                let de = self.get_de() as u16;
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.memory.write_word(self.registers.sp, de);
             }
-
-            Register::H => {
-                self.memory.memory[self.registers.sp.wrapping_sub(1) as usize] = self.registers.reg_h;
-                self.memory.memory[self.registers.sp.wrapping_sub(2) as usize] = self.registers.reg_l;
+            Register::H =>  {
+                let hl = self.get_hl() as u16;
                 self.registers.sp = self.registers.sp.wrapping_sub(2);
+                self.memory.write_word(self.registers.sp, hl);
             }
-
-            _ => println!("Unknown push instruction"),
+            _ => eprintln!("Push on wrong register"),
         }
         self.adv_cycles(11);
         self.adv_pc(1);
@@ -1140,11 +1124,10 @@ impl<'a> ExecutionContext<'a> {
     // Store the contents of the accumulator addressed by registers B, C
     // or by registers D and E.
     fn stax(&mut self, reg: RegisterPair) {
-        let reg_a = self.registers.reg_a;
         match reg {
-            RegisterPair::BC => self.memory.memory[(self.registers.reg_b as usize) << 8 | self.registers.reg_c as usize] = reg_a,
-            RegisterPair::DE => self.memory.memory[(self.registers.reg_d as usize) << 8 | self.registers.reg_e as usize] = reg_a,
-            RegisterPair::HL => self.memory.memory[(self.registers.reg_h as usize) << 8 | self.registers.reg_l as usize] = reg_a,
+            RegisterPair::BC => { let bc = self.get_bc() as u16; self.memory.write_byte(bc, self.registers.reg_a) },
+            RegisterPair::DE => { let de = self.get_de() as u16; self.memory.write_byte(de, self.registers.reg_a) },
+            RegisterPair::HL => { let hl = self.get_hl() as u16; self.memory.write_byte(hl, self.registers.reg_a) },
             RegisterPair::SP => eprintln!("STAX should not run on SP register"),
         }
         self.adv_cycles(7);
@@ -1161,10 +1144,7 @@ impl<'a> ExecutionContext<'a> {
             Register::E => self.registers.reg_e,
             Register::H => self.registers.reg_h,
             Register::L => self.registers.reg_l,
-            Register::M => {
-                self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
-            }
+            Register::M => { self.adv_cycles(3); self.memory.memory[self.get_hl()] }
         };
 
         let result = (self.registers.reg_a as u16).wrapping_sub(value as u16).wrapping_sub(self.registers.carry as u16);
@@ -1206,10 +1186,7 @@ impl<'a> ExecutionContext<'a> {
             Register::E => self.registers.reg_e,
             Register::H => self.registers.reg_h,
             Register::L => self.registers.reg_l,
-            Register::M => {
-                self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
-            }
+            Register::M => { self.adv_cycles(3); self.memory.memory[self.get_hl()]  }
         };
         let result = (self.registers.reg_a as u16).wrapping_sub(value as u16);
 
@@ -1257,10 +1234,7 @@ impl<'a> ExecutionContext<'a> {
             Register::E => self.registers.reg_e,
             Register::H => self.registers.reg_h,
             Register::L => self.registers.reg_l,
-            Register::M => {
-                self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
-            }
+            Register::M => { self.adv_cycles(3); self.memory.memory[self.get_hl()] }
         };
 
         let result = self.registers.reg_a as u16 ^ value as u16;
@@ -1305,17 +1279,13 @@ impl<'a> ExecutionContext<'a> {
     fn xthl(&mut self) {
 
         // Swap H:L with top word on stack
-        let old_h = self.registers.reg_h;
-        let old_l = self.registers.reg_l;
-        let new_h = self.memory.memory[self.registers.sp as usize + 1];
-        let new_l = self.memory.memory[self.registers.sp as usize];
-
-        self.registers.reg_h = new_h;
-        self.registers.reg_l = new_l;
+        let hl = self.get_hl() as u16;
+        let new_hl = self.memory.read_word(self.registers.sp);
 
         // Write old HL values to memory
-        self.memory.memory[self.registers.sp as usize + 1] = old_h;
-        self.memory.memory[self.registers.sp as usize] = old_l;
+        self.memory.write_word(self.registers.sp, hl);
+        self.registers.reg_h = (new_hl >> 8) as u8;
+        self.registers.reg_l = new_hl as u8;
         self.adv_cycles(18);
         self.adv_pc(1);
     }
@@ -1337,7 +1307,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.reg_l = self.memory.memory[self.registers.sp as usize];
                 self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
             }
-            RegisterPair::SP => {}
+            RegisterPair::SP => eprintln!("POP called on SP"),
         }
         self.registers.sp = self.registers.sp.wrapping_add(2);
 
@@ -1353,8 +1323,8 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.memory.memory[sp] & 0x10) != 0;
         self.registers.carry = (self.memory.memory[sp] & 0x01) != 0;
 
-        // self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
-        self.registers.reg_a = self.memory.read(sp as u16 + 1 ) as u8;
+        self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
+        // self.registers.reg_a = self.memory.read(sp as u16 + 1 ) as u8;
         self.registers.sp = sp.wrapping_add(2) as u16;
 
         self.adv_cycles(10);
@@ -1374,19 +1344,18 @@ impl<'a> ExecutionContext<'a> {
         let low = self.memory.memory[self.registers.sp as usize];
         let high = self.memory.memory[self.registers.sp as usize + 1];
         let mut ret: u16 = (high as u16) << 8 | (low as u16);
-
-        self.registers.sp = self.registers.sp.wrapping_add(2);
-        self.adv_cycles(10);
-
         // Set program counter for debug output
         self.registers.prev_pc = self.registers.pc;
         // println!("Returning to {:04X}", ret);
         self.registers.pc = ret as u16;
+
+        self.registers.sp = self.registers.sp.wrapping_add(2);
+        self.adv_cycles(10);
     }
 
     fn output(&mut self) {
         let port = self.memory.read(self.registers.pc + 1);
-        println!("Output is running");
+
         match port {
             // Sets the offset size for shift register
             0x02 => {
@@ -1415,7 +1384,7 @@ impl<'a> ExecutionContext<'a> {
                 self.registers.port_6_out = self.registers.reg_a;
                 println!("Watchdog, value: {:04X}", self.registers.port_6_out);
             }
-            _ => println!("Port: {:04X}, does not match implementation", port),
+            _ => println!("Output port: {:04X}, does not match implementation", port),
         }
         self.adv_cycles(10);
         self.adv_pc(2);
@@ -1432,7 +1401,7 @@ impl<'a> ExecutionContext<'a> {
             Register::L => self.registers.reg_l,
             Register::M => {
                 self.adv_cycles(3);
-                self.memory.memory[self.get_hl() as usize]
+                self.memory.memory[self.get_hl()]
             }
         };
 
@@ -1465,7 +1434,7 @@ impl<'a> ExecutionContext<'a> {
     }
     fn mov(&mut self, dst: Register, src: Register) {
         let value = self.read_reg(src);
-        let addr: u16 = (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16);
+        let addr = self.get_hl() as u16;
 
         match dst {
             Register::A => {
@@ -1478,8 +1447,7 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::B => {
                 if src == Register::M {
-                    let hl = self.get_hl();
-                    self.registers.reg_b = self.memory.read_byte(hl);
+                    self.registers.reg_b = self.memory.read_byte(addr);
                     self.adv_cycles(2);
                 } else {
                     self.write_reg(dst, value);
@@ -1546,13 +1514,14 @@ impl<'a> ExecutionContext<'a> {
     // RESET (used for interrupt jump / calls)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc + 1;
+        let ret = self.registers.pc;
 
 
-        self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret >> 8) as u8;
-        self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = ret as u8;
-
+        self.memory.write_word(self.registers.sp - 1, (ret >> 8));
+        self.memory.write_word(self.registers.sp - 2, ret);
+        self.registers.sp = self.registers.sp.wrapping_sub(2);
         self.registers.prev_pc = self.registers.pc;
+
 
         match value {
             0 => self.registers.pc = 0x0000,
@@ -1566,22 +1535,20 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Couldn't match RST value, {:04X}", value),
         };
 
-        self.registers.sp = self.registers.sp.wrapping_sub(2);
         self.adv_cycles(11);
     }
 
     fn sphl(&mut self) {
-        self.registers.sp = self.get_hl();
+        self.registers.sp = self.get_hl() as u16;
         self.adv_cycles(5);
         self.adv_pc(1);
     }
 
     // Store H & L direct
     fn shld(&mut self) {
-        let addr: u16 = self.memory.read_imm(self.registers.pc);
-        self.memory.memory[addr as usize + 1] = self.registers.reg_h;
-        self.memory.memory[addr as usize] = self.registers.reg_l;
-
+        let addr = self.memory.read_imm(self.registers.pc);
+        let hl = self.get_hl() as u16;
+        self.memory.write_word(addr, hl);
         self.adv_cycles(16);
         self.adv_pc(3);
     }
@@ -1899,6 +1866,9 @@ impl<'a> ExecutionContext<'a> {
     pub fn execute_tests(&mut self) {
         self.execute_instruction();
         self.try_reset_cycles();
+        if self.registers.debug {
+            println!("{:?}", self.registers);
+        }
     }
 
     pub fn step(&mut self) {
@@ -1944,16 +1914,15 @@ impl<'a> ExecutionContext<'a> {
     }
 
 
-    fn get_bc(&self) -> u16 {
-        (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16)
+    fn get_bc(&self) -> usize {
+        (self.registers.reg_b as usize) << 8 | (self.registers.reg_c  as usize)
 
     }
-    fn get_de(&self) -> u16 {
-        (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16)
-
+    fn get_de(&self) -> usize {
+        (self.registers.reg_d as usize) << 8 | (self.registers.reg_e as usize)
     }
-    fn get_hl(&self) -> u16 {
-        (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16)
+    fn get_hl(&self) -> usize {
+        (self.registers.reg_h as usize) << 8 | (self.registers.reg_l as usize)
 
     }
     fn parity(&self, mut value: u8) -> bool {
@@ -1965,10 +1934,12 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret: u16 = self.registers.pc + 3;
+            let ret: u16 = self.registers.pc;
 
-            self.memory.memory[(self.registers.sp as usize).wrapping_sub(1) & 0xFFFF] = (ret as u16 >> 8) as u8;
-            self.memory.memory[(self.registers.sp as usize).wrapping_sub(2) & 0xFFFF] = ret as u8;
+            // self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret as u16 >> 8) as u8;
+            // self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = ret as u8;
+            self.memory.write_word((self.registers.sp - 1 & 0xFFFF), (ret >> 8));
+            self.memory.write_word((self.registers.sp - 2 & 0xFFFF), (ret));
 
             self.registers.sp = self.registers.sp.wrapping_sub(2);
 
@@ -1991,11 +1962,11 @@ impl<'a> ExecutionContext<'a> {
         self.try_reset_cycles();
 
         if self.registers.interrupt_addr == 0x08 {
-            self.emulate_interrupt();
+            // self.emulate_interrupt();
             self.registers.interrupt_addr = 0x10;
 
         } else if self.registers.interrupt_addr == 0x10 {
-            self.emulate_interrupt();
+            // self.emulate_interrupt();
             self.registers.interrupt_addr = 0x08;
         }
     }
