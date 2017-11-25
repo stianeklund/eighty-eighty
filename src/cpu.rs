@@ -106,8 +106,8 @@ impl Registers {
             interrupt: false,
             interrupt_addr: 0x08,
 
-            port_0_in: 0, // 0x0E,
-            port_1_in: 0, // 0x08, // 0xFE, (coin value)
+            port_0_in: 0x0E,
+            port_1_in: 0x08, // 0xFE, (coin value)
             port_2_in: 0,
             port_3_in: 0,
 
@@ -487,7 +487,7 @@ impl<'a> ExecutionContext<'a> {
     fn call(&mut self, opcode: u16) {
         // CALL instructions occupy three bytes. (See page 34 of the 8080 Programmers Manual)
         // CALL is just like JMP but also pushes a return address to stack.
-        let ret: u16 = self.registers.pc + 3;
+        let ret: u16 = self.registers.pc.wrapping_add(3);
         match opcode {
             0xCC | 0xCD | 0xC4 | 0xD4 | 0xDC | 0xE4 | 0xEC | 0xF4 | 0xFD | 0xFC => {
                 // High order byte
@@ -1294,18 +1294,16 @@ impl<'a> ExecutionContext<'a> {
     fn pop(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                self.registers.reg_c = self.memory.memory[self.registers.sp as usize];
-                self.registers.reg_b = self.memory.memory[self.registers.sp as usize + 1];
+                self.registers.reg_c = self.memory.read_word(self.registers.sp) as u8;
+                self.registers.reg_b = self.memory.read_word(self.registers.sp + 1) as u8;
             }
-
             RegisterPair::DE => {
-                self.registers.reg_e = self.memory.memory[self.registers.sp as usize];
-                self.registers.reg_d = self.memory.memory[self.registers.sp as usize + 1];
+                self.registers.reg_e = self.memory.read_word(self.registers.sp) as u8;
+                self.registers.reg_d = self.memory.read_word(self.registers.sp + 1) as u8;
             }
-
             RegisterPair::HL => {
-                self.registers.reg_l = self.memory.memory[self.registers.sp as usize];
-                self.registers.reg_h = self.memory.memory[self.registers.sp as usize + 1];
+                self.registers.reg_l = self.memory.read_word(self.registers.sp) as u8;
+                self.registers.reg_h = self.memory.read_word(self.registers.sp + 1) as u8;
             }
             RegisterPair::SP => eprintln!("POP called on SP"),
         }
@@ -1513,13 +1511,14 @@ impl<'a> ExecutionContext<'a> {
     // RESET (used for interrupt jump / calls)
     pub fn rst(&mut self, value: u8) {
         // Address to return to after interrupt is finished.
-        let ret = self.registers.pc;
-
-
-        self.memory.write_word(self.registers.sp - 1, (ret >> 8));
-        self.memory.write_word(self.registers.sp - 2, ret);
+        let ret = self.registers.pc + 1;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
+        self.memory.write_word(self.registers.sp, self.registers.pc);
         self.registers.prev_pc = self.registers.pc;
+
+        // self.memory.write_word(self.registers.sp - 1, (ret >> 8));
+        // self.memory.write_word(self.registers.sp - 2, ret);
+        // self.registers.sp = self.registers.sp.wrapping_sub(2);
 
 
         match value {
@@ -1933,14 +1932,14 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret: u16 = self.registers.pc;
+            let ret: u16 = self.registers.pc + 3;
+            self.registers.sp = self.registers.sp.wrapping_sub(2);
+            self.memory.write_word(self.registers.sp, ret);
 
             // self.memory.memory[(self.registers.sp as usize).wrapping_sub(1)] = (ret as u16 >> 8) as u8;
             // self.memory.memory[(self.registers.sp as usize).wrapping_sub(2)] = ret as u8;
-            self.memory.write_word((self.registers.sp - 1 & 0xFFFF), (ret >> 8));
-            self.memory.write_word((self.registers.sp - 2 & 0xFFFF), (ret));
+            // self.memory.write_word((self.registers.sp.wrapping_sub(2)), (ret));
 
-            self.registers.sp = self.registers.sp.wrapping_sub(2);
 
             println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
 
@@ -1958,14 +1957,17 @@ impl<'a> ExecutionContext<'a> {
     }
 
     pub fn try_interrupt(&mut self) {
-        self.try_reset_cycles();
-
+        if self.registers.cycles < 16_667 {
+            return
+        }
         if self.registers.interrupt_addr == 0x08 {
-            // self.emulate_interrupt();
+            self.emulate_interrupt();
+            self.registers.cycles = 0;
             self.registers.interrupt_addr = 0x10;
 
         } else if self.registers.interrupt_addr == 0x10 {
-            // self.emulate_interrupt();
+            self.emulate_interrupt();
+            self.registers.cycles = 0;
             self.registers.interrupt_addr = 0x08;
         }
     }

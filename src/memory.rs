@@ -31,7 +31,7 @@ impl Memory {
     }
 
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
+        (self.read_byte(addr.wrapping_add(1)) as u16) << 8 | self.read_byte(addr) as u16
     }
 
     pub fn read_hb(&mut self, addr: u16) -> u8 {
@@ -44,13 +44,12 @@ impl Memory {
 
     pub fn read(&self, addr: u16) -> u16 { u16::from(self.memory[addr as usize])  }
 
-    pub fn write_byte(&mut self, addr: u16, byte: u8) {
-        self.memory[addr as usize & 0xFFFF] = byte
-
-    }
     pub fn write_word(&mut self, addr: u16, word: u16) {
         self.write_byte(addr, word as u8);
-        self.write_byte((addr + 1), (word >> 8) as u8);
+        self.write_byte((addr.wrapping_add(1)), (word >> 8) as u8);
+    }
+    pub fn write_byte(&mut self, addr: u16, byte: u8) {
+        self.memory[addr as usize & 0xFFFF] = byte
     }
     pub fn load_bin(&mut self, file: &str) {
         let path = Path::new(file);
