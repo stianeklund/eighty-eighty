@@ -29,10 +29,7 @@ impl Memory {
     pub fn read_byte(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
-    // Read 16 bit immediate value & increment by one)
-    pub fn read_imm(&mut self, addr: u16) -> u16 {
-        (self.read_byte(addr + 2) as u16) << 8 | self.read_byte(addr + 1) as u16
-    }
+
     pub fn read_word(&mut self, addr: u16) -> u16 {
         (self.read_byte(addr + 1) as u16) << 8 | self.read_byte(addr) as u16
     }

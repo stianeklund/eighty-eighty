@@ -350,7 +350,7 @@ impl<'a> ExecutionContext<'a> {
 
     fn jmp(&mut self) {
         self.registers.prev_pc = self.registers.pc;
-        self.registers.pc = self.memory.read_imm(self.registers.pc);
+        self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         self.adv_cycles(10);
     }
 
@@ -358,7 +358,7 @@ impl<'a> ExecutionContext<'a> {
     fn jc(&mut self) {
         if self.registers.carry {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -369,7 +369,7 @@ impl<'a> ExecutionContext<'a> {
     fn jnc(&mut self) {
         if !self.registers.carry {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -380,7 +380,7 @@ impl<'a> ExecutionContext<'a> {
     fn jz(&mut self) {
         if self.registers.zero {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -391,7 +391,7 @@ impl<'a> ExecutionContext<'a> {
     fn jnz(&mut self) {
         if !self.registers.zero {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -402,7 +402,7 @@ impl<'a> ExecutionContext<'a> {
     fn jm(&mut self) {
         if self.registers.sign {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -413,7 +413,7 @@ impl<'a> ExecutionContext<'a> {
     fn jp(&mut self) {
         if !self.registers.sign {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -424,7 +424,7 @@ impl<'a> ExecutionContext<'a> {
     fn jpe(&mut self) {
         if self.registers.parity {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -435,7 +435,7 @@ impl<'a> ExecutionContext<'a> {
     fn jpo(&mut self) {
         if !self.registers.parity {
             self.registers.prev_pc = self.registers.pc;
-            self.registers.pc = self.memory.read_imm(self.registers.pc);
+            self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         } else {
             self.adv_pc(3);
         }
@@ -503,7 +503,7 @@ impl<'a> ExecutionContext<'a> {
 
         self.registers.prev_pc = self.registers.pc;
 
-        self.registers.pc = self.memory.read_imm(self.registers.pc);
+        self.registers.pc = self.memory.read_word(self.registers.pc + 1);
         self.adv_cycles(17);
     }
 
@@ -947,8 +947,8 @@ impl<'a> ExecutionContext<'a> {
 
     // LDA Load Accumulator direct
     fn lda(&mut self) {
-        let imm = self.memory.read_imm(self.registers.pc);
-        self.registers.reg_a = self.memory.memory[imm as usize];
+        let imm = self.memory.read_word(self.registers.pc + 1) as usize;
+        self.registers.reg_a = self.memory.memory[imm];
         self.adv_cycles(13);
         self.adv_pc(3);
     }
@@ -978,7 +978,7 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H
         // register.
         // L <- (adr); H<-(adr+1)
-        let imm = self.memory.read_imm(self.registers.pc) as usize;
+        let imm = self.memory.read_word(self.registers.pc + 1) as usize;
 
         self.registers.reg_h = self.memory.memory[imm + 1];
         self.registers.reg_l = self.memory.memory[imm];
@@ -1323,8 +1323,7 @@ impl<'a> ExecutionContext<'a> {
         self.registers.half_carry = (self.memory.memory[sp] & 0x10) != 0;
         self.registers.carry = (self.memory.memory[sp] & 0x01) != 0;
 
-        self.registers.reg_a = self.memory.read_imm(sp as u16) as u8;
-        // self.registers.reg_a = self.memory.read(sp as u16 + 1 ) as u8;
+        self.registers.reg_a = self.memory.read(sp as u16 + 1 ) as u8;
         self.registers.sp = sp.wrapping_add(2) as u16;
 
         self.adv_cycles(10);
@@ -1332,7 +1331,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     fn pop_stack(&mut self) -> u16 {
-        let sp = self.memory.read_imm(self.registers.sp);
+        let sp = self.memory.read_word(self.registers.sp + 1);
         if self.registers.debug {
             println!("Popping stack. SP value: {:04X}", sp);
         }
@@ -1546,7 +1545,7 @@ impl<'a> ExecutionContext<'a> {
 
     // Store H & L direct
     fn shld(&mut self) {
-        let addr = self.memory.read_imm(self.registers.pc);
+        let addr = self.memory.read_word(self.registers.pc + 1);
         let hl = self.get_hl() as u16;
         self.memory.write_word(addr, hl);
         self.adv_cycles(16);
