@@ -38,11 +38,11 @@ impl Memory {
         (self.memory[addr as usize + 1] as u16) << 8 | u16::from(self.memory[addr as usize])
     }
 
-    pub fn read_high(&mut self, addr: u16) -> u8 {
+    pub fn read_hb(&mut self, addr: u16) -> u8 {
         (self.memory[addr as usize + 2])
     }
 
-    pub fn read_low(&mut self, addr: u16) -> u8 {
+    pub fn read_lb(&mut self, addr: u16) -> u8 {
         self.memory[addr as usize + 1]
     }
 

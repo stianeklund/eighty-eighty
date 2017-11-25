@@ -453,26 +453,21 @@ impl<'a> ExecutionContext<'a> {
     fn lxi(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let high = self.memory.read_high(self.registers.pc);
-                let low = self.memory.read_low(self.registers.pc);
-                self.registers.reg_b = high as u8;
-                self.registers.reg_c = low;
+                self.registers.reg_b = self.memory.read_hb(self.registers.pc);
+                self.registers.reg_c = self.memory.read_lb(self.registers.pc);
             }
 
             RegisterPair::DE => {
-                let high = self.memory.read_high(self.registers.pc);
-                let low = self.memory.read_low(self.registers.pc);
-                self.registers.reg_d = high as u8;
-                self.registers.reg_e = low;
+                self.registers.reg_d = self.memory.read_hb(self.registers.pc);
+                self.registers.reg_e = self.memory.read_lb(self.registers.pc);
             }
 
             RegisterPair::HL => {
-                let high = self.memory.read_high(self.registers.pc);
-                let low = self.memory.read_low(self.registers.pc);
-                self.registers.reg_h = high as u8;
-                self.registers.reg_l = low;
+                self.memory.read_hb(self.registers.pc);
+                self.registers.reg_h = self.memory.read_hb(self.registers.pc);
+                self.registers.reg_l = self.memory.read_lb(self.registers.pc);
             }
-            RegisterPair::SP => self.registers.sp = self.memory.read_imm(self.registers.pc),
+            RegisterPair::SP => self.registers.sp = self.memory.read_word(self.registers.pc + 1),
         }
         self.adv_cycles(10);
         self.adv_pc(3);
@@ -743,20 +738,17 @@ impl<'a> ExecutionContext<'a> {
     fn dcx(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
-                let value = bc.wrapping_sub(1);
+                let value = self.get_bc().wrapping_sub(1);
                 self.registers.reg_b = (value >> 8) as u8;
                 self.registers.reg_c = value as u8;
             }
             RegisterPair::DE => {
-                let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
-                let value = de.wrapping_sub(1);
+                let value = self.get_de().wrapping_sub(1);
                 self.registers.reg_d = (value >> 8) as u8;
                 self.registers.reg_e = value as u8;
             }
             RegisterPair::HL => {
-                let hl = self.get_hl();
-                let value = hl.wrapping_sub(1);
+                let value = self.get_hl().wrapping_sub(1);
                 self.registers.reg_h = (value >> 8) as u8;
                 self.registers.reg_l = value as u8;
             }
@@ -973,15 +965,13 @@ impl<'a> ExecutionContext<'a> {
 
         match reg {
             RegisterPair::BC => {
-                let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
-                self.registers.reg_a = self.memory.memory[bc as usize];
+                let bc = self.get_bc() as usize;
+                self.registers.reg_a = self.memory.memory[bc];
             }
-
             RegisterPair::DE => {
-                let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
-                self.registers.reg_a = self.memory.memory[de as usize];
+                let de = self.get_de() as usize;
+                self.registers.reg_a = self.memory.memory[de];
             }
-
             _ => eprintln!("LDAX on invalid register"),
         };
 
@@ -996,10 +986,10 @@ impl<'a> ExecutionContext<'a> {
         // The byte at the next higher memory address replaces the contents of the H
         // register.
         // L <- (adr); H<-(adr+1)
-        let imm = self.memory.read_imm(self.registers.pc);
+        let imm = self.memory.read_imm(self.registers.pc) as usize;
 
-        self.registers.reg_h = self.memory.memory[imm as usize + 1];
-        self.registers.reg_l = self.memory.memory[imm as usize];
+        self.registers.reg_h = self.memory.memory[imm + 1];
+        self.registers.reg_l = self.memory.memory[imm];
 
         self.adv_cycles(16);
         self.adv_pc(3);
@@ -1062,9 +1052,9 @@ impl<'a> ExecutionContext<'a> {
             }
             Register::M => {
                 self.adv_cycles(5);
-                let hl = self.get_hl();
-                self.memory.memory[hl as usize] = self.memory.memory[hl as usize].wrapping_add(1);
-                self.memory.memory[hl as usize]
+                let hl = self.get_hl() as usize;
+                self.memory.memory[hl] = self.memory.memory[hl].wrapping_add(1);
+                self.memory.memory[hl]
             }
         };
 
@@ -1080,28 +1070,25 @@ impl<'a> ExecutionContext<'a> {
     fn inx(&mut self, reg: RegisterPair) {
         match reg {
             RegisterPair::BC => {
-                let bc = (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16);
-                let value = bc.wrapping_add(1);
+                let value = self.get_bc().wrapping_add(1);
                 self.registers.reg_b = (value >> 8) as u8;
                 self.registers.reg_c = (value) as u8;
 
             }
 
             RegisterPair::DE => {
-                let de = (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16);
-                let value = de.wrapping_add(1);
+                let value = self.get_de().wrapping_add(1);
                 self.registers.reg_d = (value >> 8) as u8;
                 self.registers.reg_e = (value) as u8;
             }
 
             RegisterPair::HL => {
-                let hl = self.get_hl();
-                let value = hl.wrapping_add(1);
+                let value = self.get_hl().wrapping_add(1);
                 self.registers.reg_h = (value >> 8) as u8;
                 self.registers.reg_l = (value) as u8;
             }
             RegisterPair::SP => {
-                self.registers.sp += 1;
+                self.registers.sp = self.registers.sp.wrapping_add(1);
             }
         };
         self.adv_cycles(5);
@@ -1911,7 +1898,7 @@ impl<'a> ExecutionContext<'a> {
     }
     pub fn execute_tests(&mut self) {
         self.execute_instruction();
-        self.try_interrupt();
+        self.try_reset_cycles();
     }
 
     pub fn step(&mut self) {
@@ -1956,11 +1943,19 @@ impl<'a> ExecutionContext<'a> {
         ::std::process::exit(1);
     }
 
+
+    fn get_bc(&self) -> u16 {
+        (self.registers.reg_b as u16) << 8 | (self.registers.reg_c as u16)
+
+    }
+    fn get_de(&self) -> u16 {
+        (self.registers.reg_d as u16) << 8 | (self.registers.reg_e as u16)
+
+    }
     fn get_hl(&self) -> u16 {
         (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16)
 
     }
-
     fn parity(&self, mut value: u8) -> bool {
         let mut bits: u8 = 0;
         for i in 0..8 {
@@ -1984,17 +1979,22 @@ impl<'a> ExecutionContext<'a> {
             self.registers.interrupt = false;
         }
     }
-    pub fn try_interrupt(&mut self) {
+    pub fn try_reset_cycles(&mut self) {
         if self.registers.cycles < 16_667 {
             return;
-        }
-        if self.registers.interrupt_addr == 0x08 {
+        } else {
             self.registers.cycles = 0;
+        }
+    }
+
+    pub fn try_interrupt(&mut self) {
+        self.try_reset_cycles();
+
+        if self.registers.interrupt_addr == 0x08 {
             self.emulate_interrupt();
             self.registers.interrupt_addr = 0x10;
 
         } else if self.registers.interrupt_addr == 0x10 {
-            self.registers.cycles = 0;
             self.emulate_interrupt();
             self.registers.interrupt_addr = 0x08;
         }
