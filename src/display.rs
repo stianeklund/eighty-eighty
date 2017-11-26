@@ -5,7 +5,6 @@ use interconnect::Interconnect;
 pub const WIDTH: u32 = 224;
 pub const HEIGHT: u32 = 256;
 
-
 pub struct Display {
     pub raster: Vec<u32>,
     pub vblank: bool,

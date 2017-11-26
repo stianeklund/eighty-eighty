@@ -15,7 +15,7 @@ pub struct State {
     down: bool,
     changed: bool
 }
-pub trait Input {
+pub trait Input<'a> {
     fn key_value(&self) -> Keypad;
     fn key_down(&mut self, key: Key);
     fn key_up(&mut self, key: Key);
@@ -49,7 +49,7 @@ impl State {
     }
 }
 
-impl Input for Registers {
+impl<'a> Input <'a> for &'a mut Registers {
     fn key_value(&self) -> Keypad {
         Keypad {
             p1_start: 0x04,
@@ -67,10 +67,10 @@ impl Input for Registers {
 
         match key {
             Key::Enter => self.port_1_in |= keypad.p1_start,
-            Key::C => self.port_1_in     |= keypad.credit,
+            Key::C     => self.port_1_in |= keypad.credit,
             Key::Space => self.port_1_in |= keypad.fire,
-            Key::Key2 => self.port_2_in  |= keypad.p2_start,
-            Key::Left => self.port_1_in  |= keypad.left,
+            Key::Key2  => self.port_2_in  |= keypad.p2_start,
+            Key::Left  => self.port_1_in  |= keypad.left,
             Key::Right => self.port_1_in |= keypad.right,
             _ => eprintln!("Key not implemented"),
         }
@@ -85,10 +85,10 @@ impl Input for Registers {
 
         match key {
             Key::Enter => self.port_1_in &= keypad.p1_start,
-            Key::C => self.port_1_in     &= keypad.credit,
+            Key::C     => self.port_1_in &= keypad.credit,
             Key::Space => self.port_1_in &= keypad.fire,
-            Key::Key2 => self.port_2_in  &= keypad.p2_start,
-            Key::Left => self.port_1_in  &= keypad.left,
+            Key::Key2  => self.port_2_in &= keypad.p2_start,
+            Key::Left  => self.port_1_in &= keypad.left,
             Key::Right => self.port_1_in &= keypad.right,
             _ => eprintln!("Key not implemented"),
         }
@@ -98,6 +98,7 @@ impl Input for Registers {
         state.changed = true;
     }
     fn handle_input(&mut self, key: Key) {
+
         let mut state = State::new();
 
         if !state.changed && state.up {

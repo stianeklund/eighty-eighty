@@ -8,9 +8,9 @@ pub memory: Memory,
 }
 
 impl Interconnect {
-pub fn new() -> Self {
-    let registers = Registers::new();
-    let memory = Memory::new();
+    pub fn new() -> Self {
+        let registers = Registers::new();
+        let memory = Memory::new();
 
     Interconnect {
         registers,

@@ -3,6 +3,7 @@
 extern crate minifb;
 extern crate byteorder;
 use interconnect::Interconnect;
+use cpu::Registers;
 use minifb::Key;
 use display::Display;
 use std::thread::sleep_ms;
@@ -16,6 +17,26 @@ mod interconnect;
 mod memory;
 mod keypad;
 mod test;
+
+fn poll_input(mut registers: &mut Registers, window: &minifb::Window) {
+
+        window.get_keys().map(|keys| {
+        for t in keys {
+            match t {
+                Key::D     => registers.debug = true,
+                Key::E     => registers.debug = false,
+                Key::C     => Input::handle_input(&mut registers, Key::C),
+                Key::Enter => Input::handle_input(&mut registers, Key::Enter),
+                Key::Key2  => Input::handle_input(&mut registers, Key::Key2),
+                Key::Space => Input::handle_input(&mut registers, Key::Space),
+                Key::Left  => Input::handle_input(&mut registers, Key::Left),
+                Key::Right => Input::handle_input(&mut registers, Key::Right),
+                _ => eprintln!("Input key not handled"),
+            }
+        }
+
+    });
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -37,25 +58,9 @@ fn main() {
         // Execute an instruction
         i.execute_cpu();
         sleep_ms(16);
-        // Iterate over VRAM & only VRAM and update the local raster
+        // Poll for input
+        poll_input(&mut i.registers, &display.window);
         display.draw_pixel(&i);
-        // Present raster to window
-
-        // TODO Better input handling...
-        if display.window.is_key_down(Key::D) {
-            i.registers.debug = true;
-        } else if display.window.is_key_down(Key::E) {
-            i.registers.debug = false;
-        } else if display.window.is_key_down(Key::Escape) {
-            Input::handle_input(&mut i.registers, Key::Enter);
-        } else if display.window.is_key_down(Key::C) {
-            Input::handle_input(&mut i.registers, Key::C);
-
-        } else if display.window.is_key_down(Key::Enter) {
-            Input::handle_input(&mut i.registers, Key::Enter);
-        } else if display.window.is_key_down(Key::Space) {
-            Input::handle_input(&mut i.registers, Key::Space);
-        }
         display.window.update_with_buffer(&display.raster).unwrap();
     }
 }
