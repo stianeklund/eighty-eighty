@@ -23,18 +23,14 @@ fn poll_input(registers: &mut Registers, window: &minifb::Window) {
         window.get_keys().map(|keys| {
         for t in keys {
             match t {
-                Key::D     => registers.debug = true,
-                Key::E     => registers.debug = false,
-                Key::C     => Input::handle_input(registers, Key::C),
-                Key::Enter => Input::handle_input(registers, Key::Enter),
-                Key::Key2  => Input::handle_input(registers, Key::Key2),
-                Key::Space => Input::handle_input(registers, Key::Space),
-                Key::Left  => Input::handle_input(registers, Key::Left),
-                Key::Right => Input::handle_input(registers, Key::Right),
+                Key::D => registers.debug = true,
+                Key::E => registers.debug = false,
+                Key::C | Key::Enter | Key::Space | Key::Key2 |
+                Key::Left | Key::Right => Input::handle_input(registers, t),
+                Key::Escape => ::std::process::exit(0),
                 _ => eprintln!("Input key not handled"),
             }
         }
-
     });
 }
 

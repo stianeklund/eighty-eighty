@@ -61,7 +61,6 @@ impl Input for Registers {
         }
     }
     fn key_down(&mut self, key: Key) {
-        // let keypad = Keypad::new();
         let keypad = self.key_value();
         let mut state = State::new();
 
