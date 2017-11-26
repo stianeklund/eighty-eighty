@@ -15,7 +15,7 @@ pub struct State {
     down: bool,
     changed: bool
 }
-pub trait Input<'a> {
+pub trait Input {
     fn key_value(&self) -> Keypad;
     fn key_down(&mut self, key: Key);
     fn key_up(&mut self, key: Key);
@@ -49,7 +49,7 @@ impl State {
     }
 }
 
-impl<'a> Input <'a> for &'a mut Registers {
+impl Input for Registers {
     fn key_value(&self) -> Keypad {
         Keypad {
             p1_start: 0x04,
@@ -69,8 +69,8 @@ impl<'a> Input <'a> for &'a mut Registers {
             Key::Enter => self.port_1_in |= keypad.p1_start,
             Key::C     => self.port_1_in |= keypad.credit,
             Key::Space => self.port_1_in |= keypad.fire,
-            Key::Key2  => self.port_2_in  |= keypad.p2_start,
-            Key::Left  => self.port_1_in  |= keypad.left,
+            Key::Key2  => self.port_2_in |= keypad.p2_start,
+            Key::Left  => self.port_1_in |= keypad.left,
             Key::Right => self.port_1_in |= keypad.right,
             _ => eprintln!("Key not implemented"),
         }
