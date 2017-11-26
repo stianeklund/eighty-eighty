@@ -1,3 +1,5 @@
+#![feature(try_from)]
+
 extern crate minifb;
 extern crate byteorder;
 use interconnect::Interconnect;
@@ -5,6 +7,7 @@ use minifb::Key;
 use display::Display;
 use std::thread::sleep_ms;
 use std::time::{Instant, Duration};
+use keypad::{State, Input};
 
 mod cpu;
 mod opcode;
@@ -38,24 +41,20 @@ fn main() {
         display.draw_pixel(&i);
         // Present raster to window
 
+        // TODO Better input handling...
         if display.window.is_key_down(Key::D) {
-            i.registers.debug = true;
-        } else if display.window.is_key_down(Key::B) {
-            i.registers.breakpoint = true;
             i.registers.debug = true;
         } else if display.window.is_key_down(Key::E) {
             i.registers.debug = false;
-            i.registers.breakpoint = false;
         } else if display.window.is_key_down(Key::Escape) {
-            i.registers.breakpoint = false;
-            i.registers.debug = false;
-            break;
-        } else if display.window.is_key_down(Key::Enter) {
-            // Start game
-            i.registers.port_1_in |= 0x4;
+            Input::handle_input(&mut i.registers, Key::Enter);
         } else if display.window.is_key_down(Key::C) {
-            // Start game
-            i.registers.port_1_in |= 0x1;
+            Input::handle_input(&mut i.registers, Key::C);
+
+        } else if display.window.is_key_down(Key::Enter) {
+            Input::handle_input(&mut i.registers, Key::Enter);
+        } else if display.window.is_key_down(Key::Space) {
+            Input::handle_input(&mut i.registers, Key::Space);
         }
         display.window.update_with_buffer(&display.raster).unwrap();
     }

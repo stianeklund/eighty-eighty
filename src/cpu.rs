@@ -101,9 +101,9 @@ impl Registers {
             interrupt: false,
             interrupt_addr: 0x08,
 
-            port_0_in: 0b0111000,
-            port_1_in: 0b1101000,
-            port_2_in: 0,
+            port_0_in: 0b10101100,
+            port_1_in: 1, //0b01100010,
+            port_2_in: 0b00000000,
             port_3_in: 0,
 
             port_2_out: 0,
@@ -297,7 +297,6 @@ impl<'a> ExecutionContext<'a> {
 
 
     fn ana(&mut self, reg: Register) {
-        // Check if the 4th bit is set on all registers
         let value = match reg {
             Register::A => self.registers.reg_a,
             Register::B => self.registers.reg_b,
@@ -987,9 +986,8 @@ impl<'a> ExecutionContext<'a> {
 
         let mut result: u16 = 0;
         match port {
-            0 => result = 1 as u16,
-            1 => { result = self.registers.port_1_in as u16;
-            },
+            0 => result = self.registers.port_0_in as u16,
+            1 => result = self.registers.port_1_in as u16,
             2 => result = self.registers.port_2_in as u16, // (self.registers.port_2_in as u16) & 0x8F | (self.registers.port_2_in as u16) & 0x70,
             3 => result = ((self.registers.port_4_out_high as u16) << 8) |
                 (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
@@ -1350,11 +1348,11 @@ impl<'a> ExecutionContext<'a> {
             // Sets the offset size for shift register
             0x01 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
-                println!("Out port 1: {:04X}", self.registers.port_2_out);
+                println!("Output Port 2: {:04X}", self.registers.port_2_out);
             }
             0x02 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
-                println!("Out port 2: {:04X}", self.registers.port_2_out);
+                println!("Output Port 2: {:04X}", self.registers.port_2_out);
             }
             // Sound port
             0x03 => {
@@ -1377,6 +1375,9 @@ impl<'a> ExecutionContext<'a> {
             0x06 => {
                 self.registers.port_6_out = self.registers.reg_a;
                 println!("Watchdog, value: {:04X}", self.registers.port_6_out);
+            }
+            0x07 => {
+                // self.registers.reg_a & 0x01;
             }
             _ => println!("Output port: {:04X}, does not match implementation", port),
         }
