@@ -1,4 +1,4 @@
-use minifb::Key;
+use minifb::{Key, Window};
 use cpu::Registers;
 
 pub struct Keypad {
@@ -23,7 +23,7 @@ pub trait Input {
 }
 
 impl Keypad {
-    fn new() -> Keypad {
+    pub fn new() -> Keypad {
         Keypad {
             p1_start: 0x04,
             p2_start: 0x2,
@@ -32,6 +32,20 @@ impl Keypad {
             left: 0x20,
             right: 0x40,
         }
+    }
+    pub fn poll_input(registers: &mut Registers, window: &Window) {
+        window.get_keys().map(|keys| {
+            for t in keys {
+                match t {
+                    Key::D => registers.debug = true,
+                    Key::E => registers.debug = false,
+                    Key::C | Key::Enter | Key::Space | Key::Key2 |
+                    Key::Left | Key::Right => Input::handle_input(registers, t),
+                    Key::Escape => ::std::process::exit(0),
+                    _ => eprintln!("Input key not handled"),
+                }
+            }
+        });
     }
 }
 impl State {
@@ -113,4 +127,5 @@ impl Input for Registers {
         println!("Key press:{:?}", key);
     }
 }
+
 

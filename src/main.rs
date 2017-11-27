@@ -8,7 +8,7 @@ use minifb::Key;
 use display::Display;
 use std::thread::sleep_ms;
 use std::time::{Instant, Duration};
-use keypad::{State, Input};
+use keypad::{State, Input, Keypad};
 
 mod cpu;
 mod opcode;
@@ -17,22 +17,6 @@ mod interconnect;
 mod memory;
 mod keypad;
 mod test;
-
-fn poll_input(registers: &mut Registers, window: &minifb::Window) {
-
-        window.get_keys().map(|keys| {
-        for t in keys {
-            match t {
-                Key::D => registers.debug = true,
-                Key::E => registers.debug = false,
-                Key::C | Key::Enter | Key::Space | Key::Key2 |
-                Key::Left | Key::Right => Input::handle_input(registers, t),
-                Key::Escape => ::std::process::exit(0),
-                _ => eprintln!("Input key not handled"),
-            }
-        }
-    });
-}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -55,8 +39,8 @@ fn main() {
         i.execute_cpu();
         sleep_ms(16);
         // Poll for input
-        poll_input(&mut i.registers, &display.window);
         display.draw_pixel(&i);
         display.window.update_with_buffer(&display.raster).unwrap();
+        Keypad::poll_input(&mut i.registers, &display.window);
     }
 }
