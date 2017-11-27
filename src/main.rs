@@ -2,12 +2,11 @@
 
 extern crate minifb;
 extern crate byteorder;
-use interconnect::Interconnect;
-use cpu::Registers;
-use minifb::Key;
+
 use display::Display;
 use std::thread::sleep_ms;
 use std::time::{Instant, Duration};
+use interconnect::Interconnect;
 use keypad::{State, Input, Keypad};
 
 mod cpu;

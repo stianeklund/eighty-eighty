@@ -1,6 +1,5 @@
 use super::cpu::{ExecutionContext, Registers};
 use super::memory::Memory;
-use super::std::io;
 
 pub struct Interconnect {
 pub registers: Registers,

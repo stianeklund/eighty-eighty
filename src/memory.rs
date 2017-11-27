@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::fmt;
+use std::ops::{Index, IndexMut};
 
 pub struct Memory {
     pub memory: Vec<u8>,
@@ -18,6 +19,18 @@ impl fmt::UpperHex for Memory {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let val = self;
         write!(f, "{:04X}", val)
+    }
+}
+
+impl IndexMut<u16> for Memory {
+    fn index_mut(&mut self, index: u16) -> &mut u8 {
+        &mut self.memory[index as usize]
+    }
+}
+impl Index<u16> for Memory {
+    type Output = u8;
+    fn index(&self, index: u16) ->  &u8 {
+        &self.memory[index as usize]
     }
 }
 
