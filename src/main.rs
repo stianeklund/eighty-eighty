@@ -36,7 +36,7 @@ fn main() {
     loop {
         // Execute an instruction
         i.execute_cpu();
-        sleep_ms(16);
+        sleep_ms(60);
         // Poll for input
         display.draw_pixel(&i);
         display.window.update_with_buffer(&display.raster).unwrap();

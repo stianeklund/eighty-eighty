@@ -102,7 +102,8 @@ impl Registers {
             interrupt_addr: 0x08,
 
             port_0_in: 0b10101100,
-            port_1_in: 1, //0b01100010,
+            // Port 0 (not used but mapped on real hw).
+            port_1_in: 0b01100010,
             port_2_in: 0b00000000,
             port_3_in: 0,
 
@@ -986,9 +987,9 @@ impl<'a> ExecutionContext<'a> {
 
         let mut result: u16 = 0;
         match port {
-            0 => result = self.registers.port_0_in as u16,
+            // Port 0 is not used
             1 => result = self.registers.port_1_in as u16,
-            2 => result = self.registers.port_2_in as u16, // (self.registers.port_2_in as u16) & 0x8F | (self.registers.port_2_in as u16) & 0x70,
+            2 => result = self.registers.port_2_in as u16,
             3 => result = ((self.registers.port_4_out_high as u16) << 8) |
                 (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
             _ => eprintln!("Input port {}, not implemented", port),
@@ -1346,22 +1347,23 @@ impl<'a> ExecutionContext<'a> {
 
         match port {
             // Sets the offset size for shift register
-            0x01 => {
+            /* 0x01 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
                 println!("Output Port 2: {:04X}", self.registers.port_2_out);
-            }
-            0x02 => {
+            } */
+            2 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
                 println!("Output Port 2: {:04X}", self.registers.port_2_out);
             }
             // Sound port
-            0x03 => {
+            3 => {
                 self.registers.port_3_out = self.registers.reg_a;
                 println!("Output SND Port 3: {:04X}", self.registers.port_3_out);
             }
 
-            // Sets shift register values
-            0x04 => {
+            // Sets shift register values respective of port 4 low & high values
+            // I.e for both shift registers
+            4 => {
                 self.registers.port_4_out_low = self.registers.port_4_out_high;
                 self.registers.port_4_out_high = self.registers.reg_a;
                 println!("Setting shift register values: High:{:04X}, Low:{:04X}",
@@ -1370,10 +1372,10 @@ impl<'a> ExecutionContext<'a> {
                 );
             }
             // Sound port
-            0x05 => self.registers.port_5_out = self.registers.reg_a,
+            5 => self.registers.port_5_out = self.registers.reg_a,
 
             // Watchdog port
-            0x06 => {
+            6 => {
                 // On real hardware the watch dog system is a counter that counts 60Hz pulses
                 // from the video divider chain. It was reset for each pulse, and would time out
                 // after 4 seconds. The watchdog pin had to be low on boot for some games to start.
@@ -1383,7 +1385,7 @@ impl<'a> ExecutionContext<'a> {
 
                 // println!("Watchdog, value: {:04X}", self.registers.port_6_out);
             }
-            0x07 => {
+            7 => {
                 self.registers.reg_a & 0x01;
             }
             _ => println!("Output port: {:04X}, does not match implementation", port),
@@ -1518,7 +1520,7 @@ impl<'a> ExecutionContext<'a> {
         // Address to return to after interrupt is finished.
         let ret = self.registers.pc + 1;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
-        self.memory.write_word(self.registers.sp, self.registers.pc);
+        self.memory.write_word(self.registers.sp, ret);
         self.registers.prev_pc = self.registers.pc;
 
         // self.memory.write_word(self.registers.sp - 1, (ret >> 8));
