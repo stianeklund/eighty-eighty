@@ -14,7 +14,7 @@ pub struct Keypad {
     p1_start: u8,  // Port 1 Bit 1 (0x01 if pressed)
 
     // Port 0  Bits
-                   // Port 0 Bit 3 (always 0x01)
+    // Port 0 Bit 3 (always 0x01)
     p1_fire: u8,   // Port 0 Bit 4 (0x01 if pressed)
     p1_left: u8,   // Port 0 Bit 5 (0x01 if pressed)
     p1_right: u8,  // Port 0 Bit 6 (0x01 if pressed)
@@ -64,7 +64,7 @@ impl Keypad {
                 match t {
                     Key::D => registers.debug = true,
                     Key::E => registers.debug = false,
-                    Key::C | Key::Enter | Key::Space | Key::Key2 |
+                    Key::C | Key::Enter | Key::Space | Key::Key2 | Key::Key3 |
                     Key::Left | Key::Right => Input::handle_input(registers, t),
                     Key::Escape => ::std::process::exit(0),
                     _ => eprintln!("Input key not handled"),
@@ -116,6 +116,7 @@ impl Input for Registers {
             Key::C     => self.port_1_in |= keypad.credit,
             Key::Space => self.port_1_in |= keypad.p1_fire,
             Key::Key2  => self.port_2_in |= keypad.p2_start,
+            Key::Key3  => self.port_2_in |= keypad.coin_info,
             Key::Left  => self.port_1_in |= keypad.p1_left,
             Key::Right => self.port_1_in |= keypad.p1_right,
             _ => eprintln!("Key not implemented"),

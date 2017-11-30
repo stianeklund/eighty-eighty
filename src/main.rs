@@ -36,10 +36,10 @@ fn main() {
     loop {
         // Execute an instruction
         i.execute_cpu();
-        sleep_ms(60);
-        // Poll for input
+        sleep_ms(16);
         display.draw_pixel(&i);
-        display.window.update_with_buffer(&display.raster).unwrap();
+        // Poll for input
         Keypad::poll_input(&mut i.registers, &display.window);
+        display.window.update_with_buffer(&display.raster).unwrap();
     }
 }

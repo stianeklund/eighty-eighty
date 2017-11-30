@@ -104,8 +104,8 @@ impl Registers {
 
             port_0_in: 0b10101100,
             // Port 0 (not used but mapped on real hw, used for diagnostics).
-            port_1_in: 0, // 0b01100010,
-            port_2_in: 0b00000000,
+            port_1_in: 0,
+            port_2_in: 0,
             port_3_in: 0,
 
             port_2_out: 0,
@@ -987,15 +987,14 @@ impl<'a> ExecutionContext<'a> {
     fn input(&mut self) {
         let port = self.memory.read(self.registers.pc + 1);
 
-        let mut result: u16 = 0;
+        let mut result: u8 = 0;
         match port {
             // Port 0 is not used
-            1 => result = self.registers.port_1_in as u16,
-            2 => result = self.registers.port_2_in as u16,
+            1 => result = self.registers.port_1_in,
+            2 => result = self.registers.port_2_in,
             3 => {
                 let value = ((self.registers.port_4_out_high as u16) << 8) | (self.registers.port_4_out_low as u16);
-                result = (value >> (8 - self.registers.shift_offset)) & 0xFF;
-
+                result = ((value >> (8 - self.registers.shift_offset) as u16) & 0xFF) as u8;
             }
             _ => eprintln!("Input port {}, not implemented", port),
         };
@@ -1351,19 +1350,15 @@ impl<'a> ExecutionContext<'a> {
         let port = self.memory.read(self.registers.pc + 1);
 
         match port {
-            /* 1 => {
-                self.registers.port_2_out = self.registers.reg_a & 0x7;
-                println!("Output Port 1: {:04X}", self.registers.port_2_out);
-            }*/
             2 => {
                 // Sets the offset size for shift register
                 self.registers.shift_offset = self.registers.reg_a & 0x7;
-                println!("Output Port 2: {:04X}", self.registers.port_2_out);
+                // println!("Output Port 2: {:04X}", self.registers.port_2_out);
             }
             // Sound port
             3 => {
                 self.registers.port_3_out = self.registers.reg_a;
-                println!("Output SND Port 3: {:04X}", self.registers.port_3_out);
+                // println!("Output SND Port 3: {:04X}", self.registers.port_3_out);
             }
 
             // Sets shift register values respective of port 4 low & high values
@@ -1371,10 +1366,6 @@ impl<'a> ExecutionContext<'a> {
             4 => {
                 self.registers.port_4_out_low = self.registers.port_4_out_high;
                 self.registers.port_4_out_high = self.registers.reg_a;
-                println!("Setting shift register values: High:{:04X}, Low:{:04X}",
-                         self.registers.port_4_out_high,
-                         self.registers.port_4_out_low
-                );
             }
             // Sound port
             5 => self.registers.port_5_out = self.registers.reg_a,
@@ -1885,7 +1876,7 @@ impl<'a> ExecutionContext<'a> {
     pub fn step(&mut self) {
     let mut cycles_executed: usize = 0;
 
-    while cycles_executed < 16667 {
+    while cycles_executed <= 16666 * 2 {
         let start_cycles = self.registers.cycles;
         self.execute_instruction();
         if self.registers.debug {
@@ -1945,11 +1936,11 @@ impl<'a> ExecutionContext<'a> {
     }
     fn emulate_interrupt(&mut self) {
         if self.registers.interrupt {
-            let ret: u16 = self.registers.pc + 3;
+            let ret: u16 = self.registers.pc;
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.memory.write_word(self.registers.sp, ret);
 
-            println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
+            // println!("Servicing interrupt {:04X}", u16::from(self.registers.interrupt_addr));
 
             self.registers.prev_pc = self.registers.pc;
             self.registers.pc = u16::from(self.registers.interrupt_addr);
