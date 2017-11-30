@@ -94,12 +94,11 @@ test test::tests::preliminary ... ok
 
 
 
-##### Compatiblity
+##### Compatiblity issues
 
 * No sound implemented.
-* No user input.
-* Shift registers implemented.
-* Interrupts (but have bugs).
+* Buggy input handling.
+
 
 ---
 
