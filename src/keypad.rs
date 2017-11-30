@@ -42,7 +42,7 @@ pub trait Input {
 impl Keypad {
     pub fn new() -> Keypad {
         Keypad {
-            coin_info: 0,
+            coin_info: 0x80,
             p1_start: 0x04,
             p1_fire: 0,
             p1_left: 0,
@@ -98,13 +98,13 @@ impl Input for Registers {
             p1_right: 0,
             p2_shot: 0,
             p2_start: 0x2,
+            p2_left: 0,
             p2_right: 0,
             credit: 0x1,
             tilt: 0,
             dip3: 0,
             dip5: 0,
             dip6: 0,
-            p2_left: 0,
         }
     }
     fn key_down(&mut self, key: Key) {
@@ -116,7 +116,7 @@ impl Input for Registers {
             Key::C     => self.port_1_in |= keypad.credit,
             Key::Space => self.port_1_in |= keypad.p1_fire,
             Key::Key2  => self.port_2_in |= keypad.p2_start,
-            Key::Left => self.port_1_in |= keypad.p1_left,
+            Key::Left  => self.port_1_in |= keypad.p1_left,
             Key::Right => self.port_1_in |= keypad.p1_right,
             _ => eprintln!("Key not implemented"),
         }
@@ -130,11 +130,12 @@ impl Input for Registers {
         let keypad = self.key_value();
 
         match key {
+            Key::Key3  => self.port_2_in &= keypad.coin_info,
             Key::Enter => self.port_1_in &= keypad.p1_start,
-            Key::Key2 => self.port_2_in &= keypad.p2_start,
+            Key::Key2  => self.port_2_in &= keypad.p2_start,
             Key::C     => self.port_1_in &= keypad.credit,
             Key::Space => self.port_1_in &= keypad.p1_fire,
-            Key::Left => self.port_1_in &= keypad.p1_left,
+            Key::Left  => self.port_1_in &= keypad.p1_left,
             Key::Right => self.port_1_in &= keypad.p1_right,
             _ => eprintln!("Key not implemented"),
         }

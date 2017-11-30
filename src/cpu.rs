@@ -64,6 +64,7 @@ pub struct Registers {
     port_3_out: u8,      // Sound port
     port_4_out_high: u8, // Shift data port high
     port_4_out_low: u8,  // Shift data port low
+    shift_offset: u8,    // Shift register offset
     port_5_out: u8,      // Sound2 port
     port_6_out: u8,      // Watchdog (read or write to reset)
 }
@@ -102,8 +103,8 @@ impl Registers {
             interrupt_addr: 0x08,
 
             port_0_in: 0b10101100,
-            // Port 0 (not used but mapped on real hw).
-            port_1_in: 0b01100010,
+            // Port 0 (not used but mapped on real hw, used for diagnostics).
+            port_1_in: 0, // 0b01100010,
             port_2_in: 0b00000000,
             port_3_in: 0,
 
@@ -111,6 +112,7 @@ impl Registers {
             port_3_out: 0,
             port_4_out_high: 0,
             port_4_out_low: 0,
+            shift_offset: 0,
             port_5_out: 0,
             port_6_out: 0,
         }
@@ -122,7 +124,7 @@ impl fmt::Debug for Registers {
         //           I   O   PC  Cycles A   BC  DE  HL  SP    S     Z     P     C    AC    Intr
         writeln!(f, "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}    \t{}\t{}\t{}\t{}\t{}\t{}\t",
                  "Instruction", "Opcode", "PC", "A", "BC", "DE", "HL", "SP", "S   ", "Z   ", "P   ", "C   ", "AC   ", "I   ");
-        write!(
+        writeln!(
             f, // S   Z   P   C   AC  Interrupt
             "{}\t{:04X}\t{:04X}\t{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t\t{}\t{}",
             self.current_instruction,
@@ -990,8 +992,11 @@ impl<'a> ExecutionContext<'a> {
             // Port 0 is not used
             1 => result = self.registers.port_1_in as u16,
             2 => result = self.registers.port_2_in as u16,
-            3 => result = ((self.registers.port_4_out_high as u16) << 8) |
-                (self.registers.port_4_out_low as u16) << ((self.registers.port_2_out as u16) >> 8) & 0xFF,
+            3 => {
+                let value = ((self.registers.port_4_out_high as u16) << 8) | (self.registers.port_4_out_low as u16);
+                result = (value >> (8 - self.registers.shift_offset)) & 0xFF;
+
+            }
             _ => eprintln!("Input port {}, not implemented", port),
         };
 
@@ -1346,13 +1351,13 @@ impl<'a> ExecutionContext<'a> {
         let port = self.memory.read(self.registers.pc + 1);
 
         match port {
-            // Sets the offset size for shift register
-            /* 0x01 => {
+            /* 1 => {
                 self.registers.port_2_out = self.registers.reg_a & 0x7;
-                println!("Output Port 2: {:04X}", self.registers.port_2_out);
-            } */
+                println!("Output Port 1: {:04X}", self.registers.port_2_out);
+            }*/
             2 => {
-                self.registers.port_2_out = self.registers.reg_a & 0x7;
+                // Sets the offset size for shift register
+                self.registers.shift_offset = self.registers.reg_a & 0x7;
                 println!("Output Port 2: {:04X}", self.registers.port_2_out);
             }
             // Sound port
@@ -1386,7 +1391,8 @@ impl<'a> ExecutionContext<'a> {
                 // println!("Watchdog, value: {:04X}", self.registers.port_6_out);
             }
             7 => {
-                self.registers.reg_a & 0x01;
+                // Debug port
+                // self.registers.reg_a & 0x01;
             }
             _ => println!("Output port: {:04X}, does not match implementation", port),
         }
