@@ -44,9 +44,9 @@ impl Keypad {
         Keypad {
             coin_info: 0x80,
             p1_start: 0x04,
-            p1_fire: 0,
-            p1_left: 0,
-            p1_right: 0,
+            p1_fire: 0x10,
+            p1_left: 0x20,
+            p1_right: 0x40,
             p2_shot: 0,
             p2_start: 0x2,
             p2_left: 0,
@@ -91,11 +91,11 @@ impl State {
 impl Input for Registers {
     fn key_value(&self) -> Keypad {
         Keypad {
-            coin_info: 0,
+            coin_info: 0x80,
             p1_start: 0x04,
-            p1_fire: 0,
-            p1_left: 0,
-            p1_right: 0,
+            p1_fire: 0x10,
+            p1_left: 0x20,
+            p1_right: 0x40,
             p2_shot: 0,
             p2_start: 0x2,
             p2_left: 0,
@@ -121,6 +121,7 @@ impl Input for Registers {
             Key::Right => self.port_1_in |= keypad.p1_right,
             _ => eprintln!("Key not implemented"),
         }
+        println!("Key down");
 
         state.up = false;
         state.down = true;
@@ -131,7 +132,7 @@ impl Input for Registers {
         let keypad = self.key_value();
 
         match key {
-            Key::Key3  => self.port_2_in &= keypad.coin_info,
+            Key::Key3  => self.port_2_in &= !keypad.coin_info,
             Key::Enter => self.port_1_in &= keypad.p1_start,
             Key::Key2  => self.port_2_in &= keypad.p2_start,
             Key::C     => self.port_1_in &= keypad.credit,
@@ -141,25 +142,29 @@ impl Input for Registers {
             _ => eprintln!("Key not implemented"),
         }
 
+        println!("Key up");
+
         state.up = true;
         state.down = false;
         state.changed = true;
     }
     fn handle_input(&mut self, key: Key) {
-
         let mut state = State::new();
 
+        if !state.changed && !state.down {
+            self.key_down(key);
+            state.changed = false;
+            state.down = false;
+            state.up = true;
+
+            println!("Key press:{:?}", key);
+        }
         if !state.changed && state.up {
             self.key_up(key);
-            state.changed = true;
+            state.changed = false;
             state.up = false;
+            state.down = true;
         }
-        if state.changed && !state.up {
-            self.key_down(key);
-            state.changed = true;
-            state.down = false;
-        }
-        println!("Key press:{:?}", key);
     }
 }
 
