@@ -1,6 +1,6 @@
 use std::fmt;
 use minifb::{Scale, WindowOptions, Window};
-use interconnect::Interconnect;
+use crate::interconnect::Interconnect;
 
 pub const WIDTH: u32 = 224;
 pub const HEIGHT: u32 = 256;
@@ -27,7 +27,7 @@ impl fmt::UpperHex for Display {
 
 impl Display {
     pub fn new() -> Display {
-        let mut window = Window::new(
+        let window = Window::new(
             "Eighty Eighty",
             WIDTH as usize,
             HEIGHT as usize,

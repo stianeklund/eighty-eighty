@@ -1,13 +1,11 @@
-#![feature(try_from)]
-
 extern crate minifb;
 extern crate byteorder;
 
-use display::Display;
-use std::thread::sleep_ms;
+use crate::display::Display;
+use std::thread::sleep;
 use std::time::{Instant, Duration};
-use interconnect::Interconnect;
-use keypad::{State, Input, Keypad};
+use crate::interconnect::Interconnect;
+use crate::keypad::{Keypad};
 
 mod cpu;
 mod opcode;
@@ -26,7 +24,7 @@ fn main() {
 
     let bin = &args[1];
 
-    let mut now = Instant::now();
+    let _now = Instant::now();
     let i = &mut Interconnect::new();
     let mut display = Display::new();
 
@@ -36,7 +34,7 @@ fn main() {
     loop {
         // Execute an instruction
         i.execute_cpu();
-        sleep_ms(16);
+        sleep(Duration::from_micros(16));
         display.draw_pixel(&i);
         // Poll for input
         Keypad::poll_input(&mut i.registers, &display.window);

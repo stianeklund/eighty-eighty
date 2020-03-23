@@ -59,7 +59,7 @@ impl Memory {
 
     pub fn write_word(&mut self, addr: u16, word: u16) {
         self.write_byte(addr, word as u8);
-        self.write_byte((addr.wrapping_add(1)), (word >> 8) as u8);
+        self.write_byte(addr.wrapping_add(1), (word >> 8) as u8);
     }
     pub fn write_byte(&mut self, addr: u16, byte: u8) {
         self.memory[addr as usize & 0xFFFF] = byte

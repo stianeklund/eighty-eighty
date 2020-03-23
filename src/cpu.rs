@@ -1,7 +1,7 @@
 use std::fmt;
-use opcode::{Register, RegisterPair};
-use memory::Memory;
-use interconnect::Interconnect;
+use crate::opcode::{Register, RegisterPair};
+use crate::memory::Memory;
+use crate::interconnect::Interconnect;
 
 /// Intel 8080 Notes:
 ///
@@ -1336,7 +1336,7 @@ impl<'a> ExecutionContext<'a> {
     fn ret(&mut self) {
         let low = self.memory[self.registers.sp];
         let high = self.memory[self.registers.sp.wrapping_add(1)];
-        let mut ret: u16 = (high as u16) << 8 | (low as u16);
+        let ret: u16 = (high as u16) << 8 | (low as u16);
         // Set program counter for debug output
         self.registers.prev_pc = self.registers.pc;
         // println!("Returning to {:04X}", ret);
@@ -1859,7 +1859,7 @@ impl<'a> ExecutionContext<'a> {
             _ => println!("Unknown opcode: {:04X}", self.registers.opcode),
         }
         self.registers.opcode = opcode;
-        use opcode::Opcode;
+        use crate::opcode::Opcode;
 
         // Lookup opcode & get instruction name back for debugging purposes
         self.registers.current_instruction = Opcode::print(self.registers.opcode).to_string();
@@ -1927,7 +1927,7 @@ impl<'a> ExecutionContext<'a> {
         (self.registers.reg_h as u16) << 8 | (self.registers.reg_l as u16)
 
     }
-    fn parity(&self, mut value: u8) -> bool {
+    fn parity(&self, value: u8) -> bool {
         let mut bits: u8 = 0;
         for i in 0..8 {
             bits += (value >> i) & 1;

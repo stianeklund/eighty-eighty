@@ -1,5 +1,6 @@
 use minifb::{Key, Window};
-use cpu::Registers;
+use crate::cpu::Registers;
+use std::borrow::Borrow;
 
 pub struct Keypad {
     // DIP settings
@@ -33,7 +34,7 @@ pub struct State {
     changed: bool
 }
 pub trait Input {
-    fn key_value(&self) -> Keypad;
+    fn key_value(&self) -> &Keypad;
     fn key_down(&mut self, key: Key);
     fn key_up(&mut self, key: Key);
     fn handle_input(&mut self, key: Key);
@@ -89,24 +90,7 @@ impl State {
 }
 
 impl Input for Registers {
-    fn key_value(&self) -> Keypad {
-        Keypad {
-            coin_info: 0x80,
-            p1_start: 0x04,
-            p1_fire: 0x10,
-            p1_left: 0x20,
-            p1_right: 0x40,
-            p2_shot: 0,
-            p2_start: 0x2,
-            p2_left: 0,
-            p2_right: 0,
-            credit: 0x1,
-            tilt: 0,
-            dip3: 0,
-            dip5: 0,
-            dip6: 0,
-        }
-    }
+    fn key_value(&self) -> &Keypad { self.key_value().borrow() }
     fn key_down(&mut self, key: Key) {
         let keypad = self.key_value();
         let mut state = State::new();
