@@ -1,4 +1,7 @@
 # eighty-eighty
+
+[![Build Status](https://travis-ci.com/stianeklund/eighty-eighty.svg?branch-master)](https://travis-ci.com/stianeklund/eighty-eighty)
+
 A Intel 8080 Emulator written in Rust
 
 Compatible with Windows, Linux & Mac OS

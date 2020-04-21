@@ -1,0 +1,12 @@
+dist: bionic
+
+language: rust
+rust:
+    - stable
+
+addons:
+    apt:
+        packages:
+            - xorg-dev
+before_install:
+    - sudo apt-get -qq update

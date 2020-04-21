@@ -13,7 +13,7 @@ mod display;
 mod interconnect;
 mod memory;
 mod keypad;
-mod test;
+mod tests;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

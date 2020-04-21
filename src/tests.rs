@@ -176,6 +176,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn cpu_exer() {
         // Standup memory & registers
         let mut i = Interconnect::new();
@@ -231,6 +232,7 @@ mod tests {
         }
     }
     #[test]
+    #[ignore]
     fn cpu_ex1() {
         // Standup memory & registers
         let mut i = Interconnect::new();
