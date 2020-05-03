@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/stianeklund/eighty-eighty.svg?branch-master)](https://travis-ci.com/stianeklund/eighty-eighty)
 
-A Intel 8080 Emulator written in Rust
+A Intel 8080 CPU Emulator & Space Invaders emulator written in Rust
 
 Compatible with Windows, Linux & Mac OS
 
@@ -12,7 +12,7 @@ Compatible with Windows, Linux & Mac OS
 * Passes all Intel 8080 CPU Tests.
 * Space Invaders* 
 
-*See compatibility.
+*See compatibility below.
 
 
 ### CPU Tests
@@ -53,8 +53,6 @@ stax <b,d>....................  PASS! crc is:2b0471e9
 Tests complete
 Jump to 0 from 0137
 ```
-
-
 
 
 #### Diagnostics II v1.2 by by Supersoft Associates (1981):
@@ -100,8 +98,7 @@ test test::tests::preliminary ... ok
 ##### Compatiblity issues
 
 * No sound implemented.
-* Buggy input handling.
-
+* Input handling could be better.
 
 ---
 
@@ -122,10 +119,28 @@ Test names:
 
 E.g: `cargo test --package eighty-eighty --bin eighty-eighty test::tests::preliminary -- --nocapture --exact`
 
+#### Running Space invaders:
+Please make sure you build the project as `release`, otherwise it will run at slow speeds.
 
-* Note there is currently no support for other games nor separate game files.
+`cargo run --release invaders.rom`
 
-If you have multiple files you can merge them with `cat` or a similar util.
+You will have to source the rom files, e.g: `invaders.h, invaders.e, invaders.f` on your own.
+
+Please note rom files with the naming: `972, 970` etc are _not_ compatible.
+The sha1sum of the combined rom is: `2c6e7301635fcb5c9b845a97fcb2632eb7fbcbf8`, alternatively md5sum:
+`fb811510805726d9cb498df74cb20472`
+
+If you have multiple files you can merge them with `cat` or `copy \b`
+
+##### Merging the invaders rom files into one file:
+
+Linux, Unix, MacOS: 
+
+* `cat invaders.h invaders.g invaders.f invaders.e > invaders.rom`
+
+Windows:
+* `copy /b invaders.h+invaders.g+invaders.f+invaders.e invaders.rom`
+
 
 ---
 

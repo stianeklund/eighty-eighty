@@ -1,6 +1,6 @@
+use crate::memory::Memory;
+use minifb::{Scale, Window, WindowOptions};
 use std::fmt;
-use minifb::{Scale, WindowOptions, Window};
-use crate::interconnect::Interconnect;
 
 pub const WIDTH: u32 = 224;
 pub const HEIGHT: u32 = 256;
@@ -26,8 +26,8 @@ impl fmt::UpperHex for Display {
 }
 
 impl Display {
-    pub fn new() -> Display {
-        let window = Window::new(
+    pub fn new() -> Self {
+        let mut window = Window::new(
             "Eighty Eighty",
             WIDTH as usize,
             HEIGHT as usize,
@@ -36,17 +36,19 @@ impl Display {
                 scale: Scale::X2,
                 ..WindowOptions::default()
             },
-        ).unwrap();
+        )
+        .unwrap();
 
-
+        window.set_position(500, 500);
         Display {
             raster: vec![0x00FF_FFFF; WIDTH as usize * HEIGHT as usize * 2],
             vblank: false,
             window,
         }
     }
-    pub fn draw_pixel(&mut self, interconnect: &Interconnect) {
-        let memory = &interconnect.memory.memory;
+
+    pub fn draw_pixel(&mut self, memory: &Memory) {
+        let memory = &memory.memory;
 
         // Iterate over VRAM
         for (i, byte) in (memory[0x2400..0x4000]).iter().enumerate() {

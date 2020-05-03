@@ -1,8 +1,8 @@
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
-use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::path::Path;
 
 pub struct Memory {
     pub memory: Vec<u8>,
@@ -29,14 +29,16 @@ impl IndexMut<u16> for Memory {
 }
 impl Index<u16> for Memory {
     type Output = u8;
-    fn index(&self, index: u16) ->  &u8 {
+    fn index(&self, index: u16) -> &u8 {
         &self.memory[index as usize]
     }
 }
 
 impl Memory {
     pub fn new() -> Memory {
-        Memory { memory: vec![0; 0x1_0000] }
+        Memory {
+            memory: vec![0; 0x1_0000],
+        }
     }
 
     pub fn read_byte(&mut self, addr: u16) -> u8 {
@@ -55,7 +57,9 @@ impl Memory {
         self.read_byte(addr.wrapping_add(1))
     }
 
-    pub fn read(&self, addr: u16) -> u16 { u16::from(self.memory[addr as usize])  }
+    pub fn read(&self, addr: u16) -> u16 {
+        u16::from(self.memory[addr as usize])
+    }
 
     pub fn write_word(&mut self, addr: u16, word: u16) {
         self.write_byte(addr, word as u8);
