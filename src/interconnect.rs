@@ -5,7 +5,6 @@ use crate::keypad::Keypad;
 pub struct Interconnect {
     pub cpu: Cpu,
     pub keypad: Keypad,
-    pub display: Display,
     pub frame_count: u32,
 }
 
@@ -14,7 +13,6 @@ impl Interconnect {
         Self {
             cpu: Cpu::new(),
             keypad: Keypad::new(),
-            display: Display::new(),
             frame_count: 0,
         }
     }
@@ -22,12 +20,9 @@ impl Interconnect {
     pub fn execute_cpu(&mut self) -> u32 {
         let mut cycles_executed: usize = 0;
 
-        while cycles_executed <= 16666 {
+            while cycles_executed <= 16666 {
             let start_cycles = self.cpu.registers.cycles;
             self.cpu.execute_instruction();
-            if self.cpu.registers.debug {
-                println!("{:?}", self.cpu.registers);
-            }
             cycles_executed += self.cpu.registers.cycles - start_cycles;
             self.cpu.try_interrupt();
         }

@@ -25,6 +25,7 @@ impl fmt::UpperHex for Display {
     }
 }
 
+const SCALE: usize = 8;
 impl Display {
     pub fn new() -> Self {
         let mut window = Window::new(
@@ -33,7 +34,7 @@ impl Display {
             HEIGHT as usize,
             WindowOptions {
                 resize: true,
-                scale: Scale::X2,
+                scale: Scale::X4,
                 ..WindowOptions::default()
             },
         )
@@ -41,7 +42,8 @@ impl Display {
 
         window.set_position(500, 500);
         Display {
-            raster: vec![0x00FF_FFFF; WIDTH as usize * HEIGHT as usize * 2],
+            // TODO: Is there a better way to handle resize / different scaling?
+            raster: vec![0x00FF_FFFF; WIDTH as usize * HEIGHT as usize * SCALE],
             vblank: false,
             window,
         }
@@ -56,7 +58,6 @@ impl Display {
 
             for shift in 0..(7 + 1) {
                 let x = ((i * 8) % 256 as usize + shift as usize) as isize;
-
                 // Rotate frame buffer 90 deg
                 let new_x = y as isize;
                 let new_y = (-x as isize + 256) - 1;

@@ -1,6 +1,7 @@
 use crate::memory::Memory;
 use crate::opcode::{Register, RegisterPair};
 use std::fmt;
+use std::fmt::Formatter;
 
 /// Intel 8080 Notes:
 ///
@@ -19,7 +20,7 @@ use std::fmt;
 /// Incremented or decremented (using INX and DCX) or added to HL (using DAD).
 /// The 8080 has a 16-bit stack pointer, and a 16-bit program counter
 
-// #[derive(Copy, Clone)]
+#[derive(Debug)]
 pub struct Registers {
     pub opcode: u8,
     pub current_instruction: String,
@@ -117,52 +118,29 @@ impl Registers {
     }
 }
 
-impl fmt::Debug for Registers {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        //           I   O   PC  Cycles A   BC  DE  HL  SP    S     Z     P     C    AC    Intr
-        writeln!(
-            f,
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}    \t{}\t{}\t{}\t{}\t{}\t{}\t",
-            "Instruction",
-            "Opcode",
-            "PC",
-            "A",
-            "BC",
-            "DE",
-            "HL",
-            "SP",
-            "S   ",
-            "Z   ",
-            "P   ",
-            "C   ",
-            "AC   ",
-            "I   "
-        );
-        writeln!(
-            f, // S   Z   P   C   AC  Interrupt
-            "{}\t{:04X}\t{:04X}\t{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:02X}{:02X}\t{:04X}\t{}\t{}\t{}\t{}\t\t{}\t{}",
-            self.current_instruction,
-            self.opcode,
-            self.prev_pc,
-            self.reg_a,
-            self.reg_b,
-            self.reg_c,
-            self.reg_d,
-            self.reg_e,
-            self.reg_h,
-            self.reg_l,
-            self.sp,
-            self.sign as u8,
-            self.zero as u8,
-            self.parity as u8,
-            self.carry as u8,
-            self.half_carry as u8,
-            self.interrupt as u8
+impl fmt::Debug for Cpu {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        fmt.align();
+        write!(fmt, "PC: {:>04X}, ", self.registers.prev_pc)?;
+        write!(fmt, "AF: {:>02X}{:02X}, ", self.registers.reg_a, self.get())?;
+        write!(fmt, "BC: {:>02X}{:02X}, ", self.registers.reg_b, self.registers.reg_c)?;
+        write!(fmt, "DE: {:>02X}{:02X}, ", self.registers.reg_d, self.registers.reg_e)?;
+        write!(fmt, "HL: {:>02X}{:02X}, ", self.registers.reg_h, self.registers.reg_l)?;
+        write!(fmt, "SP: {:>04X}, ", self.registers.sp)?;
+        write!(fmt, "CYC: {:02X}, \t", self.registers.cycles)?;
+        write!(
+            fmt,
+            "({:02X} {:02X} {:02X} {:02X})",
+            self.memory.read_byte(self.registers.pc),
+            self.memory.read_byte(self.registers.pc.wrapping_add(1)),
+            self.memory.read_byte(self.registers.pc.wrapping_add(2)),
+            self.memory.read_byte(self.registers.pc.wrapping_add(3))
         )
     }
 }
 
-#[derive(Debug)]
+
+// #[derive(Debug)]
 pub struct Cpu {
     pub registers: Registers,
     pub memory: Memory,
@@ -683,7 +661,6 @@ impl Cpu {
                 self.registers.carry = (result & 0x10_000) != 0;
             }
             RegisterPair::SP => {
-                // let mut value = self.registers.sp as u32;
                 let result = (self.get_hl() as u32).wrapping_add(self.registers.sp as u32);
 
                 self.registers.reg_h = (result >> 8) as u8;
@@ -800,14 +777,12 @@ impl Cpu {
     }
 
     fn di(&mut self) {
-        // if self.registers.debug { println!("Disabling interrupts"); }
         self.registers.interrupt = false;
         self.adv_cycles(4);
         self.adv_pc(1);
     }
 
     fn ei(&mut self) {
-        // if self.registers.debug { println!("Enabling interrupts"); }
         self.registers.interrupt = true;
         self.adv_cycles(4);
         self.adv_pc(1);
@@ -1124,6 +1099,14 @@ impl Cpu {
         }
         self.adv_cycles(11);
         self.adv_pc(1);
+    }
+
+    pub(crate) fn get(&self) -> u8 {
+        return if self.registers.sign { 0x80 } else { 0x0 }
+            | if self.registers.zero { 0x40 } else { 0x0 }
+            | if self.registers.parity { 0x04 } else { 0x0 }
+            | if self.registers.half_carry { 0x10 } else { 0x0 } | 0x02
+            | if self.registers.carry { 0x01 } else { 0x0 }
     }
 
     fn push_psw(&mut self) {
@@ -1559,6 +1542,7 @@ impl Cpu {
 
     // RESET (used for interrupt jump / calls)
     pub fn rst(&mut self, value: u8) {
+
         // Address to return to after interrupt is finished.
         let ret = self.registers.pc + 1;
         self.registers.sp = self.registers.sp.wrapping_sub(2);
@@ -1978,8 +1962,6 @@ impl Cpu {
             let ret: u16 = self.registers.pc;
             self.registers.sp = self.registers.sp.wrapping_sub(2);
             self.memory.write_word(self.registers.sp, ret);
-
-            // println!("Interrupt{:04X}", u16::from(self.registers.interrupt_addr));
 
             self.registers.prev_pc = self.registers.pc;
             self.registers.pc = u16::from(self.registers.interrupt_addr);

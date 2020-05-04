@@ -41,7 +41,7 @@ impl Memory {
         }
     }
 
-    pub fn read_byte(&mut self, addr: u16) -> u8 {
+    pub fn read_byte(&self, addr: u16) -> u8 {
         self.memory[addr as usize & 0xFFFF]
     }
 
@@ -68,15 +68,28 @@ impl Memory {
     pub fn write_byte(&mut self, addr: u16, byte: u8) {
         self.memory[addr as usize & 0xFFFF] = byte
     }
-    pub fn load_bin(&mut self, file: &str) {
-        let path = Path::new(file);
-        let mut file = File::open(&path).expect("Couldn't load binary");
+    // Memory map:
+    // $0000-$07ff:    invaders.h
+    // $0800-$0fff:    invaders.g
+    // $1000-$17ff:    invaders.f
+    // $1800-$1fff:    invaders.e
+    pub fn load_bin(&mut self, rom: Vec<String>) {
         let mut buf = Vec::new();
+        let mut collection: Vec<&str> = Vec::new();
 
-        file.read_to_end(&mut buf).expect("Failed to read binary");
-        self.memory[..buf.len()].clone_from_slice(&buf[..]);
-        println!("Loaded: {:?} Bytes: {:?}", path, buf.len());
+        for i in rom.iter().skip(1) {
+            collection.push(&i);
+        }
+        for f in collection.iter() {
+            let path = Path::new(f);
+            let mut file = File::open(&path).unwrap();
+            file.read_to_end(&mut buf).expect("Failed to read binary");
+
+            self.memory[..buf.len()].clone_from_slice(&buf[..]);
+            println!("Loaded: {:?} Bytes: {:?}", path, buf.len());
+        }
     }
+
     pub fn load_tests(&mut self, file: &str) {
         let path = Path::new(file);
         let mut file = File::open(&path).expect("Couldn't load binary");

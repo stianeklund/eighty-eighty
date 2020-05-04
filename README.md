@@ -122,15 +122,17 @@ E.g: `cargo test --package eighty-eighty --bin eighty-eighty test::tests::prelim
 #### Running Space invaders:
 Please make sure you build the project as `release`, otherwise it will run at slow speeds.
 
-`cargo run --release invaders.rom`
-
 You will have to source the rom files, e.g: `invaders.h, invaders.e, invaders.f` on your own.
+
+`cargo run --release invaders.rom` or `cargo run --release invaders.h invaders.g invaders.f invaders.e`
+The emulator supports loading split files or single binaries.
+
 
 Please note rom files with the naming: `972, 970` etc are _not_ compatible.
 The sha1sum of the combined rom is: `2c6e7301635fcb5c9b845a97fcb2632eb7fbcbf8`, alternatively md5sum:
 `fb811510805726d9cb498df74cb20472`
 
-If you have multiple files you can merge them with `cat` or `copy \b`
+If you have multiple files you can merge them with `cat` or `copy \b` for convenience.
 
 ##### Merging the invaders rom files into one file:
 
